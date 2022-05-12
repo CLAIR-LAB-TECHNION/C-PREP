@@ -1,0 +1,15 @@
+name: rmrl
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.9
+  - networkx
+  - pytorch::pytorch
+  - tensorboard
+  - pyg::pyg
+  - jupyterlab
+  - ipywidgets
+  - pip
+  - pip:
+      - gym[mujoco]

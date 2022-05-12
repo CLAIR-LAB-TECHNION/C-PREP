@@ -1,5 +1,23 @@
 # RMs for RL
 
+## installation:
+
+- Create and activate anaconda environment:
+```bash
+conda env create -f environment.yml
+conda activate rmrl
+```
+
+### mujoco setup
+- download mujoco binaries for [Linux](https://www.roboti.us/download/mjpro150_linux.zip) or
+[macOS](https://www.roboti.us/download/mjpro150_osx.zip)
+- unzip the contents into "~/.mujoco/mjpro150"
+- get a license key [here](https://www.roboti.us/license.html)
+- place the license key file at "~/.mujoco/mjkey.txt"
+- run `python3 -c 'import mujoco_py'` to check installation
+- if all else fails, follow the instructions
+[here](https://neptune.ai/blog/installing-mujoco-to-work-with-openai-gym-environments)
+
 ## TODO's
 
 ### Coding
