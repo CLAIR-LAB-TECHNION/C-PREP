@@ -4,7 +4,7 @@
 
 ### Coding
 - [ ] Domains
-    - [ ] HalfCheetah changing velocity environment
+    - [x] HalfCheetah changing velocity environment
     - [ ] Grid world
     - [ ] Multi-taxi (with single taxi)
     - [ ] More...?
@@ -16,4 +16,8 @@
 - [ ] potential functions
     - [x] value iteration
     - [ ] distance from goal
+- [ ] stable baselines integration
+    - [ ] graph inputs
+    - [x] reward shaping
+    - [ ] custom feature extractor with graph support
 
