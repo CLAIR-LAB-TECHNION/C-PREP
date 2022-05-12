@@ -1,3 +1,18 @@
+# Custom gitignore entries for this codebase
+
+# notebook example saved models and logs
+logs/
+models/
+
+# notebook resources
+images/
+
+
+########################################################################################################
+########################################################################################################
+########################################################################################################
+
+# standard ignores from gitignore.io
 
 # Created by https://www.toptal.com/developers/gitignore/api/python,pycharm+all,visualstudiocode,windows,macos,linux
 # Edit at https://www.toptal.com/developers/gitignore?templates=python,pycharm+all,visualstudiocode,windows,macos,linux
