@@ -9,11 +9,11 @@
     - [ ] Multi-taxi (with single taxi)
     - [ ] More...?
 - [ ] Reward machine entity
-    - [ ] base class as graph
-    - [ ] reward shaping
+    - [x] base class as graph
+    - [x] reward shaping
     - [ ] counterfactual RM observations
     - [ ] Hierarchical RM?
 - [ ] potential functions
-    - [ ] value iteration
+    - [x] value iteration
     - [ ] distance from goal
 
