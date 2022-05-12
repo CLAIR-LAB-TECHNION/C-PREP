@@ -17,7 +17,10 @@
     - [x] value iteration
     - [ ] distance from goal
 - [ ] stable baselines integration
-    - [ ] graph inputs
+    - [ ] graph inputs in experience replay/rollout buffer  !!!known issue!!!
     - [x] reward shaping
-    - [ ] custom feature extractor with graph support
+    - [x] custom feature extractor with graph support
 
+### known issues:
+- [ ] batching issue for graph inputs
+- [ ] log original rewards in RM env for true performance
