@@ -8,7 +8,7 @@ DEFAULT_GOAL_VEL = 1
 
 
 def velocity_env(initial_goal_vel=None, change_task_on_reset=True):
-    env = gym.make('HalfCheetah-v3', exclude_current_positions_from_observation=False)
+    env = gym.make('HalfCheetah-v4', exclude_current_positions_from_observation=False)
     env = VelocityWrapper(env, initial_task=initial_goal_vel, change_task_on_reset=change_task_on_reset)
 
     return env

@@ -74,7 +74,7 @@ class RewardMachine(ABC):
         return self.G.number_of_nodes()
 
     def prop_list_to_bitmap(self, props):
-        return np.isin(self.P, props).astype(np.float).tolist()
+        return np.isin(self.P, props).astype(float).tolist()
 
     def draw(self, layout=None, plot_figsize=None, **nxdraw_kwargs):
         if callable(layout):

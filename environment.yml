@@ -8,8 +8,12 @@ dependencies:
   - pytorch::pytorch
   - tensorboard
   - pyg::pyg
+  - matplotlib
   - jupyterlab
   - ipywidgets
   - pip
   - pip:
+      - mujoco-py<2.2,>=2.1
       - gym[mujoco]
+      - git+https://github.com/sarah-keren/multi_taxi@0.1.1
+      - stable-baselines3
