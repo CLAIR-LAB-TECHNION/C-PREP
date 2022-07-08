@@ -1,3 +1,5 @@
+from torch_geometric.data import Data
+from torch_geometric.loader import DataLoader
 import gym
 import torch
 from torch import nn
@@ -21,7 +23,7 @@ class RMFeatureExtractorSB(BaseFeaturesExtractor):
         # nn.Module.__init__ before adding modules
         #TODO make parameter
         obs_out_features = 32
-        rm_out_features = 32
+        self.rm_out_features = 32
 
         extractors = {}
 
@@ -47,7 +49,7 @@ class RMFeatureExtractorSB(BaseFeaturesExtractor):
         for key, graph_space_dict in rm_spaces.items():
             num_node_features = graph_space_dict['node_features'].shape[1]
             num_edge_features = graph_space_dict['edge_features'].shape[1]
-            extractors[key] = MultilayerGCN(num_node_features, rm_out_features)
+            extractors[key] = MultilayerGCN(num_node_features, self.rm_out_features)
             self._output_size += 32
 
         super().__init__(observation_space, features_dim=self._output_size)
@@ -58,15 +60,19 @@ class RMFeatureExtractorSB(BaseFeaturesExtractor):
 
         # self.extractors contain nn.Modules that do all the processing.
         for key, extractor in self.extractors.items():
+            pyg_data = []
             if key == 'obs':
                 out = extractor(observations[key])
             else:  # key.startswith('rm')
                 # graph_dict = [key]
-                nf = observations[f'{key}_node_features'][0]
-                ei = observations[f'{key}_edge_index'][0]
-                ef = observations[f'{key}_edge_features'][0]
-
-                out = self._gnn_agg(extractor(nf, ei.long(), ef).detach(), dim=0)[None]
+                batch_size = observations[f'{key}_node_features'].shape[0]
+                for i in range(batch_size):
+                    pyg_data.append(Data(observations[f'{key}_node_features'][i],
+                                         observations[f'{key}_edge_index'][i].long(),
+                                         observations[f'{key}_edge_features'][i]))
+                data_loader = DataLoader(pyg_data, batch_size=batch_size)
+                batch_out = extractor(next(iter(data_loader))).detach()
+                out = self._gnn_agg(batch_out.reshape(batch_size, -1, self.rm_out_features), dim=1)
             encoded_tensor_list.append(out)
 
         # Return a (B, self._features_dim) PyTorch tensor, where B is batch dimension.
@@ -250,11 +256,12 @@ class MultilayerGCN(nn.Module):
         self.add_module(f'conv_{len(self.layers)}', final_gcn)
         self.layers.append((final_gcn, lambda x: x, lambda x: x))  # use ID func to omit dropout and activation
 
-    def forward(self, x, edge_index, edge_weight=None):
+    def forward(self, data):
         """
         multilayer GCN forward pass
         :param graph_data: torch_geometric.data.Data format
         """
+        x, edge_index, edge_weight = data.x, data.edge_index, data.edge_attr
         for gcn, drp, act in self.layers:
             x = act(drp(gcn(x.float(), edge_index, edge_weight)))
         return x
