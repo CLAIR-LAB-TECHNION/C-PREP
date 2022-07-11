@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Dict
 from itertools import chain, combinations
 
+import networkx as nx
 
 from .reward_machine import RewardMachine
 
@@ -47,3 +48,12 @@ class ValueIteration(PotentialFunction):
     def __powerset(iterable):
         s = list(iterable)
         return chain.from_iterable(combinations(s, r) for r in range(len(s) + 1))
+
+
+class DistFromGoal(PotentialFunction):
+    def __init__(self, goal_state):
+        self.goal_state = goal_state
+
+    def __call__(self, rm: RewardMachine, gamma: float) -> Dict[int, float]:
+        shortest_path_lengths = nx.shortest_path_length(rm.G, target=self.goal_state)
+        return {k: gamma ** (l - 1) for k, l in shortest_path_lengths.items()}

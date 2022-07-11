@@ -28,27 +28,22 @@ class RMFeatureExtractorSB(BaseFeaturesExtractor):
         self._output_size = 0
         self._gnn_agg = gnn_agg
 
-        # original observation space runs through the observation feature extractor
-        obs_space = observation_space.spaces['obs']
-        #TODO make generic network for obs
-
-        extractors['obs'] = MLP(in_features=obs_space.shape[0], hidden_dims=[32, 32], out_features=obs_out_features)
-        self._output_size += 32
-
         # group reward machine information
         rm_spaces = {}
         for key, subspace in observation_space.spaces.items():
+            # TODO make generic networks as input
             if key == 'obs':
-                continue  # skip original observation (already handled)
-            rm_label, data_label = key.split('_', maxsplit=1)
-            rm_spaces.setdefault(rm_label, {})[data_label] = subspace
-
-        # make extractors for rms
-        for key, graph_space_dict in rm_spaces.items():
-            num_node_features = graph_space_dict['node_features'].shape[1]
-            num_edge_features = graph_space_dict['edge_features'].shape[1]
-            extractors[key] = MultilayerGCN(num_node_features, rm_out_features)
-            self._output_size += 32
+                extractors[key] = MLP(in_features=subspace.shape[0], hidden_dims=[32, 32],
+                                      out_features=obs_out_features)
+                self._output_size += obs_out_features
+            elif key.endswith('graph'):  # rm graph
+                extractors[key] = MultilayerGCN(subspace.shape[0], rm_out_features)
+                self._output_size += rm_out_features
+            elif key.endswith('cur_state') or key.endswith('cur_props'):
+                extractors[key] = nn.Identity()  # cur does not use an extractor
+                self._output_size += subspace.shape[0]
+            else:
+                raise ValueError(f'bad observation key {key}')
 
         super().__init__(observation_space, features_dim=self._output_size)
         self.extractors = nn.ModuleDict(extractors)
@@ -58,15 +53,13 @@ class RMFeatureExtractorSB(BaseFeaturesExtractor):
 
         # self.extractors contain nn.Modules that do all the processing.
         for key, extractor in self.extractors.items():
-            if key == 'obs':
-                out = extractor(observations[key])
+            if key.endswith('graph'):
+                graph_data = observations[key]
+                out = extractor(graph_data.x, graph_data.edge_index, graph_data.edge_attr)
+                out = self._gnn_agg(out)
             else:  # key.startswith('rm')
-                # graph_dict = [key]
-                nf = observations[f'{key}_node_features'][0]
-                ei = observations[f'{key}_edge_index'][0]
-                ef = observations[f'{key}_edge_features'][0]
-
-                out = self._gnn_agg(extractor(nf, ei.long(), ef).detach(), dim=0)[None]
+                obs_data = observations[key]
+                out = extractor(obs_data)
             encoded_tensor_list.append(out)
 
         # Return a (B, self._features_dim) PyTorch tensor, where B is batch dimension.

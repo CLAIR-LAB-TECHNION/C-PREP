@@ -10,7 +10,9 @@ import torch
 
 
 ORIG_OBS_KEY = 'obs'
-RM_OBS_KEY_FORMAT = 'rm{index}'
+RM_OBS_KEY_FORMAT = 'rm{index}_graph'
+RM_CUR_STATE_INDICATOR_KEY_FORMAT = 'rm{index}_cur_state'
+RM_CUR_PROPS_VECTOR_KEY_FORMAT = 'rm{index}_cur_props'
 RM_NODE_FEATURES_OBS_KEY_FORMAT = 'rm{index}_node_features'
 RM_EDGE_INDEX_OBS_KEY_FORMAT = 'rm{index}_edge_index'
 RM_EDGE_FEATURES_OBS_KEY_FORMAT = 'rm{index}_edge_features'
@@ -18,19 +20,22 @@ RM_EDGE_FEATURES_OBS_KEY_FORMAT = 'rm{index}_edge_features'
 
 class RMEnvWrapper(gym.Wrapper):
     def __init__(self, env: gym.Env, rm_fn: Callable[[gym.Env], List[RewardMachine]] = lambda x: [],
-                 rm_observations: bool = True, change_rms_on_reset: bool = True, add_orig_reward: bool = False):
+                 rm_observations: bool = True, change_rms_on_reset: bool = True, add_orig_reward: bool = False,
+                 abstract_state_indicator=False, abstract_props_vector=False, multidiscrete_to_box=True):
         super().__init__(env)
 
         self.change_rms_on_reset = change_rms_on_reset
         self.add_orig_reward = add_orig_reward
         self.rm_observations = rm_observations
+        self.abstract_state_indicator = abstract_state_indicator
+        self.abstract_props_vector = abstract_props_vector
+        self.multidiscrete_to_box = multidiscrete_to_box
         self.rm_fn = rm_fn
         self.rms = []
         self.rms_data = []
         self.rm_cur_states = []
+        self.rm_cur_props = []
 
-        self._set_rms()
-        self._reset_cur_states()
         self.__first_time_set_rms_toggle = True
         self.__prev_obs = None
 
@@ -44,7 +49,7 @@ class RMEnvWrapper(gym.Wrapper):
         if self.change_rms_on_reset or self.__first_time_set_rms_toggle:
             self._set_rms()
             self.__first_time_set_rms_toggle = False
-        self._reset_cur_states()
+        self._reset_cur_states(obs)
 
         self.__prev_obs = obs
         return self._get_new_obs(obs)
@@ -62,7 +67,9 @@ class RMEnvWrapper(gym.Wrapper):
             new_state, rm_r = rm.delta(cur_state, propositions)
             info[f'rm{i}_reward'] = rm_r
             info[f'rm{i}_propositions'] = propositions
+            info[f'rm{i}_new_state'] = new_state
             r += rm_r
+            self.rm_cur_states[i] = new_state
 
         self.__prev_obs = obs
         new_obs = self._get_new_obs(obs)
@@ -70,68 +77,88 @@ class RMEnvWrapper(gym.Wrapper):
 
         return new_obs, r, d, info
 
-    # @property
-    # def observation_space(self):
-    #     if self.rm_observations:
-    #         spaces_dict = {ORIG_OBS_KEY: self.env.observation_space}
-    #
-    #         for i, rm_data in enumerate(self.rms_data):
-    #             spaces_dict[self.__rm_key(i)] = PygData(rm_data.x.shape[1:], rm_data.edge_attr.shape[1:])
-    #
-    #         return gym.spaces.Dict(spaces_dict)
-    #     else:
-    #         return self.env.observation_space
-    #
-    # @staticmethod
-    # def __rm_key(i):
-    #     return RM_OBS_KEY_FORMAT.format(index=i)
-
     @property
     def observation_space(self):
-        if self.rm_observations:
-            spaces_dict = {ORIG_OBS_KEY: self.env.observation_space}
+        orig_obs_space = self.env.observation_space
+        if isinstance(orig_obs_space, gym.spaces.MultiDiscrete) and self.multidiscrete_to_box:
+            orig_obs_space = gym.spaces.Box(low=0, high=orig_obs_space.nvec, shape=(len(orig_obs_space.nvec),))
 
-            for i, rm in enumerate(self.rms):
-                rm_data = rm.to_pyg_data()
-                spaces_dict[self.__nf_key(i)] = gym.spaces.Box(-np.inf, np.inf, rm_data.x.shape)
-                spaces_dict[self.__ei_key(i)] = gym.spaces.Box(-np.inf, np.inf, rm_data.edge_index.shape)
-                spaces_dict[self.__ef_key(i)] = gym.spaces.Box(-np.inf, np.inf, rm_data.edge_attr.shape)
-
-            return gym.spaces.Dict(spaces_dict)
+        if not (self.rm_observations or self.abstract_state_indicator or self.abstract_props_vector):
+            # no special additions to the observation. return raw observations
+            return orig_obs_space
         else:
-            return self.env.observation_space
+            # make dict. add raw observations
+            spaces_dict = {ORIG_OBS_KEY: orig_obs_space}
+
+            # check if to include the abstract state
+            if self.abstract_state_indicator:
+                for i, rm in enumerate(self.rms):
+                    spaces_dict[self.__cur_state_key(i)] = gym.spaces.Box(0, 1, (rm.num_states,))
+
+            # check if to include the abstract props
+            if self.abstract_props_vector:
+                for i, rm in enumerate(self.rms):
+                    spaces_dict[self.__cur_props_key(i)] = gym.spaces.Box(0, 1, (rm.num_propositions,))
+
+            # check if to include rm graph data
+            if self.rm_observations:
+                for i, rm_data in enumerate(self.rms_data):
+                    spaces_dict[self.__rm_key(i)] = PygData(rm_data.x.shape[1:], rm_data.edge_attr.shape[1:])
+
+            # return a dictionary space
+            return gym.spaces.Dict(spaces_dict)
+
+    @staticmethod
+    def __rm_key(i):
+        return RM_OBS_KEY_FORMAT.format(index=i)
+
+    @staticmethod
+    def __cur_state_key(i):
+        return RM_CUR_STATE_INDICATOR_KEY_FORMAT.format(index=i)
+
+    @staticmethod
+    def __cur_props_key(i):
+        return RM_CUR_PROPS_VECTOR_KEY_FORMAT.format(index=i)
 
     def _get_new_obs(self, obs):
-        if self.rm_observations:
-            new_obs = {ORIG_OBS_KEY: obs}
+        orig_obs_space = self.env.observation_space
+        if isinstance(orig_obs_space, gym.spaces.MultiDiscrete) and self.multidiscrete_to_box:
+            obs = obs.astype(float)
 
-            for i, graph_data in enumerate(self.rms_data):
-                new_obs[self.__nf_key(i)] = graph_data.x.numpy()
-                new_obs[self.__ei_key(i)] = graph_data.edge_index.numpy()
-                new_obs[self.__ef_key(i)] = graph_data.edge_attr.numpy()
-
-            return new_obs
-        else:
+        if not (self.rm_observations or self.abstract_state_indicator or self.abstract_props_vector):
+            # no special additions to the observation. return raw observations
             return obs
+        else:
+            # make dict. add raw observations
+            obs_dict = {ORIG_OBS_KEY: obs}
 
-    @staticmethod
-    def __nf_key(i):
-        return RM_NODE_FEATURES_OBS_KEY_FORMAT.format(index=i)
+            # check if to include the abstract state
+            if self.abstract_state_indicator:
+                for i, rm in enumerate(self.rms):
+                    cur_state = self.rm_cur_states[i]
+                    obs_dict[self.__cur_state_key(i)] = rm.state_indicators[cur_state]
 
-    @staticmethod
-    def __ei_key(i):
-        return RM_EDGE_INDEX_OBS_KEY_FORMAT.format(index=i)
+            # check if to include the abstract propositions
+            if self.abstract_props_vector:
+                for i, rm in enumerate(self.rms):
+                    obs_dict[self.__cur_props_key(i)] = self.rm_cur_props[i]
 
-    @staticmethod
-    def __ef_key(i):
-        return RM_EDGE_FEATURES_OBS_KEY_FORMAT.format(index=i)
+            # check if to include rm graph data
+            if self.rm_observations:
+                for i, rm_data in enumerate(self.rms_data):
+                    obs_dict[self.__rm_key(i)] = rm_data
+
+            # return a dictionary space
+            return obs_dict
 
     def _set_rms(self):
         self.rms = self.rm_fn(self.env)
-        self.rms_data = [rm.to_pyg_data() for rm in self.rms]
+        if self.rm_observations:
+            self.rms_data = [rm.to_pyg_data() for rm in self.rms]
 
-    def _reset_cur_states(self):
-        self.rm_cur_states = [rm.u0 for rm in self.rms]
+    def _reset_cur_states(self, s):
+        self.rm_cur_states = [rm.u0(s) for rm in self.rms]
+        self.rm_cur_props = [rm.prop_list_to_bitmap([]) for rm in self.rms]  # set to 0 vector of correct length
 
 
 class PygData(gym.spaces.Space):

@@ -94,7 +94,7 @@ class VelocityRM(RewardMachine):
         colormap = ['red'] * self.G.number_of_nodes()
 
         colormap[self.__goal_node] = '#66FF66'
-        colormap[self.u0] = '#6666FF'
+        colormap[self.__u0] = '#6666FF'
 
         custom_nx_draw_kwargs = dict(with_labels=True,
                                      labels=vel_labels,
@@ -114,12 +114,6 @@ class VelocityRM(RewardMachine):
     @property
     def __goal_node(self):
         return [n for n in self.G.nodes if self.__is_goal_node(n)][0]
-
-    def get_node_feature_attr(self):
-        return [VEL_ATTR]
-
-    def get_edge_feature_attr(self):
-        return []
 
 
 def linear_layout(G):
