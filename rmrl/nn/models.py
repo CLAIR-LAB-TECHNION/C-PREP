@@ -1,3 +1,5 @@
+from torch_geometric.data import Data
+from torch_geometric.loader import DataLoader
 import gym
 import torch
 from torch import nn
@@ -21,7 +23,7 @@ class RMFeatureExtractorSB(BaseFeaturesExtractor):
         # nn.Module.__init__ before adding modules
         #TODO make parameter
         obs_out_features = 32
-        rm_out_features = 32
+        self.rm_out_features = 32
 
         extractors = {}
 
@@ -243,11 +245,12 @@ class MultilayerGCN(nn.Module):
         self.add_module(f'conv_{len(self.layers)}', final_gcn)
         self.layers.append((final_gcn, lambda x: x, lambda x: x))  # use ID func to omit dropout and activation
 
-    def forward(self, x, edge_index, edge_weight=None):
+    def forward(self, data):
         """
         multilayer GCN forward pass
         :param graph_data: torch_geometric.data.Data format
         """
+        x, edge_index, edge_weight = data.x, data.edge_index, data.edge_attr
         for gcn, drp, act in self.layers:
             x = act(drp(gcn(x.float(), edge_index, edge_weight)))
         return x
