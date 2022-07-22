@@ -3,10 +3,7 @@ import numpy as np
 
 from typing import Callable, List
 from rmrl.reward_machines.reward_machine import RewardMachine
-
-from torch_geometric.data import Data
-from itertools import product
-import torch
+from rmrl.utils.custom_spaces import PygData
 
 
 ORIG_OBS_KEY = 'obs'
@@ -103,14 +100,29 @@ class RMEnvWrapper(gym.Wrapper):
             # check if to include rm graph data
             if self.rm_observations:
                 for i, rm_data in enumerate(self.rms_data):
-                    spaces_dict[self.__rm_key(i)] = PygData(rm_data.x.shape[1:], rm_data.edge_attr.shape[1:])
+                    # spaces_dict[self.__rm_key(i)] = PygData(rm_data.x.shape[1:], rm_data.edge_attr.shape[1:])
+                    spaces_dict[self.__nf_key(i)] = gym.spaces.Box(-np.inf, np.inf, rm_data.x.shape)
+                    spaces_dict[self.__ei_key(i)] = gym.spaces.Box(-np.inf, np.inf, rm_data.edge_index.shape)
+                    spaces_dict[self.__ef_key(i)] = gym.spaces.Box(-np.inf, np.inf, rm_data.edge_attr.shape)
 
             # return a dictionary space
             return gym.spaces.Dict(spaces_dict)
 
+    # @staticmethod
+    # def __rm_key(i):
+    #     return RM_OBS_KEY_FORMAT.format(index=i)
+
     @staticmethod
-    def __rm_key(i):
-        return RM_OBS_KEY_FORMAT.format(index=i)
+    def __nf_key(i):
+        return RM_NODE_FEATURES_OBS_KEY_FORMAT.format(index=i)
+
+    @staticmethod
+    def __ei_key(i):
+        return RM_EDGE_INDEX_OBS_KEY_FORMAT.format(index=i)
+
+    @staticmethod
+    def __ef_key(i):
+        return RM_EDGE_FEATURES_OBS_KEY_FORMAT.format(index=i)
 
     @staticmethod
     def __cur_state_key(i):
@@ -146,7 +158,10 @@ class RMEnvWrapper(gym.Wrapper):
             # check if to include rm graph data
             if self.rm_observations:
                 for i, rm_data in enumerate(self.rms_data):
-                    obs_dict[self.__rm_key(i)] = rm_data
+                    # obs_dict[self.__rm_key(i)] = rm_data
+                    obs_dict[self.__nf_key(i)] = rm_data.x.numpy()
+                    obs_dict[self.__ei_key(i)] = rm_data.edge_index.numpy()
+                    obs_dict[self.__ef_key(i)] = rm_data.edge_attr.numpy()
 
             # return a dictionary space
             return obs_dict

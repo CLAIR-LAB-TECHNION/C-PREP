@@ -1,6 +1,6 @@
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.utils import safe_mean
-import multi_taxi
+
 
 class TrueRewardRMEnvCallback(BaseCallback):
     def __init__(self):
