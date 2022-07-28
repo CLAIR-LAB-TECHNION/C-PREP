@@ -141,16 +141,13 @@ class Experiment(ABC):
                                      best_model_save_path=self.models_dir / task_name,
                                      verbose=self.verbose)
 
-        eval_callback._on_step()  # do one evaluation at n_calls = 0 (zero-shot)
+        # dirty trick to do one evaluation at n_calls = 0 (zero-shot)
+        eval_callback.init_callback(agent)
+        eval_callback._on_step()
 
         cb = CallbackList([
-            TrueRewardRMEnvCallback(),
-            EvalCallback(eval_env,
-                         n_eval_episodes=self.n_eval_episodes,
-                         eval_freq=self.eval_freq,
-                         log_path=self.eval_log_dir / task_name,
-                         best_model_save_path=self.models_dir / task_name,
-                         verbose=self.verbose)
+            true_reward_callback,
+            eval_callback
         ])
 
         # train agent
