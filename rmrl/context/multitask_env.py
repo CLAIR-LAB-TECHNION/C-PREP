@@ -29,7 +29,7 @@ class MultiTaskWrapper(gym.Wrapper, ABC):
         return super().reset(**kwargs)
 
     def seed(self, seed=None):
-        super().seed()
+        super().seed(seed)
         self._task_np_random = np.random.default_rng(seed)
 
     def set_task(self, task):

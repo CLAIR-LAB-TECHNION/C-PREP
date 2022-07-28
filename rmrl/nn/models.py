@@ -1,149 +1,105 @@
 import gym
 import torch
+import torch_scatter
 from torch import nn
-from torch_geometric.nn import GCNConv
+from torch_geometric.data import Data, Batch
+from torch_geometric.nn import GINEConv, GATConv, GATv2Conv, Sequential, MessagePassing
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
-from torch_geometric.loader.dataloader import Collater
+from rmrl.reward_machines.rm_env import (ORIG_OBS_KEY, CUR_STATE_PROPS_KEY, RM_NODE_FEATURES_OBS_KEY,
+                                         RM_EDGE_INDEX_OBS_KEY, RM_EDGE_FEATURES_OBS_KEY)
 
-
-collator = Collater(None, None)
+from typing import Type, Dict
 
 ACTIVATIONS = {
     'relu': nn.ReLU,
     'lrelu': nn.LeakyReLU
 }
 
+def ignore_state_mean(nodes_batch, cur_state_idx_batch):
+    return torch.mean(nodes_batch, dim=1)  # mean of embeddings over each graph in batch
+
+
+def cur_state_embedding(nodes_batch, cur_state_idx_batch):
+    return nodes_batch[cur_state_idx_batch[:, 0], cur_state_idx_batch[:, 1]]
+
 
 class RMFeatureExtractorSB(BaseFeaturesExtractor):
-    def __init__(self, observation_space: gym.spaces.Dict, gnn_agg=torch.mean):
-        # We do not know features-dim here before going over all the items,
-        # so put something dummy for now. PyTorch requires calling
-        # nn.Module.__init__ before adding modules
-        #TODO make parameter
-        obs_out_features = 32
-        rm_out_features = 32
-
+    def __init__(self, observation_space: gym.spaces.Dict, ofe_hidden_dims=32, ofe_out_dim=32,
+                 gnn_hidden_dims=32, gnn_out_dim=32, gnn_agg=ignore_state_mean, embed_cur_state=False):
         extractors = {}
 
         self._output_size = 0
         self._gnn_agg = gnn_agg
 
+        # observations feature extractor
+        if ORIG_OBS_KEY in observation_space.spaces:
+            extractors[ORIG_OBS_KEY] = MLP(in_features=observation_space.spaces[ORIG_OBS_KEY].shape[0],
+                                           hidden_dims=ofe_hidden_dims,
+                                           out_features=ofe_out_dim)
+            self._output_size += ofe_out_dim
+
+        # cur state
+        if embed_cur_state and CUR_STATE_PROPS_KEY in observation_space.spaces:
+            extractors[CUR_STATE_PROPS_KEY] = nn.Identity()
+            self._output_size += observation_space.spaces[CUR_STATE_PROPS_KEY].shape[0]
+
         # group reward machine information
         rm_spaces = {}
         for key, subspace in observation_space.spaces.items():
-            # TODO make generic networks as input
-            if key == 'obs':
-                extractors[key] = MLP(in_features=subspace.shape[0], hidden_dims=[32, 32],
-                                      out_features=obs_out_features)
-                self._output_size += obs_out_features
-            elif key.endswith('graph'):  # rm graph
-                extractors[key] = MultilayerGCN(subspace.shape[0], rm_out_features)
-                self._output_size += rm_out_features
-            elif key.endswith('cur_state') or key.endswith('cur_props'):
-                extractors[key] = nn.Identity()  # cur does not use an extractor
-                self._output_size += subspace.shape[0]
-            else:
-                raise ValueError(f'bad observation key {key}')
+            if key.startswith('rm'):
+                rm_spaces[key] = subspace
 
+        # make graph embedding network
+        if rm_spaces:
+            assert CUR_STATE_PROPS_KEY in observation_space.spaces, 'must receive cur state'
+            nf_space = rm_spaces[RM_NODE_FEATURES_OBS_KEY]
+            ef_space = rm_spaces[RM_EDGE_FEATURES_OBS_KEY]
+
+            #TODO GNN type as parameter
+            extractors['rm'] = MultilayerGNN(gnn_class=GATConv,
+                                             input_dim=nf_space.shape[-1],
+                                             output_dim=gnn_out_dim,
+                                             edge_dim=ef_space.shape[-1],
+                                             hidden_dims=gnn_hidden_dims)
+            self._output_size += gnn_out_dim
+
+        # create module and save extractors as module dict
         super().__init__(observation_space, features_dim=self._output_size)
         self.extractors = nn.ModuleDict(extractors)
 
-    def forward(self, observations: dict):
+    def forward(self, observations: Dict[str, torch.Tensor]):
         encoded_tensor_list = []
 
         # self.extractors contain nn.Modules that do all the processing.
         for key, extractor in self.extractors.items():
-            if key.endswith('graph'):
-                graph_data = observations[key]
-                out = extractor(graph_data.x, graph_data.edge_index, graph_data.edge_attr)
-                out = self._gnn_agg(out)
-            else:  # key.startswith('rm')
+            if key == 'rm':
+                # extract batch
+                nodes_batch = observations[RM_NODE_FEATURES_OBS_KEY]
+                edges_batch = observations[RM_EDGE_INDEX_OBS_KEY].long()
+                edge_attrs_batch = observations[RM_EDGE_FEATURES_OBS_KEY]
+                cur_state_batch = observations[CUR_STATE_PROPS_KEY]
+
+                # make graph batch
+                datas = []
+                for nodes, edges, edge_attrs in zip(nodes_batch, edges_batch, edge_attrs_batch):
+                    datas.append(Data(nodes, edges, edge_attrs))
+                data_batch = Batch.from_data_list(datas)
+
+                node_embeddings = extractor(data_batch.x, data_batch.edge_index, data_batch.edge_attr)
+
+                # de-batch graphs by stacking embeddings with the same batch index
+                node_embeddings_batch = torch.stack([node_embeddings[data_batch.batch == i]
+                                                     for i in range(data_batch.num_graphs)])
+
+                # get cur state idx
+                cur_state_idx_batch = torch.nonzero(torch.prod(nodes_batch == cur_state_batch.unsqueeze(1), dim=-1))
+
+                node_embeddings = self._gnn_agg(node_embeddings_batch, cur_state_idx_batch)
+            else:  # key is not RM
                 obs_data = observations[key]
-                out = extractor(obs_data)
-            encoded_tensor_list.append(out)
+                node_embeddings = extractor(obs_data)
 
-        # Return a (B, self._features_dim) PyTorch tensor, where B is batch dimension.
-        return torch.cat(encoded_tensor_list, dim=-1)
-
-    @property
-    def output_size(self):
-        return self._output_size
-
-
-class RMPolicyNet(nn.Module):
-    def __init__(self, observation_space: gym.spaces.Dict, action_space: gym.spaces.Space):
-        super().__init__()
-
-        self.feature_extractor = RMFeatureExtractor(observation_space)
-
-        if isinstance(action_space, gym.spaces.Box):
-            assert len(action_space.shape) == 1, 'only supports 1d actions'
-            out_features = action_space.shape[0]
-        elif isinstance(action_space, gym.spaces.Discrete):
-            out_features = action_space.n
-        else:
-            raise TypeError(f'RMPolicyNet does not support action_spaces of type `{type(action_space)}`')
-        self.mlp = MLP(in_features=self.feature_extractor.output_size, hidden_dims=[64, 64], out_features=out_features)
-
-    def forward(self, obs):
-        feats = self.feature_extractor(obs)
-        return self.mlp(feats)
-
-
-class RMFeatureExtractor(nn.Module):
-    def __init__(self, observation_space: gym.spaces.Dict, gnn_agg=torch.mean):
-        # We do not know features-dim here before going over all the items,
-        # so put something dummy for now. PyTorch requires calling
-        # nn.Module.__init__ before adding modules
-        super().__init__()
-
-        #TODO make parameter
-        obs_out_features = 32
-        rm_out_features = 32
-
-        extractors = {}
-
-        total_concat_size = 0
-
-        # original observation space runs through the observation feature extractor
-        spaces = observation_space.spaces
-        obs_space = spaces.pop('obs')
-        #TODO make generic network for obs
-
-        extractors['obs'] = MLP(in_features=obs_space.shape[0], hidden_dims=[32, 32], out_features=obs_out_features)
-        total_concat_size += 32
-
-        # group reward machine information
-        rm_spaces = {}
-        for key, subspace in observation_space.spaces.items():
-            rm_label, data_label = key.split('_', maxsplit=1)
-            rm_spaces.setdefault(rm_label, {})[data_label] = subspace
-
-        for key, graph_space_dict in rm_spaces.items():
-            num_node_features = graph_space_dict['node_features'].shape[1]
-            num_edge_features = graph_space_dict['edge_features'].shape[1]
-            extractors[key] = MultilayerGCN(num_node_features, rm_out_features)
-            total_concat_size += 32
-
-        self.extractors = nn.ModuleDict(extractors)
-        self._output_size = total_concat_size
-        self._gnn_agg = gnn_agg
-
-    def forward(self, observations: dict):
-        encoded_tensor_list = []
-
-        # self.extractors contain nn.Modules that do all the processing.
-        for key, extractor in self.extractors.items():
-            if key == 'obs':
-                out = extractor(torch.from_numpy(observations[key]).float())
-            else:  # key.startswith('rm')
-                # graph_dict = [key]
-                nf = torch.from_numpy(observations[f'{key}_node_features'])
-                ei = torch.from_numpy(observations[f'{key}_edge_index'])
-                ef = torch.from_numpy(observations[f'{key}_edge_features'])
-                # TODO: may need dim=1 if batched
-                out = self._gnn_agg(extractor(nf, ei, ef).detach(), dim=0)
-            encoded_tensor_list.append(out)
+            encoded_tensor_list.append(node_embeddings)
 
         # Return a (B, self._features_dim) PyTorch tensor, where B is batch dimension.
         return torch.cat(encoded_tensor_list, dim=-1)
@@ -174,6 +130,9 @@ class MLP(nn.Module):
         if activation_kwargs is None:
             activation_kwargs = {}
 
+        if isinstance(hidden_dims, int):
+            hidden_dims = [hidden_dims]
+
         # flatten dimensions
         all_dims = [in_features, *hidden_dims, out_features]
 
@@ -203,51 +162,34 @@ class MLP(nn.Module):
         return self.fc_layers(x)
 
 
-class MultilayerGCN(nn.Module):
-    """A multilayer graph convolutional network"""
+class MultilayerGNN(nn.Module):
+    GNN_INPUT_STR = 'x, edge_index'
+    GNN_INPUT_STR_WITH_EDGE_ATTR = 'x, edge_index, edge_attr'
+    GNN_FN_STR = f'{GNN_INPUT_STR} -> x'
+    GNN_FN_STR_WITH_EDGE_ATTR = f'{GNN_INPUT_STR_WITH_EDGE_ATTR} -> x'
+    NODES_ONLY_FN = 'x -> x'
 
-    def __init__(self, input_dim, output_dim, hidden_dims=16):
-        """
-        create a multilayer GCN
-        :param input_dim: input node vector size
-        :param output_dim: output node vector size
-        :param hidden_dims: the size (or list of sizes) of the hidden layer outputs
-        """
-        super(MultilayerGCN, self).__init__()
+    def __init__(self, gnn_class: Type[MessagePassing], input_dim, output_dim, edge_dim, hidden_dims=16, **gnn_kwargs):
+        super().__init__()
 
-        # always view hidden dims as a colleciton
+        # always view hidden dims as a collection
         if isinstance(hidden_dims, int):
             hidden_dims = [hidden_dims]
 
-        # create hidden layers
-        self.layers = []
+        layers = []
         for i, hidden_dim in enumerate(hidden_dims):
-            # create layer modules
-            gcn = GCNConv(input_dim, hidden_dim, normalize=False)
-            drp = nn.Dropout()
-            act = nn.ReLU()
-
-            # save layer modules together
-            self.layers.append((gcn, drp, act))
-
-            # register modules
-            self.add_module(f'conv_{i}', gcn)
-            self.add_module(f'dropout_{i}', drp)
-            self.add_module(f'activation_{i}', act)
+            layers.extend([(gnn_class(input_dim, hidden_dim, edge_dim=edge_dim, **gnn_kwargs),
+                            self.GNN_FN_STR_WITH_EDGE_ATTR),
+                           (nn.Dropout(), self.NODES_ONLY_FN),
+                           nn.ReLU(inplace=True)])
 
             # current hidden dim is the next input dim
             input_dim = hidden_dim
 
-        # add final conv layer
-        final_gcn = GCNConv(input_dim, output_dim, normalize=False)
-        self.add_module(f'conv_{len(self.layers)}', final_gcn)
-        self.layers.append((final_gcn, lambda x: x, lambda x: x))  # use ID func to omit dropout and activation
+        layers.append((gnn_class(input_dim, output_dim, edge_dim=edge_dim, **gnn_kwargs),
+                       self.GNN_FN_STR_WITH_EDGE_ATTR))
 
-    def forward(self, x, edge_index, edge_weight=None):
-        """
-        multilayer GCN forward pass
-        :param graph_data: torch_geometric.data.Data format
-        """
-        for gcn, drp, act in self.layers:
-            x = act(drp(gcn(x.float(), edge_index, edge_weight)))
-        return x
+        self.gnn_layers = Sequential(self.GNN_INPUT_STR_WITH_EDGE_ATTR, layers)
+
+    def forward(self, x, edge_index, edge_attr):
+        return self.gnn_layers(x, edge_index, edge_attr)

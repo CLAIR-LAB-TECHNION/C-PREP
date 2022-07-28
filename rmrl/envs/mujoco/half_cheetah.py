@@ -1,5 +1,5 @@
 import gym
-from ..multitask_env import MultiTaskWrapper
+from rmrl.context.multitask_env import MultiTaskWrapper
 
 MAX_VEL = 10
 MIN_VEL = -10

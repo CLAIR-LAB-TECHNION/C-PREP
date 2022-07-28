@@ -27,7 +27,7 @@ class ValueIteration(PotentialFunction):
     @classmethod
     def _value_iteration(cls, rm: RewardMachine, gamma: float, tolerance: float = 1e-7) -> Dict[int, float]:
         v = {u: 0 for u in rm.all_states}
-        all_deltas = {u: [rm.delta(u, props) for props in cls.__powerset(rm.P)] for u in rm.U}
+        all_deltas = {u: rm.delta[u].items() for u in rm.U}
 
         e = 1
         while e > tolerance:

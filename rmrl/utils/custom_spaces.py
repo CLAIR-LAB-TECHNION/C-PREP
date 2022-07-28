@@ -32,7 +32,7 @@ class PygData(gym.spaces.Space):
 
         return s
 
-    def sample(self):
+    def sample(self, mask=None):
         # sample number of nodes
         num_nodes = self._np_random.integers(1, self.max_nodes)
         num_edges = self._np_random.integers(0, num_nodes ** 2)
