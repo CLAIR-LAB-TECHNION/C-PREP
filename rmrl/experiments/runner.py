@@ -24,35 +24,47 @@ EXP_TO_FNS = {
 }
 
 
+def single_thread_executor(fn, *args):
+    return fn(*args)
+
+
 class ExperimentsRunner:
     def __init__(self, experiments: List[SupportedExperiments], cfgs: List[ExperimentConfiguration], sample_seeds,
-                 num_workers):
+                 num_workers, verbose):
         self.experiments = experiments
         self.cfgs = cfgs
         self.sample_seeds = sample_seeds
         self.num_workers = num_workers
 
     def run(self):
-        dump_dir_with_ts = EXPERIMENTS_DUMPS_DIR / datetime.now().strftime(TIMESTAMP_FORMAT)
-        with ThreadPoolExecutor(self.num_workers) as executor:
-            for exp_label in self.experiments:  # iterate experiments
-                exp_class = EXP_TO_FNS[exp_label]
-                for cfg in self.cfgs:  # iterate configurations
-                    exp = exp_class(cfg, dump_dir=dump_dir_with_ts, verbose=1)
-                    for sample_seed in self.sample_seeds:  # iterate possible samples
-                        src_contexts, tgt_contexts = self.load_or_sample_contexts(exp, sample_seed)
+        if self.num_workers > 1:
+            self._run_multithread()
+        else:
+            self._run()
 
-                        # check experiment type to get correct input contexts
-                        if exp_label == SupportedExperiments.NO_TRANSFER:
-                            for c in src_contexts + tgt_contexts:  # do all contexts separately
-                                # executor.submit(exp.run, c)
-                                exp.run(c)
-                        elif exp_label == SupportedExperiments.WITH_TRANSFER:
-                            for c_src, c_tgt in product(src_contexts, tgt_contexts):
-                                executor.submit(exp.run, c_src, c_tgt)  # transfer from source to target
-                                executor.submit(exp.run, c_tgt, c_src)  # transfer from target to source
-                        else:
-                            raise NotImplementedError(f'unsupported experiment label {exp_label.value}')
+    def _run_multithread(self):
+        with ThreadPoolExecutor(self.num_workers) as executor:
+            self._run(executor=executor.submit)
+
+    def _run(self, executor=single_thread_executor):
+        dump_dir_with_ts = EXPERIMENTS_DUMPS_DIR / datetime.now().strftime(TIMESTAMP_FORMAT)
+        for exp_label in self.experiments:  # iterate experiments
+            exp_class = EXP_TO_FNS[exp_label]
+            for cfg in self.cfgs:  # iterate configurations
+                exp = exp_class(cfg, dump_dir=dump_dir_with_ts, verbose=1)
+                for sample_seed in self.sample_seeds:  # iterate possible samples
+                    src_contexts, tgt_contexts = self.load_or_sample_contexts(exp, sample_seed)
+
+                    # check experiment type to get correct input contexts
+                    if exp_label == SupportedExperiments.NO_TRANSFER:
+                        for c in src_contexts + tgt_contexts:  # do all contexts separately
+                            executor(exp.run, c)
+                    elif exp_label == SupportedExperiments.WITH_TRANSFER:
+                        for c_src, c_tgt in product(src_contexts, tgt_contexts):
+                            executor(exp.run, c_src, c_tgt)  # transfer from source to target
+                            executor(exp.run, c_tgt, c_src)  # transfer from target to source
+                    else:
+                        raise NotImplementedError(f'unsupported experiment label {exp_label.value}')
 
     def load_or_sample_contexts(self, exp: Experiment, sample_seed: int):
         contexts_file = CONTEXTS_DIR_NAME / exp.cfg.env_name / exp.cfg.cspace_name / str(sample_seed)

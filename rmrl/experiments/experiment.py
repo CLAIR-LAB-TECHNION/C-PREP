@@ -25,7 +25,7 @@ EVAL_LOG_DIR = 'eval'
 
 
 class Experiment(ABC):
-    def __init__(self, cfg: ExperimentConfiguration, log_interval=4, n_eval_episodes=5, eval_freq=10_000, dump_dir=None,
+    def __init__(self, cfg: ExperimentConfiguration, log_interval=4, n_eval_episodes=5, eval_freq=1000, dump_dir=None,
                  verbose=0):
         self.cfg = cfg
         self.log_interval = log_interval
@@ -63,7 +63,7 @@ class Experiment(ABC):
             envs.append(rm_env)
 
             # convert evaluation env to RM env and save
-            eval_env = Monitor(eval_env)  # eval env not automatically wrapped with monitor
+            # eval_env = Monitor(eval_env)  # eval env not automatically wrapped with monitor
             rm_eval_env = self.env_to_rm_env(eval_env, is_eval=True)
             eval_envs.append(rm_eval_env)
 
@@ -134,28 +134,34 @@ class Experiment(ABC):
     def train_agent(self, agent, eval_env, task_name):
         # init callbacks for learning
         true_reward_callback = TrueRewardRMEnvCallback()  # log the original reward (not RM reward)
-        eval_callback = EvalCallback(eval_env,
-                                     n_eval_episodes=self.n_eval_episodes,
-                                     eval_freq=self.eval_freq,
-                                     log_path=self.eval_log_dir / task_name,
-                                     best_model_save_path=self.models_dir / task_name,
-                                     verbose=self.verbose)
-
-        # dirty trick to do one evaluation at n_calls = 0 (zero-shot)
-        eval_callback.init_callback(agent)
-        eval_callback._on_step()
-
-        cb = CallbackList([
-            true_reward_callback,
-            eval_callback
-        ])
+        # eval_callback = EvalCallback(eval_env,
+        #                              n_eval_episodes=self.n_eval_episodes,
+        #                              eval_freq=self.eval_freq,
+        #                              log_path=self.eval_log_dir / task_name,
+        #                              best_model_save_path=self.models_dir / task_name,
+        #                              verbose=self.verbose)
+        #
+        # cb = CallbackList([
+        #     true_reward_callback,
+        #     eval_callback
+        # ])
 
         # train agent
         return agent.learn(
+            # total_timesteps=self.total_timesteps,
+            #
+            # callback=cb,
+            # log_interval=self.log_interval,
+            # tb_log_name=task_name,
+
             total_timesteps=self.total_timesteps,
-            callback=cb,
+            callback=true_reward_callback,
             log_interval=self.log_interval,
+            eval_env=eval_env,
+            eval_freq=self.eval_freq,
+            n_eval_episodes=self.n_eval_episodes,
             tb_log_name=task_name,
+            eval_log_path=self.eval_log_dir / task_name,
         )
 
     @property

@@ -19,17 +19,20 @@ def main():
     # return
 
     # set up experiment configurations
+    print('collecting experiment configurations')
+    start = time.time()
     cfgs = get_all_configuraitions(args)
+    end = time.time()
+    print(f'collect configurations execution time {end - start}')
 
     # run all experiments
     print(f'running {len(args.experiment) * len(cfgs)} experiments')
     start = time.time()
-    ExperimentsRunner(args.experiment, cfgs, args.sample_seed, args.num_workers).run()
+    ExperimentsRunner(args.experiment, cfgs, args.sample_seed, args.num_workers, args.verbose).run()
     end = time.time()
     print(f'all experiments execution time {end - start}')
 
 def get_all_configuraitions(args):
-    print('collecting experiment configurations')
     cfgs = []
     for env in args.env:
         for context in args.context:
@@ -223,6 +226,9 @@ def parse_args():
                             help='max number of threads for running experiments in parallel',
                             type=int,
                             default=1)
+    tech_group.add_argument('--verbose',
+                            help='display training outputs',
+                            action='store_true')
 
     args = parser.parse_args()
 

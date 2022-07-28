@@ -16,4 +16,4 @@ dependencies:
 #      - mujoco-py<2.2,>=2.1
 #      - gym[mujoco]
       - stable-baselines3==1.6.0
-      - git+https://github.com/sarah-keren/multi_taxi@0.2.0
+      - git+https://github.com/sarah-keren/multi_taxi
