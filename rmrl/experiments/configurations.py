@@ -7,33 +7,36 @@ import numpy as np
 from rmrl.envs.grid.reward_machines.single_taxi import TaxiEnvRM
 from rmrl.envs.grid.single_taxi import fixed_entities_env
 from rmrl.nn.models import ignore_state_mean, cur_state_embedding
+from rmrl.utils.misc import powerset
 
-# important keys
+# data constants and options
+NUM_CONTEXT_SAMPLES = 10  # 500
+OVERSAMPLE_FACTOR = 5
+SRC_SET_FRAC = 0.8
+NUM_SAMPLE_SEEDS = 1  # 3
+BASE_SAMPLE_SEED = 24
+SAMPLE_SEEDS = [BASE_SAMPLE_SEED * i for i in range(1, NUM_SAMPLE_SEEDS + 1)]
+
+LEARNING_RATES = [1e-4]  # [1 / (10 ** i) for i in range(1, 6)]
+BATCH_SIZES = [32]  # [2 ** i for i in range(3, 10)]
+EXPLORATION_FRACTIONS = [0.3]  #  np.linspace(0, 1, 10).tolist()
+OUT_DIMS = [32]  # [16, 32, 64, 128, 256]
+HIDDEN_DIMS = [[32, 32]]  # list(set(tuple(sorted(hd)) for hd in powerset(OUT_DIMS, max_subset_len=2)))
+NODE_AGGS = [cur_state_embedding]  # [ignore_state_mean, cur_state_embedding]
+GOAL_STATE_REWARDS = [1]
+GRID_RESOLUTIONS = [None, (3, 4), (1, 1)]
+FUEL_RESOLUTIONS = [None]  # TODO update fuel resolutions
+NUM_SEEDS = 10
+BASE_SEED = 42
+SEEDS = [BASE_SEED * i for i in range(1, NUM_SEEDS + 1)]
+
+
+# important dictionary keys for RMENV_Dict
 ENV_KEY = 'env'
 RM_KEY = 'rm'
 ENV_KWARGS_KEY = 'env_kwargs'
 RM_KWARGS_KEY = 'rm_kwargs'
 CONTEXT_SPACES_KEY = 'context_spaces'
-
-# experiment constants and options
-NUM_CONTEXT_SAMPLES = 500
-OVERSAMPLE_FACTOR = 5
-SRC_SET_FRAC = 0.8
-NUM_SEEDS = 100
-BASE_SEED = 42
-NUM_SAMPLE_SEEDS = 10
-BASE_SAMPLE_SEED = 24
-SEEDS = [BASE_SEED * i for i in range(1, NUM_SEEDS + 1)]
-SAMPLE_SEEDS = [BASE_SAMPLE_SEED * i for i in range(1, NUM_SAMPLE_SEEDS + 1)]
-LEARNING_RATES = [1 / (10 ** i) for i in range(1, 6)]
-BATCH_SIZES = [2 ** i for i in range(3, 10)]
-EXPLORATION_FRACTIONS = np.linspace(0, 1, 10).tolist()
-OUT_DIMS = [16, 32, 64, 128, 256]
-HIDDEN_DIMS = list(set(tuple(sorted(hd)) for hd in product(OUT_DIMS, repeat=5)))
-NODE_AGGS = [ignore_state_mean, cur_state_embedding]
-GOAL_STATE_REWARDS = [1]
-GRID_RESOLUTIONS = [None, (3, 4), (1, 1)]
-FUEL_RESOLUTIONS = [None]  # TODO update fuel resolutions
 
 
 class SupportedExperiments(Enum):
@@ -76,10 +79,10 @@ class Mods(Enum):
 
 class Algos(Enum):
     DQN = 'DQN'
-    A2C = 'A2C'
+    # A2C = 'A2C'
     DDPG = 'DDPG'
-    PPO = 'PPO'
-    SAC = 'SAC'
+    # PPO = 'PPO'
+    # SAC = 'SAC'
 
 
 class ExperimentConfiguration:

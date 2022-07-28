@@ -16,7 +16,7 @@ from .configurations import *
 
 DEFAULT_RS_GAMMA = 0.9
 DEFAULT_POT_FN = ValueIteration()
-DEFAULT_TOTAL_TIMESTEPS = 2e6
+DEFAULT_TOTAL_TIMESTEPS = 5e5
 
 MODELS_DIR = 'models'
 LOGS_DIR = 'logs'
@@ -123,7 +123,7 @@ class Experiment(ABC):
             env=env,
             policy='MultiInputPolicy',
             policy_kwargs=policy_kwargs,
-            tensorboard_log=self.tb_log_dir / task_name,
+            tensorboard_log=self.tb_log_dir,
             verbose=self.verbose,
             seed=self.cfg.seed,
             **self.cfg.alg_kwargs

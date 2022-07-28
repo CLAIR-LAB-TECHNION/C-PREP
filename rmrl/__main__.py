@@ -1,4 +1,5 @@
 import argparse
+import pprint
 
 from rmrl.experiments.configurations import *
 from rmrl.experiments.runner import ExperimentsRunner
@@ -13,92 +14,126 @@ CONTEXT_CHOICES = [context_label.value for context_label in ContextSpaces]
 
 def main():
     args = parse_args()
-
-    # import pprint
-    # pprint.PrettyPrinter().pprint(vars(args))
-    # return
+    print('command line arguments:')
+    pprint.PrettyPrinter().pprint(vars(args))
+    print()
 
     # set up experiment configurations
     print('collecting experiment configurations')
     start = time.time()
     cfgs = get_all_configuraitions(args)
     end = time.time()
-    print(f'collect configurations execution time {end - start}')
+    print(f'collect configurations execution time {end - start}\n')
+    # return
 
     # run all experiments
     print(f'running {len(args.experiment) * len(cfgs)} experiments')
     start = time.time()
     ExperimentsRunner(args.experiment, cfgs, args.sample_seed, args.num_workers, args.verbose).run()
     end = time.time()
-    print(f'all experiments execution time {end - start}')
+    print(f'all experiments execution time {end - start}\n')
 
 def get_all_configuraitions(args):
     cfgs = []
-    for env in args.env:
-        for context in args.context:
-            for seed in args.seed:
-                for alg in args.alg:
-                    for mods_set in args.mods:
-                        for learning_rate in args.learning_rate:
-                            for batch_size in args.batch_size:
-                                for goal_state_reward in args.goal_state_reward:
-                                    for grid_resolution in args.grid_resolution:
-                                        for fuel_resolution in args.fuel_resolution:
-                                            for ofe_hidden_dims in args.ofe_hidden_dims:
-                                                for ofe_out_dim in args.ofe_out_dim:
-                                                    for gnn_hidden_dims in args.gnn_hidden_dims:
-                                                        for gnn_out_dim in args.gnn_out_dim:
-                                                            for gnn_agg in args.gnn_agg:
-                                                                env_kwargs = RMENV_DICT[env][ENV_KWARGS_KEY]
-                                                                rm_kwargs = dict(
-                                                                    goal_state_reward=goal_state_reward,
-                                                                    grid_resolution=grid_resolution,
-                                                                    fuel_resolution=fuel_resolution
-                                                                )
-                                                                model_kwargs = dict(
-                                                                    ofe_hidden_dims=ofe_hidden_dims,
-                                                                    ofe_out_dim=ofe_out_dim,
-                                                                    gnn_hidden_dims=gnn_hidden_dims,
-                                                                    gnn_out_dim=gnn_out_dim,
-                                                                    gnn_agg=gnn_agg
-                                                                )
-                                                                alg_kwargs = dict(
-                                                                    learning_rate=learning_rate,
-                                                                    batch_size=batch_size,
-                                                                )
 
-                                                                # alg specific kwargs
-                                                                if alg == Algos.DQN:
-                                                                    for ef in args.exploration_fraction:
-                                                                        alg_kwargs['exploration_fraction'] = ef
-                                                                        cfgs.append(
-                                                                            ExperimentConfiguration(
-                                                                                env=env,
-                                                                                cspace=context,
-                                                                                seed=seed,
-                                                                                alg=alg,
-                                                                                mods=mods_set,
-                                                                                env_kwargs=env_kwargs,
-                                                                                rm_kwargs=rm_kwargs,
-                                                                                model_kwargs=model_kwargs,
-                                                                                alg_kwargs=alg_kwargs
-                                                                            )
-                                                                        )
-                                                                else:  # no alg specific kwargs
-                                                                    cfgs.append(
-                                                                        ExperimentConfiguration(
-                                                                            env=env,
-                                                                            cspace=context,
-                                                                            seed=seed,
-                                                                            alg=alg,
-                                                                            mods=mods_set,
-                                                                            env_kwargs=env_kwargs,
-                                                                            rm_kwargs=rm_kwargs,
-                                                                            model_kwargs=model_kwargs,
-                                                                            alg_kwargs=alg_kwargs
-                                                                        )
-                                                                    )
-        return cfgs
+    for (
+            env,
+            context,
+            seed,
+            alg,
+            mods,
+            learning_rate,
+            batch_size,
+            goal_state_reward,
+            grid_resolution,
+            fuel_resolution,
+            ofe_hidden_dims,
+            ofe_out_dim,
+            gnn_hidden_dims,
+            gnn_out_dim,
+            gnn_agg,
+    ) in iterate_arg_combinations(args):
+        # prepare special kwargs
+        env_kwargs = RMENV_DICT[env][ENV_KWARGS_KEY]
+        rm_kwargs = dict(
+            goal_state_reward=goal_state_reward,
+            grid_resolution=grid_resolution,
+            fuel_resolution=fuel_resolution
+        )
+        model_kwargs = dict(
+            ofe_hidden_dims=ofe_hidden_dims,
+            ofe_out_dim=ofe_out_dim,
+            gnn_hidden_dims=gnn_hidden_dims,
+            gnn_out_dim=gnn_out_dim,
+            gnn_agg=gnn_agg
+        )
+        alg_kwargs = dict(
+            learning_rate=learning_rate,
+            batch_size=batch_size,
+        )
+
+        # handle algorithm-specific kwargs
+        if alg == Algos.DQN:
+            # for ef in args.exploration_fraction:
+            alg_kwargs['exploration_fraction'] = 0.3  # TODO use one from args?
+        # if alg != Algos.PPO:  # no alg specific kwargs
+        #     alg_kwargs['learning_starts'] = 1000
+        alg_kwargs['learning_starts'] = 1000  # TODO use `if` statement if/when PPO is back
+
+        cfgs.append(
+            ExperimentConfiguration(
+                env=env,
+                cspace=context,
+                seed=seed,
+                alg=alg,
+                mods=mods,
+                env_kwargs=env_kwargs,
+                rm_kwargs=rm_kwargs,
+                model_kwargs=model_kwargs,
+                alg_kwargs=alg_kwargs
+            )
+        )
+
+    return cfgs
+
+
+def iterate_arg_combinations(args):
+    return product(
+        args.env,
+        args.context,
+        args.seed,
+        args.alg,
+        args.mods,
+        args.learning_rate,
+        args.batch_size,
+        args.goal_state_reward,
+        args.grid_resolution,
+        args.fuel_resolution,
+        args.ofe_hidden_dims,
+        args.ofe_out_dim,
+        args.gnn_hidden_dims,
+        args.gnn_out_dim,
+        args.gnn_agg,
+    )
+
+def get_config_count(args):
+    return (
+        len(args.env) *
+        len(args.context) *
+        len(args.seed) *
+        len(args.alg) *
+        len(args.mods) *
+        len(args.learning_rate) *
+        len(args.batch_size) *
+        len(args.goal_state_reward) *
+        len(args.grid_resolution) *
+        len(args.fuel_resolution) *
+        len(args.ofe_hidden_dims) *
+        len(args.ofe_out_dim) *
+        len(args.gnn_hidden_dims) *
+        len(args.gnn_out_dim) *
+        len(args.gnn_agg)
+    )
 
 
 def parse_args():
@@ -242,7 +277,16 @@ def parse_args():
     if args.gnn_hidden_dims is None:
         args.gnn_hidden_dims = HIDDEN_DIMS
 
+
+
     return args
+
+
+# def split_group_args(parser, args):
+#     group_args = []
+#     for group in parser._action_groups:
+#         group_dict = {a.dest: getattr(args, a.dest, None) for a in group._group_actions}
+#         arg_groups[group.title] = argparse.Namespace(**group_dict)
 
 
 if __name__ == '__main__':

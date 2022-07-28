@@ -35,6 +35,7 @@ class ExperimentsRunner:
         self.cfgs = cfgs
         self.sample_seeds = sample_seeds
         self.num_workers = num_workers
+        self.verbose = int(verbose)  # assert int input for sb3
 
     def run(self):
         if self.num_workers > 1:
@@ -51,7 +52,7 @@ class ExperimentsRunner:
         for exp_label in self.experiments:  # iterate experiments
             exp_class = EXP_TO_FNS[exp_label]
             for cfg in self.cfgs:  # iterate configurations
-                exp = exp_class(cfg, dump_dir=dump_dir_with_ts, verbose=1)
+                exp = exp_class(cfg, dump_dir=dump_dir_with_ts, verbose=self.verbose)
                 for sample_seed in self.sample_seeds:  # iterate possible samples
                     src_contexts, tgt_contexts = self.load_or_sample_contexts(exp, sample_seed)
 
