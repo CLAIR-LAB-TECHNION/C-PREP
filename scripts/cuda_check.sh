@@ -14,5 +14,5 @@ conda activate $CONDA_ENV
 /usr/local/cuda/bin/nvcc --version
 
 # Check cuda working with pytorch
-python cuda_check.py
+python torch_check.py
 
