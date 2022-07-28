@@ -24,6 +24,7 @@ sbatch \
 	--mail-user $MAIL_USER \
 	--mail-type $MAIL_TYPE \
 	-o 'slurm-%N-%j.out' \
+	-e 'slurm-%N-%j.err' \
 <<EOF
 #!/bin/bash
 echo "*** SLURM BATCH JOB '$JOB_NAME' STARTING ***"

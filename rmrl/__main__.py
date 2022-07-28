@@ -1,11 +1,12 @@
 import argparse
 import pprint
+import time
+from itertools import product
 
 from rmrl.experiments.configurations import *
 from rmrl.experiments.runner import ExperimentsRunner
 from rmrl.nn import models
 from rmrl.utils.misc import powerset
-import time
 
 EXP_CHOICES = [exp_label.value for exp_label in SupportedExperiments]
 ENV_CHOICES = [env_label.value for env_label in SupportedEnvironments]
@@ -32,6 +33,7 @@ def main():
     ExperimentsRunner(args.experiment, cfgs, args.sample_seed, args.num_workers, args.verbose).run()
     end = time.time()
     print(f'all experiments execution time {end - start}\n')
+
 
 def get_all_configuraitions(args):
     cfgs = []
@@ -115,23 +117,24 @@ def iterate_arg_combinations(args):
         args.gnn_agg,
     )
 
+
 def get_config_count(args):
     return (
-        len(args.env) *
-        len(args.context) *
-        len(args.seed) *
-        len(args.alg) *
-        len(args.mods) *
-        len(args.learning_rate) *
-        len(args.batch_size) *
-        len(args.goal_state_reward) *
-        len(args.grid_resolution) *
-        len(args.fuel_resolution) *
-        len(args.ofe_hidden_dims) *
-        len(args.ofe_out_dim) *
-        len(args.gnn_hidden_dims) *
-        len(args.gnn_out_dim) *
-        len(args.gnn_agg)
+            len(args.env) *
+            len(args.context) *
+            len(args.seed) *
+            len(args.alg) *
+            len(args.mods) *
+            len(args.learning_rate) *
+            len(args.batch_size) *
+            len(args.goal_state_reward) *
+            len(args.grid_resolution) *
+            len(args.fuel_resolution) *
+            len(args.ofe_hidden_dims) *
+            len(args.ofe_out_dim) *
+            len(args.gnn_hidden_dims) *
+            len(args.gnn_out_dim) *
+            len(args.gnn_agg)
     )
 
 
@@ -275,8 +278,6 @@ def parse_args():
         args.ofe_hidden_dims = HIDDEN_DIMS
     if args.gnn_hidden_dims is None:
         args.gnn_hidden_dims = HIDDEN_DIMS
-
-
 
     return args
 

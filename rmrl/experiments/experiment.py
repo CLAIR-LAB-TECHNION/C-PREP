@@ -14,7 +14,7 @@ from .configurations import *
 
 DEFAULT_RS_GAMMA = 0.9
 DEFAULT_POT_FN = ValueIteration()
-DEFAULT_TOTAL_TIMESTEPS = 1e6
+DEFAULT_TOTAL_TIMESTEPS = 5e5
 
 MODELS_DIR = 'models'
 LOGS_DIR = 'logs'
@@ -107,7 +107,7 @@ class Experiment(ABC):
         return agent
 
     def load_agent_for_env(self, env):
-        return BaseAlgorithm.load(self.models_dir / str(env.task))
+        return self.alg_class.load(self.eval_log_dir / str(env.task) / 'best_model')
 
     def train_agent_for_env(self, env, eval_env):
         task_name = str(env.task)

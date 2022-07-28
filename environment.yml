@@ -10,6 +10,7 @@ dependencies:
   - pyg::pyg
   - matplotlib
   - jupyterlab
+  - tqdm
   - ipywidgets
   - pip
   - pip:

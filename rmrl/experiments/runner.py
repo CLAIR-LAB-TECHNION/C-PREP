@@ -1,12 +1,12 @@
 import pickle
 import warnings
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
 from itertools import product
 from pathlib import Path
 from typing import List
 
 from sklearn.model_selection import train_test_split
+from tqdm.auto import tqdm
 
 from .configurations import *
 from .experiment import Experiment
@@ -48,6 +48,12 @@ class ExperimentsRunner:
             self._run(executor=executor.submit)
 
     def _run(self, executor=single_thread_executor):
+
+        if self.verbose:
+            pbar = None
+        else:
+            pbar = None if self.verbose else tqdm(total=len(self.experiments) * len(self.cfgs))
+
         # dump_dir_with_ts = EXPERIMENTS_DUMPS_DIR / datetime.now().strftime(TIMESTAMP_FORMAT)
         for exp_label in self.experiments:  # iterate experiments
             exp_class = EXP_TO_FNS[exp_label]
@@ -61,11 +67,11 @@ class ExperimentsRunner:
                         for c in src_contexts + tgt_contexts:  # do all contexts separately
                             executor(exp.run, c)
                     elif exp_label == SupportedExperiments.WITH_TRANSFER:
-                        for c_src, c_tgt in product(src_contexts, tgt_contexts):
-                            executor(exp.run, c_src, c_tgt)  # transfer from source to target
-                            executor(exp.run, c_tgt, c_src)  # transfer from target to source
+                        for c_src, c_tgt in product(src_contexts, tgt_contexts):  # transfer from source to target
+                            executor(exp.run, c_src, c_tgt)
                     else:
                         raise NotImplementedError(f'unsupported experiment label {exp_label.value}')
+                pbar.update()
 
     def load_or_sample_contexts(self, exp: Experiment, sample_seed: int):
         contexts_file = CONTEXTS_DIR_NAME / exp.cfg.env_name / exp.cfg.cspace_name / str(sample_seed)
