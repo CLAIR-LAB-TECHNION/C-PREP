@@ -76,9 +76,8 @@ def get_all_configuraitions(args):
         if alg == Algos.DQN:
             # for ef in args.exploration_fraction:
             alg_kwargs['exploration_fraction'] = 0.3  # TODO use one from args?
-        # if alg != Algos.PPO:  # no alg specific kwargs
-        #     alg_kwargs['learning_starts'] = 1000
-        alg_kwargs['learning_starts'] = 1000  # TODO use `if` statement if/when PPO is back
+        if alg != Algos.PPO:  # no alg specific kwargs
+            alg_kwargs['learning_starts'] = 1000  # value chosen for to match `eval_freq`
 
         cfgs.append(
             ExperimentConfiguration(

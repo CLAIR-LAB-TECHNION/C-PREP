@@ -5,8 +5,6 @@ from typing import List, Type
 
 import stable_baselines3 as sb3
 from stable_baselines3.common.base_class import BaseAlgorithm
-from stable_baselines3.common.callbacks import CallbackList, EvalCallback
-from stable_baselines3.common.monitor import Monitor
 
 from rmrl.nn.models import RMFeatureExtractorSB
 from rmrl.reward_machines.potential_functions import ValueIteration
@@ -16,7 +14,7 @@ from .configurations import *
 
 DEFAULT_RS_GAMMA = 0.9
 DEFAULT_POT_FN = ValueIteration()
-DEFAULT_TOTAL_TIMESTEPS = 5e5
+DEFAULT_TOTAL_TIMESTEPS = 1e6
 
 MODELS_DIR = 'models'
 LOGS_DIR = 'logs'
@@ -134,26 +132,9 @@ class Experiment(ABC):
     def train_agent(self, agent, eval_env, task_name):
         # init callbacks for learning
         true_reward_callback = TrueRewardRMEnvCallback()  # log the original reward (not RM reward)
-        # eval_callback = EvalCallback(eval_env,
-        #                              n_eval_episodes=self.n_eval_episodes,
-        #                              eval_freq=self.eval_freq,
-        #                              log_path=self.eval_log_dir / task_name,
-        #                              best_model_save_path=self.models_dir / task_name,
-        #                              verbose=self.verbose)
-        #
-        # cb = CallbackList([
-        #     true_reward_callback,
-        #     eval_callback
-        # ])
 
         # train agent
         return agent.learn(
-            # total_timesteps=self.total_timesteps,
-            #
-            # callback=cb,
-            # log_interval=self.log_interval,
-            # tb_log_name=task_name,
-
             total_timesteps=self.total_timesteps,
             callback=true_reward_callback,
             log_interval=self.log_interval,

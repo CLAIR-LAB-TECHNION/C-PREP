@@ -48,11 +48,11 @@ class ExperimentsRunner:
             self._run(executor=executor.submit)
 
     def _run(self, executor=single_thread_executor):
-        dump_dir_with_ts = EXPERIMENTS_DUMPS_DIR / datetime.now().strftime(TIMESTAMP_FORMAT)
+        # dump_dir_with_ts = EXPERIMENTS_DUMPS_DIR / datetime.now().strftime(TIMESTAMP_FORMAT)
         for exp_label in self.experiments:  # iterate experiments
             exp_class = EXP_TO_FNS[exp_label]
             for cfg in self.cfgs:  # iterate configurations
-                exp = exp_class(cfg, dump_dir=dump_dir_with_ts, verbose=self.verbose)
+                exp = exp_class(cfg, dump_dir=EXPERIMENTS_DUMPS_DIR, verbose=self.verbose)
                 for sample_seed in self.sample_seeds:  # iterate possible samples
                     src_contexts, tgt_contexts = self.load_or_sample_contexts(exp, sample_seed)
 

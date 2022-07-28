@@ -80,8 +80,8 @@ class Mods(Enum):
 class Algos(Enum):
     DQN = 'DQN'
     # A2C = 'A2C'
-    DDPG = 'DDPG'
-    # PPO = 'PPO'
+    # DDPG = 'DDPG'
+    PPO = 'PPO'
     # SAC = 'SAC'
 
 
