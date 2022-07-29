@@ -2,7 +2,7 @@ from enum import Enum
 from typing import Iterable, Union
 
 from rmrl.envs.grid.reward_machines.single_taxi import TaxiEnvRM
-from rmrl.envs.grid.single_taxi import fixed_entities_env
+from rmrl.envs.grid.single_taxi import fixed_entities_env, changing_map_env
 from rmrl.nn.models import cur_state_embedding
 
 # data constants and options
@@ -45,6 +45,7 @@ class SupportedEnvironments(Enum):
 
 class ContextSpaces(Enum):
     FIXED_ENTITIES = 'fixed_entities'
+    CHANGING_MAP = 'changing_map'
 
 
 RMENV_DICT = {
@@ -57,6 +58,10 @@ RMENV_DICT = {
         CONTEXT_SPACES_KEY: {
             ContextSpaces.FIXED_ENTITIES: {
                 ENV_KEY: fixed_entities_env,
+                RM_KEY: TaxiEnvRM,
+            },
+            ContextSpaces.CHANGING_MAP: {
+                ENV_KEY: changing_map_env,
                 RM_KEY: TaxiEnvRM,
             }
         }

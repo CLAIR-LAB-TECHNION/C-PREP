@@ -28,14 +28,15 @@ class PygData(gym.spaces.Space):
     def seed(self, seed=None):
         s = super().seed(seed)
         s += self.nf_space.seed(seed)
-        s += self.ef_space.seed(seed)
+        if self.ef_space:
+            s += self.ef_space.seed(seed)
 
         return s
 
     def sample(self, mask=None):
         # sample number of nodes
-        num_nodes = self._np_random.integers(1, self.max_nodes)
-        num_edges = self._np_random.integers(0, num_nodes ** 2)
+        num_nodes = self._np_random.randint(1, self.max_nodes)
+        num_edges = self._np_random.randint(0, num_nodes ** 2)
 
         # sample node features
         x = np.array([self.nf_space.sample() for _ in range(num_nodes)])

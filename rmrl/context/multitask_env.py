@@ -7,11 +7,11 @@ import numpy as np
 class MultiTaskWrapper(gym.Wrapper, ABC):
     def __init__(self, env, initial_task=None, change_task_on_reset=True):
         super().__init__(env)
+        self._task_np_random = np.random.default_rng()
 
-        self.__task = initial_task if initial_task is not None else self.sample_task(1)[0]
+        self.task = initial_task if initial_task is not None else self.sample_task(1)[0]
         self.change_task_on_reset = change_task_on_reset
 
-        self._task_np_random = np.random
 
     @property
     def task(self):

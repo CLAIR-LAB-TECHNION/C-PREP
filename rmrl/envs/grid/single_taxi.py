@@ -2,6 +2,7 @@ from functools import reduce
 
 from multi_taxi import single_taxi_v0, wrappers
 from multi_taxi.world.entities import PASSENGER_NOT_IN_TAXI
+from multi_taxi.world.domain_map import DomainMap
 
 from rmrl.context.multitask_env import MultiTaskWrapper
 
@@ -9,6 +10,13 @@ from rmrl.context.multitask_env import MultiTaskWrapper
 def fixed_entities_env(initial_task=None, change_task_on_reset=False, **env_kwargs):
     env = single_taxi_v0.gym_env(**env_kwargs)
     env = FixedLocsWrapper(env, initial_task=initial_task, change_task_on_reset=change_task_on_reset)
+
+    return env
+
+
+def changing_map_env(initial_task=None, change_task_on_reset=False, **env_kwargs):
+    env = single_taxi_v0.gym_env(**env_kwargs, domain_map=EMPTY_MAP)
+    env = ChangeMapWrapper(env, initial_task=initial_task, change_task_on_reset=change_task_on_reset)
 
     return env
 
@@ -108,3 +116,54 @@ class FixedLocsWrapper(MultiTaskWrapper):
             t.passengers = set()
         self.fixed_env.unwrapped.set_state(s)
 
+
+EMPTY_MAP = [
+    "+-----------------------+",
+    "| : : : : : : : : : : : |",
+    "| : : : : : : : : : : : |",
+    "| : : : : : : : : : : : |",
+    "| : : : : : : : : : : : |",
+    "| : : : : : : : : : : : |",
+    "| : : : : : : : : : : : |",
+    "| : : : : : : : : : : : |",
+    "+-----------------------+",
+]
+WALL_LOCS = [(i, j) for i in range(len(EMPTY_MAP)) for j in range(len(EMPTY_MAP[0])) if EMPTY_MAP[i][j] == ':']
+
+class ChangeMapWrapper(MultiTaskWrapper):
+    def sample_task(self, n):
+        # sample number of walls to add
+        num_locs = len(WALL_LOCS)
+
+        wall_pos_list = []
+        for _ in range(n):
+            num_locs_to_sample = self._task_np_random.integers(0, num_locs)
+
+            # sample wall positions
+            walls_idx = self._task_np_random.choice(range(num_locs), num_locs_to_sample, replace=False)
+            walls_pos = [WALL_LOCS[idx] for idx in walls_idx]
+
+            # assert walls do not make some areas unreachable
+            for j in range(1, len(EMPTY_MAP[0]) - 1):
+                # check if entire column is walls (i.e. blocking)
+                column_locs = [(i, j) for i in range(1, len(EMPTY_MAP) - 1)]
+                if all(loc in walls_pos for loc in column_locs):
+                    # column is full of walls
+                    # choose one to remove
+                    pos_idx_to_remove = self._task_np_random.choice(range(len(column_locs)))
+                    wall_loc_to_remove = column_locs[pos_idx_to_remove]
+                    walls_pos.remove(wall_loc_to_remove)
+
+            # save sample
+            wall_pos_list.append(tuple(walls_pos))
+
+        return wall_pos_list
+
+    def set_task(self, task):
+        super().set_task(task)
+
+        map_arr = [[v for v in row] for row in EMPTY_MAP]
+        for i, j in task:
+            map_arr[i][j] = '|'
+
+        self.unwrapped.domain_map = DomainMap([''.join(row) for row in map_arr])

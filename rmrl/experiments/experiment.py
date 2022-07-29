@@ -107,10 +107,10 @@ class Experiment(ABC):
         return agent
 
     def load_agent_for_env(self, env):
-        return self.alg_class.load(self.eval_log_dir / str(env.task) / 'best_model')
+        return self.alg_class.load(self.eval_log_dir / str(hash(env.task)) / 'best_model')
 
     def train_agent_for_env(self, env, eval_env):
-        task_name = str(env.task)
+        task_name = str(hash(env.task))
 
         policy_kwargs = dict(
             features_extractor_class=RMFeatureExtractorSB,

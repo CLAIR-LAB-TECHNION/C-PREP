@@ -34,4 +34,4 @@ class WithTransferExperiment(Experiment):
                 optimize_memory_usage=tgt_agent.optimize_memory_usage
             )
 
-        self.train_agent(src_agent, tgt_eval_env, f'{tgt_env.task}_transfer_from_{src_env.task}')
+        self.train_agent(src_agent, tgt_eval_env, f'{hash(tgt_env.task)}_transfer_from_{hash(src_env.task)}')
