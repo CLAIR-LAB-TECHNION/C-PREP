@@ -11,8 +11,7 @@ class PygData(gym.spaces.Space):
                  node_features_space: gym.spaces.Space,
                  edge_features_space: gym.spaces.Space = None,
                  max_nodes: int = 100,
-                 seed=None,
-                 **spaces_kwargs: gym.spaces.Space):
+                 seed=None):
         # shape is None since we have multiple spaces
         super().__init__(shape=None, dtype=None, seed=seed)
 
