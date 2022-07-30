@@ -169,8 +169,7 @@ def parse_args():
     exp_group.add_argument('--sample_seed',
                            help='random seed for context sampling',
                            type=int,
-                           nargs='*',
-                           default=SAMPLE_SEEDS)
+                           default=SAMPLE_SEED)
 
     # policy config args
     policy_group = parser.add_argument_group('policy configurations')

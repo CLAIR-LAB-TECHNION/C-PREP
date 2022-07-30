@@ -9,3 +9,10 @@ def powerset(iterable, max_subset_len=None):
         max_subset_len = len(lst) + 1
 
     return chain.from_iterable(combinations(lst, r) for r in range(max_subset_len))
+
+
+def split_pairs(lst):
+    return [
+        (lst[i], lst[i + 1])
+        for i in range(0, len(lst), 2)
+    ]

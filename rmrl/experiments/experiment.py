@@ -5,6 +5,8 @@ from typing import List, Type
 
 import stable_baselines3 as sb3
 from stable_baselines3.common.base_class import BaseAlgorithm
+from stable_baselines3.common.callbacks import EvalCallback, StopTrainingOnNoModelImprovement
+from stable_baselines3.common.monitor import Monitor
 
 from rmrl.nn.models import RMFeatureExtractorSB
 from rmrl.reward_machines.potential_functions import ValueIteration
@@ -132,17 +134,23 @@ class Experiment(ABC):
     def train_agent(self, agent, eval_env, task_name):
         # init callbacks for learning
         true_reward_callback = TrueRewardRMEnvCallback()  # log the original reward (not RM reward)
+        early_stop_callback = StopTrainingOnNoModelImprovement(max_no_improvement_evals=100,
+                                                               min_evals=1,
+                                                               verbose=False)
+        eval_callback = EvalCallback(eval_env=Monitor(eval_env),
+                                     callback_after_eval=early_stop_callback,
+                                     n_eval_episodes=self.n_eval_episodes,
+                                     eval_freq=self.eval_freq,
+                                     log_path=self.eval_log_dir / task_name,
+                                     best_model_save_path=self.models_dir / task_name,
+                                     verbose=self.verbose)
 
         # train agent
         return agent.learn(
             total_timesteps=self.total_timesteps,
-            callback=true_reward_callback,
+            callback=[true_reward_callback, eval_callback],
             log_interval=self.log_interval,
-            eval_env=eval_env,
-            eval_freq=self.eval_freq,
-            n_eval_episodes=self.n_eval_episodes,
             tb_log_name=task_name,
-            eval_log_path=self.eval_log_dir / task_name,
         )
 
     @property

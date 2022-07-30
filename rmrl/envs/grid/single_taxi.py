@@ -5,6 +5,7 @@ from multi_taxi.world.entities import PASSENGER_NOT_IN_TAXI
 from multi_taxi.world.domain_map import DomainMap
 
 from rmrl.context.multitask_env import MultiTaskWrapper
+from rmrl.utils.misc import split_pairs
 
 
 def fixed_entities_env(initial_task=None, change_task_on_reset=False, **env_kwargs):
@@ -79,21 +80,15 @@ class FixedLocsWrapper(MultiTaskWrapper):
 
         # outer wrapper controls destinations
         # set locations in destinations wrapper
-        self.fixed_env.locs = self.__split_pairs(passenger_dst)
+        self.fixed_env.locs = split_pairs(passenger_dst)
 
         # next wrapper controls passenger locations
         # set locations in locations wrapper
-        self.fixed_env.env.locs = self.__split_pairs(passenger_loc)
+        self.fixed_env.env.locs = split_pairs(passenger_loc)
 
         # next next wrapper controls taxi locations
         # set locations in locations wrapper
-        self.fixed_env.env.env.locs = self.__split_pairs(taxi_loc)
-
-    def __split_pairs(self, locs):
-        return [
-            (locs[i], locs[i + 1])
-            for i in range(0, len(locs), 2)
-        ]
+        self.fixed_env.env.env.locs = split_pairs(taxi_loc)
 
     def __set_locations(self):
         # outer wrapper controls destinations
