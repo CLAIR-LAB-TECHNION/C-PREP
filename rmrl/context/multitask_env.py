@@ -19,12 +19,13 @@ class MultiTaskWrapper(gym.Wrapper, ABC):
 
     @task.setter
     def task(self, value):
-        self.set_task(value)
+        self.__task = value
+        self._set_task(value)
 
     def reset(self, **kwargs):
         if self.change_task_on_reset:
             new_task = self.sample_task(1)[0]
-            self.set_task(new_task)
+            self.task = new_task
 
         return super().reset(**kwargs)
 
@@ -32,8 +33,9 @@ class MultiTaskWrapper(gym.Wrapper, ABC):
         super().seed(seed)
         self._task_np_random = np.random.default_rng(seed)
 
-    def set_task(self, task):
-        self.__task = task
+    @abstractmethod
+    def _set_task(self, task):
+        pass
 
     @abstractmethod
     def sample_task(self, n):

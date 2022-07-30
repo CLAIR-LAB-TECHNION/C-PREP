@@ -17,20 +17,19 @@ def fixed_entities_env(initial_task=None, change_task_on_reset=False, **env_kwar
 def changing_map_env(initial_task=None, change_task_on_reset=False, **env_kwargs):
     env = single_taxi_v0.gym_env(**env_kwargs, domain_map=EMPTY_MAP)
     env = ChangeMapWrapper(env, initial_task=initial_task, change_task_on_reset=change_task_on_reset)
-
+    env = FixedLocsAddition(env, initial_task=initial_task, change_task_on_reset=change_task_on_reset)
     return env
 
 
 class FixedLocsWrapper(MultiTaskWrapper):
     def __init__(self, env, initial_task=None, change_task_on_reset=True):
-        super().__init__(env, initial_task, change_task_on_reset)
-        taxi_loc, passenger_loc, passenger_dst = self.task
-
         # set constant locations and destinations wrappers
         # this will allow us to control taxi locations and passenger locations and destinations on the fly.
-        self.fixed_env = wrappers.FixedTaxiStartLocationsWrapper(self.env, *taxi_loc)
-        self.fixed_env = wrappers.FixedPassengerStartLocationsWrapper(self.fixed_env, *passenger_loc)
-        self.fixed_env = wrappers.FixedPassengerDestinationsWrapper(self.fixed_env, *passenger_dst)
+        self.fixed_env = wrappers.FixedTaxiStartLocationsWrapper(env)
+        self.fixed_env = wrappers.FixedPassengerStartLocationsWrapper(self.fixed_env)
+        self.fixed_env = wrappers.FixedPassengerDestinationsWrapper(self.fixed_env)
+
+        super().__init__(env, initial_task, change_task_on_reset)
 
     def sample_task(self, n):
         fixed_locs = []
@@ -53,12 +52,9 @@ class FixedLocsWrapper(MultiTaskWrapper):
 
         return fixed_locs
 
-    def set_task(self, task):
+    def _set_task(self, task):
         # override `set_task to update env wrappers' locations
         # new task will only take effect on reset due to uncertainty regarding reset
-
-        # set new task property
-        super(FixedLocsWrapper, self).set_task(task)
 
         # set wrappers for deterministic locations on reset
         self.__set_wrappers(task)
@@ -68,8 +64,6 @@ class FixedLocsWrapper(MultiTaskWrapper):
         # self.__set_locations()
 
     def reset(self, **kwargs):
-        # override `reset` task setting and for efficiency
-
         # want to set the task only for the wrappers, which will take effect on reset
         # no need to set the locations as well (as done in `set_state`)
         if self.change_task_on_reset:
@@ -85,15 +79,21 @@ class FixedLocsWrapper(MultiTaskWrapper):
 
         # outer wrapper controls destinations
         # set locations in destinations wrapper
-        self.fixed_env.locs = [passenger_dst]
+        self.fixed_env.locs = self.__split_pairs(passenger_dst)
 
         # next wrapper controls passenger locations
         # set locations in locations wrapper
-        self.fixed_env.env.locs = [passenger_loc]
+        self.fixed_env.env.locs = self.__split_pairs(passenger_loc)
 
         # next next wrapper controls taxi locations
         # set locations in locations wrapper
-        self.fixed_env.env.env.locs = [taxi_loc]
+        self.fixed_env.env.env.locs = self.__split_pairs(taxi_loc)
+
+    def __split_pairs(self, locs):
+        return [
+            (locs[i], locs[i + 1])
+            for i in range(0, len(locs), 2)
+        ]
 
     def __set_locations(self):
         # outer wrapper controls destinations
@@ -117,6 +117,25 @@ class FixedLocsWrapper(MultiTaskWrapper):
         self.fixed_env.unwrapped.set_state(s)
 
 
+class FixedLocsAddition(MultiTaskWrapper):
+    def __init__(self, env: MultiTaskWrapper, initial_task=None, change_task_on_reset=True):
+        self.fixed_locs_env = FixedLocsWrapper(env, initial_task, change_task_on_reset)
+        super().__init__(env, initial_task, change_task_on_reset)
+
+    def sample_task(self, n):
+        orig_task = self.env.sample_task(n)
+        locs_task = self.fixed_locs_env.sample_task(n)
+        return list(zip(locs_task, orig_task))
+
+    def _set_task(self, task):
+        locs_task, orig_task = task
+        self.env.task = orig_task
+        self.fixed_locs_env.task = locs_task
+
+    def reset(self, **kwargs):
+        return self.fixed_locs_env.reset(**kwargs)
+
+
 EMPTY_MAP = [
     "+-----------------------+",
     "| : : : : : : : : : : : |",
@@ -132,7 +151,7 @@ WALL_LOCS = [(i, j) for i in range(len(EMPTY_MAP)) for j in range(len(EMPTY_MAP[
 
 class ChangeMapWrapper(MultiTaskWrapper):
     def sample_task(self, n):
-        # sample number of walls to add
+        # max number of walls to add
         num_locs = len(WALL_LOCS)
 
         wall_pos_list = []
@@ -159,9 +178,7 @@ class ChangeMapWrapper(MultiTaskWrapper):
 
         return wall_pos_list
 
-    def set_task(self, task):
-        super().set_task(task)
-
+    def _set_task(self, task):
         map_arr = [[v for v in row] for row in EMPTY_MAP]
         for i, j in task:
             map_arr[i][j] = '|'

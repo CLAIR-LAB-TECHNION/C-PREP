@@ -79,8 +79,8 @@ class Experiment(ABC):
 
     def get_env_for_context(self, context):
         env = self.get_experiment_env()
+        env.task = context
         env.reset()  # make sure env is fully initialized
-        env.set_task(context)
 
         return env
 
