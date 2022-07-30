@@ -11,6 +11,7 @@ from stable_baselines3.common.monitor import Monitor
 from rmrl.nn.models import RMFeatureExtractorSB
 from rmrl.reward_machines.rm_env import RMEnvWrapper
 from rmrl.utils.callbacks import TrueRewardRMEnvCallback
+from rmrl.utils.misc import sha3_hash
 from .configurations import *
 
 MODELS_DIR = 'models'
@@ -44,6 +45,7 @@ class Experiment(ABC):
         fns_dict = RMENV_DICT[self.cfg.env][CONTEXT_SPACES_KEY][self.cfg.cspace]
         self.env_fn = fns_dict[ENV_KEY]
         self.rm_fn = fns_dict[RM_KEY]
+
 
     def run(self, *contexts):
         envs = []
@@ -104,10 +106,10 @@ class Experiment(ABC):
         return agent
 
     def load_agent_for_env(self, env):
-        return self.alg_class.load(self.eval_log_dir / str(hash(env.task)) / 'best_model')
+        return self.alg_class.load(self.eval_log_dir / sha3_hash(env.task) / 'best_model')
 
     def train_agent_for_env(self, env, eval_env):
-        task_name = str(hash(env.task))
+        task_name = sha3_hash(env.task)
 
         policy_kwargs = dict(
             features_extractor_class=RMFeatureExtractorSB,
