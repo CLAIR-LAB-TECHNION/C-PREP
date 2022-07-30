@@ -4,6 +4,7 @@ from typing import Iterable, Union
 from rmrl.envs.grid.reward_machines.single_taxi import TaxiEnvRM
 from rmrl.envs.grid.single_taxi import fixed_entities_env, changing_map_env
 from rmrl.nn.models import cur_state_embedding
+from rmrl.reward_machines.potential_functions import ValueIteration
 
 # data constants and options
 NUM_CONTEXT_PAIR_SAMPLES = 100  # 500
@@ -13,6 +14,7 @@ SAMPLE_SEED = 24
 
 LEARNING_RATES = [1e-4]  # [1 / (10 ** i) for i in range(1, 6)]
 BATCH_SIZES = [32]  # [2 ** i for i in range(3, 10)]
+TOTAL_TIMESTEPS = 5e5
 EXPLORATION_FRACTIONS = [0.3]  # np.linspace(0, 1, 10).tolist()
 OUT_DIMS = [32]  # [16, 32, 64, 128, 256]
 HIDDEN_DIMS = [[32, 32]]  # list(set(tuple(sorted(hd)) for hd in powerset(OUT_DIMS, max_subset_len=2)))
@@ -23,6 +25,10 @@ FUEL_RESOLUTIONS = [None]  # TODO update fuel resolutions
 NUM_SEEDS = 10
 BASE_SEED = 42
 SEEDS = [BASE_SEED * i for i in range(1, NUM_SEEDS + 1)]
+
+# defaults for reward shaping
+DEFAULT_RS_GAMMA = 0.9
+DEFAULT_POT_FN = ValueIteration()
 
 # important dictionary keys for RMENV_Dict
 ENV_KEY = 'env'

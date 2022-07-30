@@ -9,14 +9,9 @@ from stable_baselines3.common.callbacks import EvalCallback, StopTrainingOnNoMod
 from stable_baselines3.common.monitor import Monitor
 
 from rmrl.nn.models import RMFeatureExtractorSB
-from rmrl.reward_machines.potential_functions import ValueIteration
 from rmrl.reward_machines.rm_env import RMEnvWrapper
 from rmrl.utils.callbacks import TrueRewardRMEnvCallback
 from .configurations import *
-
-DEFAULT_RS_GAMMA = 0.9
-DEFAULT_POT_FN = ValueIteration()
-DEFAULT_TOTAL_TIMESTEPS = 5e5
 
 MODELS_DIR = 'models'
 LOGS_DIR = 'logs'
@@ -25,9 +20,10 @@ EVAL_LOG_DIR = 'eval'
 
 
 class Experiment(ABC):
-    def __init__(self, cfg: ExperimentConfiguration, log_interval=4, n_eval_episodes=5, eval_freq=1000, dump_dir=None,
-                 verbose=0):
+    def __init__(self, cfg: ExperimentConfiguration, total_timesteps, log_interval=4, n_eval_episodes=5, eval_freq=1000,
+                 dump_dir=None, verbose=0):
         self.cfg = cfg
+        self.total_timesteps = total_timesteps
         self.log_interval = log_interval
         self.n_eval_episodes = n_eval_episodes
         self.eval_freq = eval_freq
@@ -40,7 +36,6 @@ class Experiment(ABC):
         # extract special kwargs
         self.rs_gamma = cfg.rm_kwargs.pop('rs_gamma', DEFAULT_RS_GAMMA)
         self.pot_fn = cfg.rm_kwargs.pop('pot_fn', DEFAULT_POT_FN)
-        self.total_timesteps = cfg.alg_kwargs.pop('total_timesteps', DEFAULT_TOTAL_TIMESTEPS)
 
         # get algorithm class
         self.alg_class: Type[BaseAlgorithm] = getattr(sb3, cfg.alg.value)

@@ -22,7 +22,7 @@ def main():
     # set up experiment configurations
     print('collecting experiment configurations')
     start = time.time()
-    cfgs = get_all_configuraitions(args)
+    cfgs = get_all_configurations(args)
     end = time.time()
     print(f'collect configurations execution time {end - start}\n')
     # return
@@ -30,12 +30,12 @@ def main():
     # run all experiments
     print(f'running {len(args.experiment) * len(cfgs)} experiments')
     start = time.time()
-    ExperimentsRunner(args.experiment, cfgs, args.sample_seed, args.num_workers, args.verbose).run()
+    ExperimentsRunner(args.experiment, cfgs, args.timesteps, args.sample_seed, args.num_workers, args.verbose).run()
     end = time.time()
     print(f'all experiments execution time {end - start}\n')
 
 
-def get_all_configuraitions(args):
+def get_all_configurations(args):
     cfgs = []
 
     for (
@@ -184,7 +184,7 @@ def parse_args():
                               action='append',
                               choices=Mods,
                               type=Mods,
-                              # default=list(powerset(Mods)),
+                              default=list(powerset(Mods)),
                               nargs='*')
 
     # learning args
@@ -199,6 +199,10 @@ def parse_args():
                                 type=int,
                                 nargs='*',
                                 default=BATCH_SIZES)
+    learning_group.add_argument('--timesteps',
+                                help='max number of timesteps for the trained agent',
+                                type=lambda x: int(float(x)),
+                                default=TOTAL_TIMESTEPS)
     learning_group.add_argument('--exploration_fraction',
                                 help='for DQN only! fraction of training using declining epsilon greedy',
                                 type=float,
@@ -217,7 +221,7 @@ def parse_args():
                           help='number of cells per grid sector',
                           nargs=2,
                           type=int,
-                          # default=GRID_RESOLUTIONS,
+                          default=GRID_RESOLUTIONS,
                           action='append')
     rm_group.add_argument('--fuel_resolution',
                           help='number of fuel waypoints',

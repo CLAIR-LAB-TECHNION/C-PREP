@@ -29,10 +29,11 @@ def single_thread_executor(fn, *args):
 
 
 class ExperimentsRunner:
-    def __init__(self, experiments: List[SupportedExperiments], cfgs: List[ExperimentConfiguration], sample_seed,
-                 num_workers, verbose):
+    def __init__(self, experiments: List[SupportedExperiments], cfgs: List[ExperimentConfiguration], total_timesteps,
+                 sample_seed, num_workers, verbose):
         self.experiments = experiments
         self.cfgs = cfgs
+        self.total_timesteps = total_timesteps
         self.sample_seed = sample_seed
         self.num_workers = num_workers
         self.verbose = int(verbose)  # assert int input for sb3
@@ -57,7 +58,7 @@ class ExperimentsRunner:
         for exp_label in self.experiments:  # iterate experiments
             exp_class = EXP_TO_FNS[exp_label]
             for cfg in self.cfgs:  # iterate configurations
-                exp = exp_class(cfg, dump_dir=EXPERIMENTS_DUMPS_DIR, verbose=self.verbose)
+                exp = exp_class(cfg, self.total_timesteps, dump_dir=EXPERIMENTS_DUMPS_DIR, verbose=self.verbose)
 
                 contexts = self.load_or_sample_contexts(exp, self.sample_seed)
 
