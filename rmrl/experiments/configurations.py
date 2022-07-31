@@ -26,6 +26,12 @@ NUM_SEEDS = 10
 BASE_SEED = 42
 SEEDS = [BASE_SEED * i for i in range(1, NUM_SEEDS + 1)]
 
+LOG_INTERVAL = 4
+N_EVAL_EPISODES = 5
+EVAL_FREQ = 1000
+MAX_NO_IMPROVEMENT_EVALS = 10
+MIN_EVALS = 50
+
 # defaults for reward shaping
 DEFAULT_RS_GAMMA = 0.9
 DEFAULT_POT_FN = ValueIteration()
@@ -95,7 +101,6 @@ class ExperimentConfiguration:
                  cspace: ContextSpaces,
                  alg: Algos,
                  mods: Iterable[Mods],
-                 env_kwargs: dict,
                  rm_kwargs: dict,
                  model_kwargs: dict,
                  alg_kwargs: dict,
@@ -104,11 +109,12 @@ class ExperimentConfiguration:
         self.cspace = cspace
         self.alg = alg
         self.mods = set(mods)  # assert `set` type for easy membership check
-        self.env_kwargs = env_kwargs
         self.rm_kwargs = rm_kwargs
         self.model_kwargs = model_kwargs
         self.alg_kwargs = alg_kwargs
         self.seed = seed
+
+        self.env_kwargs = RMENV_DICT[env][ENV_KWARGS_KEY]
 
     @property
     def env_name(self):
@@ -120,7 +126,7 @@ class ExperimentConfiguration:
 
     @property
     def all_kwargs(self):
-        return dict(**self.env_kwargs, **self.rm_kwargs, **self.model_kwargs, **self.alg_kwargs)
+        return dict(**self.rm_kwargs, **self.model_kwargs, **self.alg_kwargs)
 
     def __contains__(self, item: Union[Mods, Algos]):
         return (item in self.mods or  # item is a contained modification

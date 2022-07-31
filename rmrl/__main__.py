@@ -260,6 +260,31 @@ def parse_args():
                              nargs='*',
                              default=NODE_AGGS)
 
+    # logging params
+    log_group = parser.add_argument_group('logging configurations')
+    log_group.add_argument('--log_interval',
+                           help='number of training iterations / episodes per info dump',
+                           type=int,
+                           default=LOG_INTERVAL)
+    log_group.add_argument('--n_eval_episodes',
+                           help='number of episodes to run per evaluation',
+                           type=int,
+                           default=N_EVAL_EPISODES)
+    log_group.add_argument('--eval_freq',
+                           help='number of timesteps per evaluation',
+                           type=int,
+                           default=EVAL_FREQ)
+    log_group.add_argument('--max_no_improvement_evals',
+                           help='training will stop if no improvement is seen for this many evaluations for early '
+                                'stopping',
+                           type=int,
+                           default=MAX_NO_IMPROVEMENT_EVALS)
+    log_group.add_argument('--min_evals',
+                           help='minimal number of evaluations that must occur, regardless of the '
+                                '--max_no_improvement_evals argument',
+                           type=int,
+                           default=MIN_EVALS)
+
     # technical params
     tech_group = parser.add_argument_group('technical configurations')
     tech_group.add_argument('--num_workers',

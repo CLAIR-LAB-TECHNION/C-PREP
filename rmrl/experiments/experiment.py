@@ -4,7 +4,8 @@ from pathlib import Path
 from typing import List, Type
 
 import stable_baselines3 as sb3
-from stable_baselines3.common.base_class import BaseAlgorithm
+from stable_baselines3.common.on_policy_algorithm import OnPolicyAlgorithm
+from stable_baselines3.common.off_policy_algorithm import OffPolicyAlgorithm
 from stable_baselines3.common.callbacks import EvalCallback, StopTrainingOnNoModelImprovement
 from stable_baselines3.common.monitor import Monitor
 
@@ -21,13 +22,16 @@ EVAL_LOG_DIR = 'eval'
 
 
 class Experiment(ABC):
-    def __init__(self, cfg: ExperimentConfiguration, total_timesteps, log_interval=4, n_eval_episodes=5, eval_freq=1000,
-                 dump_dir=None, verbose=0):
+    def __init__(self, cfg: ExperimentConfiguration, total_timesteps=5e5,
+                 log_interval=4, n_eval_episodes=5, eval_freq=1000, max_no_improvement_evals=10, min_evals=50,
+                 dump_dir=None, verbose=0,):
         self.cfg = cfg
         self.total_timesteps = total_timesteps
         self.log_interval = log_interval
         self.n_eval_episodes = n_eval_episodes
         self.eval_freq = eval_freq
+        self.max_no_improvement_evals = max_no_improvement_evals
+        self.min_evals = min_evals
         self.dump_dir = Path(dump_dir or '.')
         self.verbose = verbose
 
@@ -39,13 +43,12 @@ class Experiment(ABC):
         self.pot_fn = cfg.rm_kwargs.pop('pot_fn', DEFAULT_POT_FN)
 
         # get algorithm class
-        self.alg_class: Type[BaseAlgorithm] = getattr(sb3, cfg.alg.value)
+        self.alg_class: Union[Type[OnPolicyAlgorithm], Type[OffPolicyAlgorithm]] = getattr(sb3, cfg.alg.value)
 
         # get env and RM functions
         fns_dict = RMENV_DICT[self.cfg.env][CONTEXT_SPACES_KEY][self.cfg.cspace]
         self.env_fn = fns_dict[ENV_KEY]
         self.rm_fn = fns_dict[RM_KEY]
-
 
     def run(self, *contexts):
         envs = []
@@ -99,14 +102,14 @@ class Experiment(ABC):
 
     def get_agent_for_env(self, env, eval_env=None):
         try:
-            agent = self.load_agent_for_env(env)
+            agent = self.load_agent_for_env(sha3_hash(env.task))
         except FileNotFoundError:
             agent = self.train_agent_for_env(env, eval_env)
 
         return agent
 
-    def load_agent_for_env(self, env):
-        return self.alg_class.load(self.eval_log_dir / sha3_hash(env.task) / 'best_model')
+    def load_agent_for_env(self, task_name):
+        return self.alg_class.load(self.models_dir / task_name / 'best_model')
 
     def train_agent_for_env(self, env, eval_env):
         task_name = sha3_hash(env.task)
@@ -120,7 +123,7 @@ class Experiment(ABC):
             env=env,
             policy='MultiInputPolicy',
             policy_kwargs=policy_kwargs,
-            tensorboard_log=self.tb_log_dir,
+            tensorboard_log=str(self.tb_log_dir),
             verbose=self.verbose,
             seed=self.cfg.seed,
             **self.cfg.alg_kwargs
@@ -131,8 +134,8 @@ class Experiment(ABC):
     def train_agent(self, agent, eval_env, task_name):
         # init callbacks for learning
         true_reward_callback = TrueRewardRMEnvCallback()  # log the original reward (not RM reward)
-        early_stop_callback = StopTrainingOnNoModelImprovement(max_no_improvement_evals=100,
-                                                               min_evals=1,
+        early_stop_callback = StopTrainingOnNoModelImprovement(max_no_improvement_evals=self.max_no_improvement_evals,
+                                                               min_evals=self.min_evals,
                                                                verbose=False)
         eval_callback = EvalCallback(eval_env=Monitor(eval_env),
                                      callback_after_eval=early_stop_callback,

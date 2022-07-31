@@ -60,7 +60,7 @@ class ExperimentsRunner:
             for cfg in self.cfgs:  # iterate configurations
                 exp = exp_class(cfg, self.total_timesteps, dump_dir=EXPERIMENTS_DUMPS_DIR, verbose=self.verbose)
 
-                contexts = self.load_or_sample_contexts(exp, self.sample_seed)
+                contexts = self.load_or_sample_contexts(exp, NUM_CONTEXT_PAIR_SAMPLES, self.sample_seed)
 
                 # check experiment type to get correct input contexts
                 for c_src, c_tgt in tqdm(contexts, desc=f'cur exp'):
@@ -77,7 +77,8 @@ class ExperimentsRunner:
         end = time.time()
         print(f'time to run all experiments: {end - start}')
 
-    def load_or_sample_contexts(self, exp: Experiment, sample_seed: int):
+    @staticmethod
+    def load_or_sample_contexts(exp: Experiment, num_samples, sample_seed: int):
         contexts_file = CONTEXTS_DIR_NAME / exp.cfg.env_name / exp.cfg.cspace_name / str(sample_seed)
         try:
             with open(contexts_file, 'rb') as f:
@@ -90,16 +91,16 @@ class ExperimentsRunner:
             env.seed(sample_seed)
 
             # sample contexts
-            contexts = env.sample_task(NUM_CONTEXT_PAIR_SAMPLES * 2 * OVERSAMPLE_FACTOR)  # oversample
+            contexts = env.sample_task(num_samples * 2 * OVERSAMPLE_FACTOR)  # oversample
             contexts = [pair for pair in split_pairs(contexts) if pair[0] != pair[1]]  # only keep unique src and tgt
             contexts = list(set(contexts))  # remove duplicates
 
             # contexts = list(set(contexts))  # remove duplicates
-            contexts = contexts[:NUM_CONTEXT_PAIR_SAMPLES]  # reduce to desired number of
+            contexts = contexts[:num_samples]  # reduce to desired number of
 
             # check enough contexts
-            if len(contexts) < NUM_CONTEXT_PAIR_SAMPLES:
-                warnings.warn(f'wanted {NUM_CONTEXT_PAIR_SAMPLES} contexts for env {exp.cfg.env_name} in context. '
+            if len(contexts) < num_samples:
+                warnings.warn(f'wanted {num_samples} contexts for env {exp.cfg.env_name} in context. '
                               f'sampled {len(contexts)}')
 
             # save contexts
