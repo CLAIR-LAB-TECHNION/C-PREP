@@ -23,7 +23,7 @@ EVAL_LOG_DIR = 'eval'
 
 class Experiment(ABC):
     def __init__(self, cfg: ExperimentConfiguration, total_timesteps=5e5,
-                 log_interval=4, n_eval_episodes=100, eval_freq=1000, max_no_improvement_evals=10, min_evals=50,
+                 log_interval=1, n_eval_episodes=100, eval_freq=1000, max_no_improvement_evals=10, min_evals=50,
                  dump_dir=None, verbose=0,):
         self.cfg = cfg
         self.total_timesteps = total_timesteps
@@ -138,7 +138,7 @@ class Experiment(ABC):
     def train_agent(self, agent, eval_env, task_name):
         # init callbacks for learning
         true_reward_callback = TrueRewardRMEnvCallback()  # log the original reward (not RM reward)
-        pb_callback = ProgressBarCallback
+        pb_callback = ProgressBarCallback()
         early_stop_callback = StopTrainingOnNoModelImprovement(max_no_improvement_evals=self.max_no_improvement_evals,
                                                                min_evals=self.min_evals,
                                                                verbose=False)
