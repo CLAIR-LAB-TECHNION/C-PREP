@@ -11,7 +11,7 @@ from stable_baselines3.common.monitor import Monitor
 
 from rmrl.nn.models import RMFeatureExtractorSB
 from rmrl.reward_machines.rm_env import RMEnvWrapper
-from rmrl.utils.callbacks import TrueRewardRMEnvCallback
+from rmrl.utils.callbacks import TrueRewardRMEnvCallback, ProgressBarCallback
 from rmrl.utils.misc import sha3_hash
 from .configurations import *
 
@@ -138,6 +138,7 @@ class Experiment(ABC):
     def train_agent(self, agent, eval_env, task_name):
         # init callbacks for learning
         true_reward_callback = TrueRewardRMEnvCallback()  # log the original reward (not RM reward)
+        pb_callback = ProgressBarCallback
         early_stop_callback = StopTrainingOnNoModelImprovement(max_no_improvement_evals=self.max_no_improvement_evals,
                                                                min_evals=self.min_evals,
                                                                verbose=False)
@@ -152,7 +153,7 @@ class Experiment(ABC):
         # train agent
         return agent.learn(
             total_timesteps=self.total_timesteps,
-            callback=[true_reward_callback, eval_callback],
+            callback=[true_reward_callback, pb_callback, eval_callback],
             log_interval=self.log_interval,
             tb_log_name=task_name,
         )

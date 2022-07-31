@@ -2,6 +2,8 @@ from stable_baselines3.common.off_policy_algorithm import OffPolicyAlgorithm
 from stable_baselines3.common.callbacks import BaseCallback, EventCallback
 from stable_baselines3.common.utils import safe_mean
 
+from tqdm.auto import tqdm
+
 from collections import deque
 
 
@@ -46,3 +48,14 @@ class TrueRewardRMEnvCallback(BaseCallback):
                 iterations % self.log_interval == 0):  # num iters and log interval coincide
             self.logger.record("rollout/ep_true_rew_mean",
                                safe_mean(self.__ep_rewards))
+
+
+class ProgressBarCallback(BaseCallback):
+    def _init_callback(self) -> None:
+        self.pbar = tqdm(total=self.model._total_timesteps, desc='training')
+
+    def _on_step(self) -> bool:
+        self.pbar.update(self.model.n_envs)
+
+    def _on_training_end(self) -> None:
+        self.pbar.close()
