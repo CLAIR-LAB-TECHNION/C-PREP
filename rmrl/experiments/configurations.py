@@ -108,7 +108,7 @@ class ExperimentConfiguration:
         self.env = env
         self.cspace = cspace
         self.alg = alg
-        self.mods = set(mods)  # assert `set` type for easy membership check
+        self.mods = list(mods)
         self.rm_kwargs = rm_kwargs
         self.model_kwargs = model_kwargs
         self.alg_kwargs = alg_kwargs

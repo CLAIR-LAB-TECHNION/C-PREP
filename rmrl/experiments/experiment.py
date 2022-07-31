@@ -102,14 +102,16 @@ class Experiment(ABC):
 
     def get_agent_for_env(self, env, eval_env=None):
         try:
-            agent = self.load_agent_for_env(sha3_hash(env.task))
+            agent = self.load_agent_for_env(env)
+            print(f'loaded agent for task {sha3_hash(env.task)}')
         except FileNotFoundError:
+            print(f'training agent for task {sha3_hash(env.task)}')
             agent = self.train_agent_for_env(env, eval_env)
 
         return agent
 
-    def load_agent_for_env(self, task_name):
-        return self.alg_class.load(self.models_dir / task_name / 'best_model')
+    def load_agent_for_env(self, env):
+        return self.alg_class.load(self.models_dir / sha3_hash(env.task) / 'best_model', env)
 
     def train_agent_for_env(self, env, eval_env):
         task_name = sha3_hash(env.task)

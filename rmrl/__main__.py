@@ -88,7 +88,6 @@ def get_all_configurations(args):
                 seed=seed,
                 alg=alg,
                 mods=mods,
-                env_kwargs=env_kwargs,
                 rm_kwargs=rm_kwargs,
                 model_kwargs=model_kwargs,
                 alg_kwargs=alg_kwargs
