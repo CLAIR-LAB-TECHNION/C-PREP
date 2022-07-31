@@ -26,8 +26,9 @@ class FixedLocsWrapper(MultiTaskWrapper):
     def __init__(self, env, initial_task=None, change_task_on_reset=True):
         # set constant locations and destinations wrappers
         # this will allow us to control taxi locations and passenger locations and destinations on the fly.
-        self.fixed_env = wrappers.FixedTaxiStartLocationsWrapper(env)
-        self.fixed_env = wrappers.FixedPassengerStartLocationsWrapper(self.fixed_env)
+        # self.fixed_env = wrappers.FixedTaxiStartLocationsWrapper(env)
+        # self.fixed_env = wrappers.FixedPassengerStartLocationsWrapper(self.fixed_env)
+        self.fixed_env = wrappers.FixedPassengerStartLocationsWrapper(env)
         self.fixed_env = wrappers.FixedPassengerDestinationsWrapper(self.fixed_env)
 
         super().__init__(env, initial_task, change_task_on_reset)
@@ -36,11 +37,11 @@ class FixedLocsWrapper(MultiTaskWrapper):
         fixed_locs = []
         for _ in range(n):
             # call private method. BAD PRACTICE
-            taxis = self.unwrapped._MultiTaxiEnv__random_taxis()
+            # taxis = self.unwrapped._MultiTaxiEnv__random_taxis()
             passengers = self.unwrapped._MultiTaxiEnv__random_passengers()
 
             # concat all locations and all destinations
-            taxi_locs = reduce(lambda locs, t: locs + t.location, taxis, tuple())
+            # taxi_locs = reduce(lambda locs, t: locs + t.location, taxis, tuple())
             passenger_locs = reduce(lambda locs, p: locs + p.location, passengers, tuple())
 
             if self.unwrapped.pickup_only:
@@ -49,7 +50,8 @@ class FixedLocsWrapper(MultiTaskWrapper):
                 passenger_dsts = reduce(lambda dsts, p: dsts + p.destination, passengers, tuple())
 
             # save locations and destinations
-            fixed_locs.append((taxi_locs, passenger_locs, passenger_dsts))
+            # fixed_locs.append((taxi_locs, passenger_locs, passenger_dsts))
+            fixed_locs.append((passenger_locs, passenger_dsts))
 
         return fixed_locs
 
@@ -76,7 +78,8 @@ class FixedLocsWrapper(MultiTaskWrapper):
         return self.fixed_env.reset(**kwargs)
 
     def __set_wrappers(self, task):
-        taxi_loc, passenger_loc, passenger_dst = task
+        # taxi_loc, passenger_loc, passenger_dst = task
+        passenger_loc, passenger_dst = task
 
         # outer wrapper controls destinations
         # set locations in destinations wrapper
@@ -88,7 +91,7 @@ class FixedLocsWrapper(MultiTaskWrapper):
 
         # next next wrapper controls taxi locations
         # set locations in locations wrapper
-        self.fixed_env.env.env.locs = split_pairs(taxi_loc)
+        # self.fixed_env.env.env.locs = split_pairs(taxi_loc)
 
     def __set_locations(self):
         # outer wrapper controls destinations
@@ -101,7 +104,7 @@ class FixedLocsWrapper(MultiTaskWrapper):
 
         # next next wrapper controls taxi locations
         # set locations using loc wrapper method
-        self.fixed_env.env.env.set_locations()
+        # self.fixed_env.env.env.set_locations()
 
         # remove passengers from carrying taxis
         s = self.fixed_env.state()

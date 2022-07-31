@@ -23,7 +23,7 @@ EVAL_LOG_DIR = 'eval'
 
 class Experiment(ABC):
     def __init__(self, cfg: ExperimentConfiguration, total_timesteps=5e5,
-                 log_interval=4, n_eval_episodes=5, eval_freq=1000, max_no_improvement_evals=10, min_evals=50,
+                 log_interval=4, n_eval_episodes=100, eval_freq=1000, max_no_improvement_evals=10, min_evals=50,
                  dump_dir=None, verbose=0,):
         self.cfg = cfg
         self.total_timesteps = total_timesteps
@@ -100,7 +100,23 @@ class Experiment(ABC):
 
         return rm_env
 
-    def get_agent_for_env(self, env, eval_env=None):
+    def new_agent_for_env(self, env):
+        policy_kwargs = dict(
+            features_extractor_class=RMFeatureExtractorSB,
+            features_extractor_kwargs=dict(embed_cur_state=Mods.AS in self.cfg, **self.cfg.model_kwargs)
+        )
+
+        return self.alg_class(
+            env=env,
+            policy='MultiInputPolicy',
+            policy_kwargs=policy_kwargs,
+            tensorboard_log=str(self.tb_log_dir),
+            verbose=self.verbose,
+            seed=self.cfg.seed,
+            **self.cfg.alg_kwargs
+        )
+
+    def get_agent_for_env(self, env, eval_env):
         try:
             agent = self.load_agent_for_env(env)
             print(f'loaded agent for task {sha3_hash(env.task)}')
@@ -114,23 +130,9 @@ class Experiment(ABC):
         return self.alg_class.load(self.models_dir / sha3_hash(env.task) / 'best_model', env)
 
     def train_agent_for_env(self, env, eval_env):
+        agent = self.new_agent_for_env(env)
+
         task_name = sha3_hash(env.task)
-
-        policy_kwargs = dict(
-            features_extractor_class=RMFeatureExtractorSB,
-            features_extractor_kwargs=dict(embed_cur_state=Mods.AS in self.cfg, **self.cfg.model_kwargs)
-        )
-
-        agent = self.alg_class(
-            env=env,
-            policy='MultiInputPolicy',
-            policy_kwargs=policy_kwargs,
-            tensorboard_log=str(self.tb_log_dir),
-            verbose=self.verbose,
-            seed=self.cfg.seed,
-            **self.cfg.alg_kwargs
-        )
-
         return self.train_agent(agent, eval_env, task_name=task_name)
 
     def train_agent(self, agent, eval_env, task_name):
