@@ -19,7 +19,7 @@ def step_schedule(initial_value: float, steps_map: Dict[float, float]) -> Schedu
     step_points = sorted(steps_map.keys())
 
     def func(progress_remaining: float) -> float:
-        if step_points[-1] > progress_remaining:
+        if step_points and step_points[-1] > progress_remaining:
             cur_value[0] = steps_map[step_points.pop()]
 
         return cur_value[0]
