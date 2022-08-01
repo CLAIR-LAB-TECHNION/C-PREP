@@ -12,17 +12,14 @@ class PygData(gym.spaces.Space):
                  edge_features_space: gym.spaces.Space = None,
                  max_nodes: int = 100,
                  seed=None):
-        # shape is None since we have multiple spaces
-        super().__init__(shape=None, dtype=None, seed=seed)
-
         # store node features and edge features
         self.nf_space = node_features_space
         self.ef_space = edge_features_space
 
         self.max_nodes = max_nodes
 
-        # gym builtin seeding
-        self.seed(seed)
+        # shape is None since we have multiple spaces
+        super().__init__(shape=None, dtype=None, seed=seed)
 
     def seed(self, seed=None):
         s = super().seed(seed)
