@@ -75,6 +75,9 @@ class TaxiEnvRM(RewardMachine):
         for sec in range(self.num_sectors):
             sec_prop = single_props[self.__get_sector_prop_idx(sec)]
 
+            # self edge in all sectors (e.g., bad pickup)
+            delta.setdefault(sec_prop, {})[sec_prop] = 0
+
             # check adjacency to other sectors
             for other_sec in range(self.num_sectors):
                 if self.__adjacent_secs(sec, other_sec):
