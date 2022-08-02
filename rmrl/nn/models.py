@@ -25,7 +25,8 @@ def cur_state_embedding(nodes_batch, cur_state_idx_batch):
 
 class RMFeatureExtractorSB(BaseFeaturesExtractor):
     def __init__(self, observation_space: gym.spaces.Dict, ofe_hidden_dims=32, ofe_out_dim=32,
-                 gnn_hidden_dims=32, gnn_out_dim=32, gnn_agg=cur_state_embedding, embed_cur_state=False):
+                 gnn_hidden_dims=32, gnn_out_dim=32, gnn_agg=cur_state_embedding, embed_cur_state=False,
+                 pretrained_gnn_path=None):
         extractors = {}
 
         self._output_size = 0
@@ -61,6 +62,13 @@ class RMFeatureExtractorSB(BaseFeaturesExtractor):
                                              output_dim=gnn_out_dim,
                                              edge_dim=ef_space.shape[-1],
                                              hidden_dims=gnn_hidden_dims)
+
+            # load pre-trained and freeze weights
+            if pretrained_gnn_path:
+                extractors['rm'].load_state_dict(torch.load(pretrained_gnn_path))
+                for p in extractors['rm'].parameters():
+                    p.requires_grad = False
+
             self._output_size += gnn_out_dim
 
         # create module and save extractors as module dict

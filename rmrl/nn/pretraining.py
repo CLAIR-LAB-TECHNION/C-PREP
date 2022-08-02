@@ -215,7 +215,7 @@ class RMGNNTrainer:
         for p in highest_value_paths:
             required_padding = (max_seq_len - len(p))
             p.extend([self.model.eos_token] * required_padding)
-        return torch.tensor(highest_value_paths)
+        return torch.tensor(highest_value_paths).float()
 
     def train_batch(self, rm_batch, optimizer):
         self.model.train()

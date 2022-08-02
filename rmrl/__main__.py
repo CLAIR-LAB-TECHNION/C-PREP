@@ -56,7 +56,6 @@ def get_all_configurations(args):
             gnn_agg,
     ) in iterate_arg_combinations(args):
         # prepare special kwargs
-        env_kwargs = RMENV_DICT[env][ENV_KWARGS_KEY]
         rm_kwargs = dict(
             goal_state_reward=goal_state_reward,
             grid_resolution=grid_resolution,
@@ -79,7 +78,7 @@ def get_all_configurations(args):
             # for ef in args.exploration_fraction:
             alg_kwargs['exploration_fraction'] = 0.3  # TODO use one from args?
         if alg != Algos.PPO:  # no alg specific kwargs
-            alg_kwargs['learning_starts'] = 1000  # value chosen for to match `eval_freq`
+            alg_kwargs['learning_starts'] = 0  # value chosen for to match `eval_freq`
 
         cfgs.append(
             ExperimentConfiguration(
@@ -183,7 +182,7 @@ def parse_args():
                               action='append',
                               choices=Mods,
                               type=Mods,
-                              default=list(powerset(Mods)),
+                              # default=list(powerset(Mods)),
                               nargs='*')
 
     # learning args
@@ -220,7 +219,7 @@ def parse_args():
                           help='number of cells per grid sector',
                           nargs=2,
                           type=int,
-                          default=GRID_RESOLUTIONS,
+                          # default=GRID_RESOLUTIONS,
                           action='append')
     rm_group.add_argument('--fuel_resolution',
                           help='number of fuel waypoints',

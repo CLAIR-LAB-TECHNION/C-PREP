@@ -79,7 +79,8 @@ class ExperimentsRunner:
 
     @staticmethod
     def load_or_sample_contexts(exp: Experiment, num_samples, sample_seed: int):
-        contexts_file = CONTEXTS_DIR_NAME / exp.cfg.env_name / exp.cfg.cspace_name / str(sample_seed)
+        contexts_file = (CONTEXTS_DIR_NAME / exp.cfg.env_name / exp.cfg.cspace_name /
+                         f'samples={num_samples}__seed={sample_seed}')
         try:
             with open(contexts_file, 'rb') as f:
                 contexts = pickle.load(f)

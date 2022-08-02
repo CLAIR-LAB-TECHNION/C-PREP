@@ -50,6 +50,7 @@ class SupportedExperiments(Enum):
 
 
 class SupportedEnvironments(Enum):
+    SMALL = 'small'
     GRID_NAVIGATION = 'grid_nav'
 
 
@@ -59,6 +60,31 @@ class ContextSpaces(Enum):
 
 
 RMENV_DICT = {
+    SupportedEnvironments.SMALL: {
+        ENV_KWARGS_KEY: {
+            'num_passengers': 1,
+            'pickup_only': True,
+            'max_steps': 25,
+            'domain_map': [
+                "+-------+",
+                "| : | : |",
+                "| : : : |",
+                "| : | | |",
+                "| | | : |",
+                "+-------+"
+            ]
+        },
+        CONTEXT_SPACES_KEY: {
+            ContextSpaces.FIXED_ENTITIES: {
+                ENV_KEY: fixed_entities_env,
+                RM_KEY: TaxiEnvRM,
+            },
+            ContextSpaces.CHANGING_MAP: {
+                ENV_KEY: changing_map_env,
+                RM_KEY: TaxiEnvRM,
+            }
+        }
+    },
     SupportedEnvironments.GRID_NAVIGATION: {
         ENV_KWARGS_KEY: {
             'num_passengers': 1,
@@ -83,7 +109,7 @@ class Mods(Enum):
     AS = 'AS'
     RS = 'RS'
     GECO = 'GECO'
-    # GECOUPT = 'GECOUPT'  # NOT IMPLEMENTED
+    GECOUPT = 'GECOUPT'
     # VIN = 'VIN'  # NOT IMPLEMENTED
 
 
