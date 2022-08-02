@@ -1,3 +1,8 @@
+import json
+import os
+from pathlib import Path
+from typing import Union
+
 import numpy as np
 import torch
 from gym.spaces import MultiBinary, Box
@@ -28,7 +33,7 @@ class RMGraphGenerator:
 
         nf_space = MultiBinary(num_propositions)
         ef_space = Box(r_min, r_max, shape=(1,))
-        self.graph_space = PygData(nf_space, ef_space, max_nodes=max_nodes, seed=seed)
+        self.graph_space = PygData(nf_space, ef_space, max_nodes=max_nodes, must_have_edges=True, seed=seed)
 
         self.batch_size = batch_size
 
@@ -237,3 +242,26 @@ class RMGNNTrainer:
             loss = self.loss_fn(logits, paths)
 
         return loss.item()
+
+    def save_all(self, save_dir: Union[str, os.PathLike]):
+        save_dir = Path(save_dir)
+
+        # save model components
+        torch.save(self.model.state_dict(), save_dir / 'full')
+        torch.save(self.model.gnn.state_dict(), save_dir / 'gnn')
+        torch.save(self.model.rnn.state_dict(), save_dir / 'rnn')
+
+        # save history if one exists
+        if self.history is not None:
+            with open(save_dir / 'history.json', 'w') as f:
+                json.dump(self.history, f)
+
+
+def pretrain_graph_embedding(num_props, max_nodes, num_iters, batch_size, learning_rate, save_dir, print_every=100,
+                             seed=42):
+    torch.manual_seed(seed)
+    rm_gen = RMGraphGenerator(num_props, max_nodes, batch_size=batch_size, seed=seed)
+    model = HighestValueNet(input_size=rm_gen.graph_space.nf_space.n)
+    trainer = RMGNNTrainer(rm_gen, model)
+    history = trainer.train(num_iters, learning_rate)
+    trainer.save_all(save_dir)

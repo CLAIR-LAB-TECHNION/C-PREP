@@ -1,4 +1,5 @@
 from enum import Enum
+from pathlib import Path
 from typing import Iterable, Union
 
 from rmrl.envs.grid.reward_machines.single_taxi import TaxiEnvRM
@@ -35,6 +36,12 @@ MIN_EVALS = 50
 # defaults for reward shaping
 DEFAULT_RS_GAMMA = 0.9
 DEFAULT_POT_FN = ValueIteration()
+
+# default directories
+EXPERIMENTS_DUMPS_DIR = Path('experiment_dumps/')
+CONTEXTS_DIR = Path('sampled_contexts/')
+PRETRAINED_GNN_DIR = Path('grpt_model/')
+
 
 # important dictionary keys for RMENV_Dict
 ENV_KEY = 'env'
