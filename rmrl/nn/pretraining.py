@@ -205,7 +205,7 @@ class RMGNNTrainer:
             state_list = list(rm.all_states)
             cur_states.append(state_list[np.random.choice(range(len(state_list)))])
             highest_value_paths.append(highest_value_path(rm, cur_states[-1], self.model.max_seq_len))
-            pyg_datas.append(rm.to_pyg_data())
+            pyg_datas.append(rm.to_pyg_data())  # !! do this AFTER `highest_value_path` for reward shaping
 
         pyg_batch = Batch.from_data_list(pyg_datas)
         cur_state_batch = torch.tensor(cur_states)
