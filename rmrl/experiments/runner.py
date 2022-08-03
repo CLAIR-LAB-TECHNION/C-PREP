@@ -1,7 +1,7 @@
 import pickle
 import time
 import warnings
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from typing import List
 
@@ -40,12 +40,12 @@ class ExperimentsRunner:
 
     def run(self):
         if self.num_workers > 1:
-            self._run_multithread()
+            self._run_multiprocess()
         else:
             self._run()
 
-    def _run_multithread(self):
-        with ThreadPoolExecutor(self.num_workers) as executor:
+    def _run_multiprocess(self):
+        with ProcessPoolExecutor(self.num_workers) as executor:
             self._run(executor=executor.submit)
 
     def _run(self, executor=single_thread_executor):
