@@ -101,11 +101,14 @@ class Experiment(ABC):
         return rm_env
 
     def new_agent_for_env(self, env):
+        num_props = env.rm.num_propositions
         policy_kwargs = dict(
             features_extractor_class=RMFeatureExtractorSB,
             features_extractor_kwargs=dict(embed_cur_state=Mods.AS in self.cfg,
                                            # TODO more generic call to grpt
-                                           pretrained_gnn_path='grpt_model/6_props/gnn'if Mods.GECOUPT in self.cfg else None,
+                                           pretrained_gnn_path=f'grpt_model/{num_props}_props/gnn'
+                                                               if Mods.GECOUPT in self.cfg
+                                                               else None,
                                            **self.cfg.model_kwargs)
         )
 

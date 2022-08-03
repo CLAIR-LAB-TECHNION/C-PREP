@@ -29,6 +29,9 @@ def main():
 
     # run all experiments
     print(f'running {len(args.experiment) * len(cfgs)} experiments')
+    if args.count_only:
+        exit()
+
     start = time.time()
     ExperimentsRunner(args.experiment, cfgs, args.timesteps, args.sample_seed, args.num_workers, args.verbose).run()
     end = time.time()
@@ -141,6 +144,9 @@ def parse_args():
 
     # general experiment args
     exp_group = parser.add_argument_group('experiment values')
+    exp_group.add_argument('--count_only',
+                           help='only display the number of experiments slotted to run, then exit',
+                           action='store_true')
     exp_group.add_argument('--experiment',
                            help='the experiment type to run',
                            choices=SupportedExperiments,
@@ -260,6 +266,9 @@ def parse_args():
 
     # logging params
     log_group = parser.add_argument_group('logging configurations')
+    log_group.add_argument('--verbose',
+                           help='display training outputs',
+                           action='store_true')
     log_group.add_argument('--log_interval',
                            help='number of training iterations / episodes per info dump',
                            type=int,
@@ -289,9 +298,6 @@ def parse_args():
                             help='max number of threads for running experiments in parallel',
                             type=int,
                             default=1)
-    tech_group.add_argument('--verbose',
-                            help='display training outputs',
-                            action='store_true')
 
     args = parser.parse_args()
 

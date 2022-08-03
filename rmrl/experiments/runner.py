@@ -63,7 +63,7 @@ class ExperimentsRunner:
                 contexts = self.load_or_sample_contexts(exp, NUM_CONTEXT_PAIR_SAMPLES, self.sample_seed)
 
                 # check experiment type to get correct input contexts
-                for c_src, c_tgt in tqdm(contexts, desc=f'cur exp'):
+                for c_src, c_tgt in tqdm(contexts, desc='cur exp'):
                     if exp_label == SupportedExperiments.NO_TRANSFER:
                         executor(exp.run, c_src)
                         executor(exp.run, c_tgt)
