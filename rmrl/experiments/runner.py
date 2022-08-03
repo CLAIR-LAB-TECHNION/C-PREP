@@ -30,10 +30,16 @@ def single_thread_executor(fn, *args):
 
 class ExperimentsRunner:
     def __init__(self, experiments: List[SupportedExperiments], cfgs: List[ExperimentConfiguration], total_timesteps,
+                 log_interval, n_eval_episodes, eval_freq, max_no_improvement_evals, min_evals,
                  sample_seed, num_workers, verbose):
         self.experiments = experiments
         self.cfgs = cfgs
         self.total_timesteps = total_timesteps
+        self.log_interval = log_interval
+        self.n_eval_episodes = n_eval_episodes
+        self.eval_freq = eval_freq
+        self.max_no_improvement_evals = max_no_improvement_evals
+        self.min_evals = min_evals
         self.sample_seed = sample_seed
         self.num_workers = num_workers
         self.verbose = int(verbose)  # assert int input for sb3
@@ -58,7 +64,9 @@ class ExperimentsRunner:
         for exp_label in self.experiments:  # iterate experiments
             exp_class = EXP_TO_FNS[exp_label]
             for cfg in self.cfgs:  # iterate configurations
-                exp = exp_class(cfg, self.total_timesteps, dump_dir=EXPERIMENTS_DUMPS_DIR, verbose=self.verbose)
+                exp = exp_class(cfg, self.total_timesteps, self.log_interval, self.n_eval_episodes, self.eval_freq,
+                                self.max_no_improvement_evals, self.min_evals, dump_dir=EXPERIMENTS_DUMPS_DIR,
+                                verbose=self.verbose)
 
                 contexts = self.load_or_sample_contexts(exp, NUM_CONTEXT_PAIR_SAMPLES, self.sample_seed)
 

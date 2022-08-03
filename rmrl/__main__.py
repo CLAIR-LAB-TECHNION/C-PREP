@@ -33,7 +33,9 @@ def main():
         exit()
 
     start = time.time()
-    ExperimentsRunner(args.experiment, cfgs, args.timesteps, args.sample_seed, args.num_workers, args.verbose).run()
+    ExperimentsRunner(args.experiment, cfgs, args.timesteps, args.log_interval, args.n_eval_episodes, args.eval_freq,
+                      args.max_no_improvement_evals, args.min_evals, args.sample_seed, args.num_workers,
+                      args.verbose).run()
     end = time.time()
     print(f'all experiments execution time {end - start}\n')
 
