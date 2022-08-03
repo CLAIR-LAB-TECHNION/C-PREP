@@ -245,6 +245,7 @@ class RMGNNTrainer:
 
     def save_all(self, save_dir: Union[str, os.PathLike]):
         save_dir = Path(save_dir)
+        save_dir.mkdir(exist_ok=True)  # overwrite previous
 
         # save model components
         torch.save(self.model.state_dict(), save_dir / 'full')
