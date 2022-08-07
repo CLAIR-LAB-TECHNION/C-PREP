@@ -1,17 +1,9 @@
 from abc import ABC, abstractmethod
-from typing import Dict, List, Any, Tuple
-
-from ..context.multitask_env import MultiTaskWrapper
+from typing import Dict, Tuple
 
 import matplotlib.pyplot as plt
 import networkx as nx
-
-import numpy as np
-
-import networkx as nx
-
 from torch_geometric.utils.convert import from_networkx
-
 
 STATE_INDICATOR_ATTR = 'i'
 PROPS_VECTOR_ATTR = 'p'
@@ -95,7 +87,10 @@ class RewardMachine(ABC):
         plt.show()
 
     def to_pyg_data(self):
-        return from_networkx(G=self.G, group_node_attrs=all, group_edge_attrs=all)
+        data = from_networkx(G=self.G, group_node_attrs=all, group_edge_attrs=all)
+        data.x = data.x.float()
+        data.edge_attr = data.edge_attr.float()
+        return data
 
     def __fill_in_rewards(self):
         for u in self.G.nodes:

@@ -18,6 +18,7 @@ try:
 except ImportError:
     SummaryWriter = None
 
+from stable_baselines3.common.custom_spaces import PygData
 from stable_baselines3.common.logger import Logger, configure
 from stable_baselines3.common.type_aliases import GymEnv, Schedule, TensorDict, TrainFreq, TrainFrequencyUnit
 
@@ -174,10 +175,10 @@ def get_latest_run_id(log_path: str = "", log_name: str = "") -> int:
 
 
 def configure_logger(
-    verbose: int = 0,
-    tensorboard_log: Optional[str] = None,
-    tb_log_name: str = "",
-    reset_num_timesteps: bool = True,
+        verbose: int = 0,
+        tensorboard_log: Optional[str] = None,
+        tb_log_name: str = "",
+        reset_num_timesteps: bool = True,
 ) -> Logger:
     """
     Configure the logger's outputs.
@@ -249,7 +250,8 @@ def is_vectorized_box_observation(observation: np.ndarray, observation_space: gy
         )
 
 
-def is_vectorized_discrete_observation(observation: Union[int, np.ndarray], observation_space: gym.spaces.Discrete) -> bool:
+def is_vectorized_discrete_observation(observation: Union[int, np.ndarray],
+                                       observation_space: gym.spaces.Discrete) -> bool:
     """
     For discrete observation type, detects and validates the shape,
     then returns whether or not the observation is vectorized.
@@ -269,7 +271,8 @@ def is_vectorized_discrete_observation(observation: Union[int, np.ndarray], obse
         )
 
 
-def is_vectorized_multidiscrete_observation(observation: np.ndarray, observation_space: gym.spaces.MultiDiscrete) -> bool:
+def is_vectorized_multidiscrete_observation(observation: np.ndarray,
+                                            observation_space: gym.spaces.MultiDiscrete) -> bool:
     """
     For multidiscrete observation type, detects and validates the shape,
     then returns whether or not the observation is vectorized.
@@ -332,27 +335,32 @@ def is_vectorized_dict_observation(observation: np.ndarray, observation_space: g
     if all_non_vectorized:
         return False
 
-    all_vectorized = True
     # Now we check that all observation are vectorized and have the correct shape
     for key, subspace in observation_space.spaces.items():
-        if observation[key].shape[1:] != subspace.shape:
-            all_vectorized = False
-            break
-
-    if all_vectorized:
-        return True
-    else:
-        # Retrieve error message
-        error_msg = ""
         try:
             is_vectorized_observation(observation[key], observation_space.spaces[key])
         except ValueError as e:
             error_msg = f"{e}"
-        raise ValueError(
-            f"There seems to be a mix of vectorized and non-vectorized observations. "
-            f"Unexpected observation shape {observation[key].shape} for key {key} "
-            f"of type {observation_space.spaces[key]}. {error_msg}"
-        )
+            raise ValueError(
+                f"There seems to be a mix of vectorized and non-vectorized observations. "
+                f"Unexpected observation shape {observation[key].shape} for key {key} "
+                f"of type {observation_space.spaces[key]}. {error_msg}"
+            )
+
+    return True
+
+
+def is_vectorized_pyg_data_observation(observation: np.ndarray, observation_space: PygData) -> bool:
+    """
+    For PygData observation type, detects and validates the shape,
+    then returns whether or not the observation is vectorized.
+
+    :param observation: the input observation to validate
+    :param observation_space: the observation space
+    :return: whether the given observation is vectorized or not
+    """
+    return (all(is_vectorized_observation(obs_g.x, observation_space.nf_space) for obs_g in observation) and
+            all(is_vectorized_observation(obs_g.edge_attr, observation_space.ef_space) for obs_g in observation))
 
 
 def is_vectorized_observation(observation: Union[int, np.ndarray], observation_space: gym.spaces.Space) -> bool:
@@ -371,6 +379,7 @@ def is_vectorized_observation(observation: Union[int, np.ndarray], observation_s
         gym.spaces.MultiDiscrete: is_vectorized_multidiscrete_observation,
         gym.spaces.MultiBinary: is_vectorized_multibinary_observation,
         gym.spaces.Dict: is_vectorized_dict_observation,
+        PygData: is_vectorized_pyg_data_observation
     }
 
     for space_type, is_vec_obs_func in is_vec_obs_func_dict.items():
@@ -378,7 +387,8 @@ def is_vectorized_observation(observation: Union[int, np.ndarray], observation_s
             return is_vec_obs_func(observation, observation_space)
     else:
         # for-else happens if no break is called
-        raise ValueError(f"Error: Cannot determine if the observation is vectorized with the space type {observation_space}.")
+        raise ValueError(
+            f"Error: Cannot determine if the observation is vectorized with the space type {observation_space}.")
 
 
 def safe_mean(arr: Union[np.ndarray, list, deque]) -> np.ndarray:
@@ -411,9 +421,9 @@ def zip_strict(*iterables: Iterable) -> Iterable:
 
 
 def polyak_update(
-    params: Iterable[th.nn.Parameter],
-    target_params: Iterable[th.nn.Parameter],
-    tau: float,
+        params: Iterable[th.nn.Parameter],
+        target_params: Iterable[th.nn.Parameter],
+        tau: float,
 ) -> None:
     """
     Perform a Polyak average update on ``target_params`` using ``params``:
@@ -438,7 +448,7 @@ def polyak_update(
 
 
 def obs_as_tensor(
-    obs: Union[np.ndarray, Dict[Union[str, int], np.ndarray]], device: th.device
+        obs: Union[np.ndarray, Dict[Union[str, int], np.ndarray]], device: th.device
 ) -> Union[th.Tensor, TensorDict]:
     """
     Moves the observation to the given device.
@@ -448,17 +458,20 @@ def obs_as_tensor(
     :return: PyTorch tensor of the observation on a desired device.
     """
     if isinstance(obs, np.ndarray):
-        return th.as_tensor(obs).to(device)
+        if obs.dtype != object:
+            return th.as_tensor(obs).to(device)
+        else:
+            return obs
     elif isinstance(obs, dict):
-        return {key: th.as_tensor(_obs).to(device) for (key, _obs) in obs.items()}
+        return {key: obs_as_tensor(_obs, device) for (key, _obs) in obs.items()}
     else:
         raise Exception(f"Unrecognized type of observation {type(obs)}")
 
 
 def should_collect_more_steps(
-    train_freq: TrainFreq,
-    num_collected_steps: int,
-    num_collected_episodes: int,
+        train_freq: TrainFreq,
+        num_collected_steps: int,
+        num_collected_episodes: int,
 ) -> bool:
     """
     Helper used in ``collect_rollouts()`` of off-policy algorithms

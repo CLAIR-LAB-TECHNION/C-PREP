@@ -5,6 +5,7 @@ from typing import Any, Dict, Generator, List, Optional, Union
 import numpy as np
 import torch as th
 from gym import spaces
+from torch_geometric.data import Batch
 
 from stable_baselines3.common.preprocessing import get_action_dim, get_obs_shape
 from stable_baselines3.common.type_aliases import (
@@ -130,6 +131,10 @@ class BaseBuffer(ABC):
             (may be useful to avoid changing things be reference)
         :return:
         """
+        if array.dtype == object:
+            device_fn = np.vectorize(lambda x: x if x is None else x.to(self.device))
+            return device_fn(array)
+
         if copy:
             return th.tensor(array).to(self.device)
         return th.as_tensor(array).to(self.device)
@@ -526,10 +531,14 @@ class DictReplayBuffer(ReplayBuffer):
 
         self.observations = {
             key: np.zeros((self.buffer_size, self.n_envs) + _obs_shape, dtype=observation_space[key].dtype)
+            if isinstance(_obs_shape, tuple)
+            else np.full((self.buffer_size, self.n_envs), None, dtype=object)
             for key, _obs_shape in self.obs_shape.items()
         }
         self.next_observations = {
             key: np.zeros((self.buffer_size, self.n_envs) + _obs_shape, dtype=observation_space[key].dtype)
+            if isinstance(_obs_shape, tuple)
+            else np.full((self.buffer_size, self.n_envs), None, dtype=object)
             for key, _obs_shape in self.obs_shape.items()
         }
 
@@ -617,9 +626,9 @@ class DictReplayBuffer(ReplayBuffer):
         env_indices = np.random.randint(0, high=self.n_envs, size=(len(batch_inds),))
 
         # Normalize if needed and remove extra dimension (we are using only one env for now)
-        obs_ = self._normalize_obs({key: obs[batch_inds, env_indices, :] for key, obs in self.observations.items()}, env)
+        obs_ = self._normalize_obs({key: obs[batch_inds, env_indices] for key, obs in self.observations.items()}, env)
         next_obs_ = self._normalize_obs(
-            {key: obs[batch_inds, env_indices, :] for key, obs in self.next_observations.items()}, env
+            {key: obs[batch_inds, env_indices] for key, obs in self.next_observations.items()}, env
         )
 
         # Convert to torch tensor
@@ -690,7 +699,10 @@ class DictRolloutBuffer(RolloutBuffer):
         assert isinstance(self.obs_shape, dict), "DictRolloutBuffer must be used with Dict obs space only"
         self.observations = {}
         for key, obs_input_shape in self.obs_shape.items():
-            self.observations[key] = np.zeros((self.buffer_size, self.n_envs) + obs_input_shape, dtype=np.float32)
+            if isinstance(obs_input_shape, tuple):
+                self.observations[key] = np.zeros((self.buffer_size, self.n_envs) + obs_input_shape, dtype=np.float32)
+            else:
+                self.observations[key] = np.full((self.buffer_size, self.n_envs), None, dtype=object)
         self.actions = np.zeros((self.buffer_size, self.n_envs, self.action_dim), dtype=np.float32)
         self.rewards = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
         self.returns = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)

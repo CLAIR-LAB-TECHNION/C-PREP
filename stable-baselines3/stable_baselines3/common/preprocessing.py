@@ -5,6 +5,9 @@ import numpy as np
 import torch as th
 from gym import spaces
 from torch.nn import functional as F
+from torch_geometric.data import Batch as pyg_batch
+
+from stable_baselines3.common.custom_spaces import PygData
 
 
 def is_image_space_channels_first(observation_space: spaces.Box) -> bool:
@@ -126,7 +129,8 @@ def preprocess_obs(
         for key, _obs in obs.items():
             preprocessed_obs[key] = preprocess_obs(_obs, observation_space[key], normalize_images=normalize_images)
         return preprocessed_obs
-
+    elif isinstance(observation_space, PygData):
+        return pyg_batch.from_data_list(obs.reshape(-1))
     else:
         raise NotImplementedError(f"Preprocessing not implemented for {observation_space}")
 
@@ -153,6 +157,8 @@ def get_obs_shape(
         return (int(observation_space.n),)
     elif isinstance(observation_space, spaces.Dict):
         return {key: get_obs_shape(subspace) for (key, subspace) in observation_space.spaces.items()}
+    elif isinstance(observation_space, PygData):
+        return {'nf': observation_space.nf_space.shape, 'ef': observation_space.ef_space.shape}
 
     else:
         raise NotImplementedError(f"{observation_space} observation space is not supported")

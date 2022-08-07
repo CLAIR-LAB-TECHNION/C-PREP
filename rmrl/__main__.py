@@ -83,7 +83,7 @@ def get_all_configurations(args):
             for learning_starts in args.off_policy_learning_starts:
                 for train_freq in args.off_policy_train_freq:
                     if args.off_policy_train_freq_episodes:
-                        train_freq = (train_freq, 'episodes')
+                        train_freq = (train_freq, 'episode')
                     for gradient_steps in args.off_policy_gradient_steps:
                         if alg == Algos.DQN:
                             for exploration_fraction in args.dqn_exploration_fraction:
@@ -252,12 +252,10 @@ def parse_args():
                                 help='for off-policy algorithms only! number of steps per rollout',
                                 type=lambda x: int(float(x)),
                                 nargs='*',
-                                default=OFF_POLICY_LEARNING_STARTS)
+                                default=OFF_POLICY_TRAIN_FREQ)
     learning_group.add_argument('--off_policy_train_freq_episodes',
                                 help='for off-policy algorithms only! change `train_freq` to be measured in episodes',
-                                type=lambda x: int(float(x)),
-                                nargs='*',
-                                default=OFF_POLICY_LEARNING_STARTS)
+                                action='store_true')
     learning_group.add_argument('--off_policy_gradient_steps',
                                 help='for on-policy algorithms only! number of learning steps per rollout. -1 == all',
                                 type=lambda x: int(float(x)),

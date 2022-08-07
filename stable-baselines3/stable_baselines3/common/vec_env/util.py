@@ -2,6 +2,7 @@
 Helpers for dealing with vectorized environments.
 """
 from collections import OrderedDict
+from copy import deepcopy
 from typing import Any, Dict, List, Tuple
 
 import gym
@@ -19,7 +20,10 @@ def copy_obs_dict(obs: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
     :return: a dict of copied numpy arrays.
     """
     assert isinstance(obs, OrderedDict), f"unexpected type for observations '{type(obs)}'"
-    return OrderedDict([(k, np.copy(v)) for k, v in obs.items()])
+    return OrderedDict([(k, np.copy(v))
+                        if isinstance(v, np.ndarray)
+                        else (k, deepcopy(v))
+                        for k, v in obs.items()])
 
 
 def dict_to_obs(obs_space: gym.spaces.Space, obs_dict: Dict[Any, np.ndarray]) -> VecEnvObs:

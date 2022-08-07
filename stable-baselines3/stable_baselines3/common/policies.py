@@ -235,7 +235,9 @@ class BaseModel(nn.Module, ABC):
                     obs_ = np.array(obs)
                 vectorized_env = vectorized_env or is_vectorized_observation(obs_, obs_space)
                 # Add batch dimension if needed
-                observation[key] = obs_.reshape((-1,) + self.observation_space[key].shape)
+                observation[key] = (obs_.reshape((-1,) + self.observation_space[key].shape)
+                                    if self.observation_space[key].shape is not None
+                                    else obs_)
 
         elif is_image_space(self.observation_space):
             # Handle the different cases for images

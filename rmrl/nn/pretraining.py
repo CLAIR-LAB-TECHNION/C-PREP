@@ -17,6 +17,7 @@ from rmrl.nn.models import MultilayerGNN
 from rmrl.reward_machines.potential_functions import ValueIteration
 from rmrl.reward_machines.reward_machine import RMFromNX, RewardMachine
 from rmrl.utils.custom_spaces import PygData
+from rmrl.utils.misc import debatch_graph_to_specific_node
 
 NODE_ATTR_KEY = 'x'
 EDGE_ATTR_KEY = 'edge_attr'
@@ -114,22 +115,9 @@ class HighestValueNet(nn.Module):
         self.eos_token = torch.full((input_size,), 0.)
 
     def forward_graph_embedding(self, graph_batch, cur_states):
-        node_embeddings_scatter_batch = self.gnn(graph_batch.x.float(), graph_batch.edge_index, graph_batch.edge_attr)
+        node_embeddings_batch = self.gnn(graph_batch.x.float(), graph_batch.edge_index, graph_batch.edge_attr)
 
-        nodes_per_graph = [graph_batch.x[graph_batch.batch == i]
-                           for i in range(graph_batch.num_graphs)]
-        embeddings_per_graph = [node_embeddings_scatter_batch[graph_batch.batch == i]
-                                for i in range(graph_batch.num_graphs)]
-
-        out = []
-        for n, e, s, in zip(nodes_per_graph, embeddings_per_graph, cur_states):
-            cur_state_msk = n == s
-            cur_state_feature_count = torch.sum(cur_state_msk, dim=-1)
-            cur_state_idx_mask = cur_state_feature_count == s.shape[0]
-            embedding = e[cur_state_idx_mask]
-            out.append(embedding)
-
-        return torch.stack(out).squeeze()
+        return debatch_graph_to_specific_node(graph_batch, node_embeddings_batch, cur_states)
 
     def forward_rnn_decoder(self, encoder_output_state, tgt_seq):
         rnn_outputs, _ = self.rnn(tgt_seq, encoder_output_state)

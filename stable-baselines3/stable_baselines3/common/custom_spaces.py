@@ -11,6 +11,7 @@ class PygData(gym.spaces.Space):
                  node_features_space: gym.spaces.Space,
                  edge_features_space: gym.spaces.Space = None,
                  max_nodes: int = 100,
+                 must_have_edges: bool = False,
                  seed=None):
         # shape is None since we have multiple spaces
         super().__init__(shape=None, dtype=None, seed=seed)
@@ -20,6 +21,7 @@ class PygData(gym.spaces.Space):
         self.ef_space = edge_features_space
 
         self.max_nodes = max_nodes
+        self.must_have_edges = must_have_edges
 
         # gym builtin seeding
         self.seed(seed)
@@ -33,9 +35,12 @@ class PygData(gym.spaces.Space):
         return s
 
     def sample(self, mask=None):
-        # sample number of nodes
-        num_nodes = self._np_random.randint(1, self.max_nodes)
-        num_edges = self._np_random.randint(0, num_nodes ** 2)
+        # sample number of nodes and edges
+        num_nodes = self._np_random.randint(1, self.max_nodes + 1)  # 1 to `max_nodes` nodes
+        num_edges = self._np_random.randint(0, num_nodes ** 2 + 1)  # 0 to `num_nodes ** 2` edges
+
+        if num_edges == 0 and self.must_have_edges:
+            num_edges = 1
 
         # sample node features
         x = np.array([self.nf_space.sample() for _ in range(num_nodes)])

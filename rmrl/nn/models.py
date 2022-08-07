@@ -5,22 +5,25 @@ from torch import nn
 from torch_geometric.data import Data, Batch
 from torch_geometric.nn import GINEConv, GATConv, GATv2Conv, Sequential, MessagePassing
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
-from rmrl.reward_machines.rm_env import (ORIG_OBS_KEY, CUR_STATE_PROPS_KEY, RM_NODE_FEATURES_OBS_KEY,
-                                         RM_EDGE_INDEX_OBS_KEY, RM_EDGE_FEATURES_OBS_KEY)
+from rmrl.reward_machines.rm_env import ORIG_OBS_KEY, CUR_STATE_PROPS_KEY, RM_DATA_KEY
+from rmrl.utils.misc import debatch_graph_to_specific_node
 
-from typing import Type, Dict
+from typing import Type, Dict, Union
 
 ACTIVATIONS = {
     'relu': nn.ReLU,
     'lrelu': nn.LeakyReLU
 }
 
-def ignore_state_mean(nodes_batch, cur_state_idx_batch):
-    return torch.mean(nodes_batch, dim=1)  # mean of embeddings over each graph in batch
+def ignore_state_mean(graphs_batch, node_embeddings_batch, cur_state_batch):
+    # mean of embeddings over each graph in batch while ignoring the current state
+    return torch_scatter.scatter_mean(node_embeddings_batch, graphs_batch.batch, dim=-3)
 
 
-def cur_state_embedding(nodes_batch, cur_state_idx_batch):
-    return nodes_batch[cur_state_idx_batch[:, 0], cur_state_idx_batch[:, 1]]
+def cur_state_embedding(graphs_batch, node_embeddings_batch, cur_state_batch):
+    return debatch_graph_to_specific_node(graphs_batch,
+                                          node_embeddings_batch,
+                                          cur_state_batch)
 
 
 class RMFeatureExtractorSB(BaseFeaturesExtractor):
@@ -45,28 +48,21 @@ class RMFeatureExtractorSB(BaseFeaturesExtractor):
             self._output_size += observation_space.spaces[CUR_STATE_PROPS_KEY].shape[0]
 
         # group reward machine information
-        rm_spaces = {}
-        for key, subspace in observation_space.spaces.items():
-            if key.startswith('rm'):
-                rm_spaces[key] = subspace
-
-        # make graph embedding network
-        if rm_spaces:
+        if RM_DATA_KEY in observation_space.spaces:
             assert CUR_STATE_PROPS_KEY in observation_space.spaces, 'must receive cur state'
-            nf_space = rm_spaces[RM_NODE_FEATURES_OBS_KEY]
-            ef_space = rm_spaces[RM_EDGE_FEATURES_OBS_KEY]
+            rm_space = observation_space.spaces[RM_DATA_KEY]
 
-            #TODO GNN type as parameter
-            extractors['rm'] = MultilayerGNN(gnn_class=GATConv,
-                                             input_dim=nf_space.shape[-1],
-                                             output_dim=gnn_out_dim,
-                                             edge_dim=ef_space.shape[-1],
-                                             hidden_dims=gnn_hidden_dims)
+            # TODO GNN type as parameter
+            extractors[RM_DATA_KEY] = MultilayerGNN(gnn_class=GATConv,
+                                                    input_dim=rm_space.nf_space.shape[-1],
+                                                    output_dim=gnn_out_dim,
+                                                    edge_dim=rm_space.ef_space.shape[-1],
+                                                    hidden_dims=gnn_hidden_dims)
 
             # load pre-trained and freeze weights
             if pretrained_gnn_path:
-                extractors['rm'].load_state_dict(torch.load(pretrained_gnn_path))
-                for p in extractors['rm'].parameters():
+                extractors[RM_DATA_KEY].load_state_dict(torch.load(pretrained_gnn_path))
+                for p in extractors[RM_DATA_KEY].parameters():
                     p.requires_grad = False
 
             self._output_size += gnn_out_dim
@@ -75,39 +71,25 @@ class RMFeatureExtractorSB(BaseFeaturesExtractor):
         super().__init__(observation_space, features_dim=self._output_size)
         self.extractors = nn.ModuleDict(extractors)
 
-    def forward(self, observations: Dict[str, torch.Tensor]):
+    def forward(self, observations: Dict[str, Union[torch.Tensor, Data]]):
         encoded_tensor_list = []
 
         # self.extractors contain nn.Modules that do all the processing.
         for key, extractor in self.extractors.items():
-            if key == 'rm':
+            if key == RM_DATA_KEY:
                 # extract batch
-                nodes_batch = observations[RM_NODE_FEATURES_OBS_KEY]
-                edges_batch = observations[RM_EDGE_INDEX_OBS_KEY].long()
-                edge_attrs_batch = observations[RM_EDGE_FEATURES_OBS_KEY]
+                graphs_batch = observations[RM_DATA_KEY]
                 cur_state_batch = observations[CUR_STATE_PROPS_KEY]
 
                 # make graph batch
-                datas = []
-                for nodes, edges, edge_attrs in zip(nodes_batch, edges_batch, edge_attrs_batch):
-                    datas.append(Data(nodes, edges, edge_attrs))
-                data_batch = Batch.from_data_list(datas)
+                node_embeddings = extractor(graphs_batch.x, graphs_batch.edge_index, graphs_batch.edge_attr)
 
-                node_embeddings = extractor(data_batch.x, data_batch.edge_index, data_batch.edge_attr)
-
-                # de-batch graphs by stacking embeddings with the same batch index
-                node_embeddings_batch = torch.stack([node_embeddings[data_batch.batch == i]
-                                                     for i in range(data_batch.num_graphs)])
-
-                # get cur state idx
-                cur_state_idx_batch = torch.nonzero(torch.prod(nodes_batch == cur_state_batch.unsqueeze(1), dim=-1))
-
-                node_embeddings = self._gnn_agg(node_embeddings_batch, cur_state_idx_batch)
+                out = self._gnn_agg(graphs_batch, node_embeddings, cur_state_batch)
             else:  # key is not RM
                 obs_data = observations[key]
-                node_embeddings = extractor(obs_data)
+                out = extractor(obs_data)
 
-            encoded_tensor_list.append(node_embeddings)
+            encoded_tensor_list.append(out)
 
         # Return a (B, self._features_dim) PyTorch tensor, where B is batch dimension.
         return torch.cat(encoded_tensor_list, dim=-1)
