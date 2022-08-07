@@ -16,16 +16,19 @@ SAMPLE_SEED = 24
 LEARNING_RATES = [1e-4]  # [1 / (10 ** i) for i in range(1, 6)]
 BATCH_SIZES = [32]  # [2 ** i for i in range(3, 10)]
 TOTAL_TIMESTEPS = 5e5
-EXPLORATION_FRACTIONS = [0.3]  # np.linspace(0, 1, 10).tolist()
+DQN_EXPLORATION_FRACTIONS = [0.3]  # np.linspace(0, 1, 10).tolist()
 OUT_DIMS = [32]  # [16, 32, 64, 128, 256]
 HIDDEN_DIMS = [[32, 32]]  # list(set(tuple(sorted(hd)) for hd in powerset(OUT_DIMS, max_subset_len=2)))
 NODE_AGGS = [cur_state_embedding]  # [ignore_state_mean, cur_state_embedding]
 GOAL_STATE_REWARDS = [1]
-GRID_RESOLUTIONS = [None, (3, 4), (1, 1)]
+GRID_RESOLUTIONS = [None, (2, 2), (1, 1)]
 FUEL_RESOLUTIONS = [None]  # TODO update fuel resolutions
 NUM_SEEDS = 10
 BASE_SEED = 42
 SEEDS = [BASE_SEED * i for i in range(1, NUM_SEEDS + 1)]
+ON_POLICY_N_STEPS = [1024]
+OFF_POLICY_LEARNING_STARTS = 0
+OFF_POLICY_GRADIENT_STEPS = 1
 
 LOG_INTERVAL = 1
 N_EVAL_EPISODES = 100
@@ -126,6 +129,10 @@ class Algos(Enum):
     # DDPG = 'DDPG'
     PPO = 'PPO'
     # SAC = 'SAC'
+
+
+OFF_POLICY_ALGOS = [Algos.DQN]
+ON_POLICY_ALGOS = [Algos.PPO]
 
 
 class ExperimentConfiguration:

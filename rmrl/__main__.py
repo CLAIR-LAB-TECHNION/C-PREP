@@ -25,7 +25,6 @@ def main():
     cfgs = get_all_configurations(args)
     end = time.time()
     print(f'collect configurations execution time {end - start}\n')
-    # return
 
     # run all experiments
     print(f'running {len(args.experiment) * len(cfgs)} experiments')
@@ -79,15 +78,40 @@ def get_all_configurations(args):
         )
 
         # handle algorithm-specific kwargs
-        if alg == Algos.DQN:
-            # for ef in args.exploration_fraction:
-            alg_kwargs['exploration_fraction'] = 0.3  # TODO use one from args?
-        if alg == Algos.PPO:
-            alg_kwargs['n_steps'] = 1024  # TODO create arg for this
-        if alg != Algos.PPO:  # no alg specific kwargs
-            alg_kwargs['learning_starts'] = args.eval_freq  # value chosen for to match `eval_freq`
+        alg_specific_kwargs_list = []
+        if alg in OFF_POLICY_ALGOS:
+            for learning_starts in args.off_policy_learning_starts:
+                for train_freq in args.off_policy_train_freq:
+                    if args.off_policy_train_freq_episodes:
+                        train_freq = (train_freq, 'episodes')
+                    for gradient_steps in args.off_policy_gradient_steps:
+                        if alg == Algos.DQN:
+                            for exploration_fraction in args.dqn_exploration_fraction:
+                                specific_kwargs = alg_kwargs.copy()
+                                specific_kwargs.update(dict(
+                                    learning_starts=learning_starts,
+                                    train_freq=train_freq,
+                                    gradient_steps=gradient_steps,
+                                    exploration_fraction=exploration_fraction
+                                ))
+                                alg_specific_kwargs_list.append(specific_kwargs)
+                        else:
+                            specific_kwargs = alg_kwargs.copy()
+                            specific_kwargs.update(dict(
+                                learning_starts=learning_starts,
+                                train_freq=train_freq,
+                                gradient_steps=gradient_steps
+                            ))
+                            alg_specific_kwargs_list.append(specific_kwargs)
+        elif alg in ON_POLICY_ALGOS:
+            for n_steps in args.on_policy_n_steps:
+                specific_kwargs = alg_kwargs.copy()
+                specific_kwargs.update(dict(
+                    n_steps=n_steps
+                ))
+                alg_specific_kwargs_list.append(specific_kwargs)
 
-        cfgs.append(
+        cfgs.extend([
             ExperimentConfiguration(
                 env=env,
                 cspace=context,
@@ -96,9 +120,10 @@ def get_all_configurations(args):
                 mods=mods,
                 rm_kwargs=rm_kwargs,
                 model_kwargs=model_kwargs,
-                alg_kwargs=alg_kwargs
+                alg_kwargs=alg_specific_kwargs
             )
-        )
+            for alg_specific_kwargs in alg_specific_kwargs_list
+        ])
 
     return cfgs
 
@@ -211,11 +236,38 @@ def parse_args():
                                 help='max number of timesteps for the trained agent',
                                 type=lambda x: int(float(x)),
                                 default=TOTAL_TIMESTEPS)
-    learning_group.add_argument('--exploration_fraction',
+
+    # algo specific
+    learning_group.add_argument('--on_policy_n_steps',
+                                help='for on-policy algorithms only! number of steps per experience rollout',
+                                type=lambda x: int(float(x)),
+                                nargs='*',
+                                default=ON_POLICY_N_STEPS)
+    learning_group.add_argument('--off_policy_learning_starts',
+                                help='for off-policy algorithms only! minimal number of steps to take before learning',
+                                type=lambda x: int(float(x)),
+                                nargs='*',
+                                default=OFF_POLICY_LEARNING_STARTS)
+    learning_group.add_argument('--off_policy_train_freq',
+                                help='for off-policy algorithms only! number of steps per rollout',
+                                type=lambda x: int(float(x)),
+                                nargs='*',
+                                default=OFF_POLICY_LEARNING_STARTS)
+    learning_group.add_argument('--off_policy_train_freq_episodes',
+                                help='for off-policy algorithms only! change `train_freq` to be measured in episodes',
+                                type=lambda x: int(float(x)),
+                                nargs='*',
+                                default=OFF_POLICY_LEARNING_STARTS)
+    learning_group.add_argument('--off_policy_gradient_steps',
+                                help='for on-policy algorithms only! number of learning steps per rollout. -1 == all',
+                                type=lambda x: int(float(x)),
+                                nargs='*',
+                                default=OFF_POLICY_GRADIENT_STEPS)
+    learning_group.add_argument('--dqn_exploration_fraction',
                                 help='for DQN only! fraction of training using declining epsilon greedy',
                                 type=float,
                                 nargs='*',
-                                default=EXPLORATION_FRACTIONS)
+                                default=DQN_EXPLORATION_FRACTIONS)
 
     # RM params
     # TODO make more general
