@@ -136,10 +136,8 @@ class Experiment(ABC):
         )
 
     def get_agent_for_env(self, env, eval_env):
-        task_name = self.get_env_task_name(env)
         try:
             agent = self.load_agent_for_env(env)
-            print(f'loaded agent for task {task_name}')
         except FileNotFoundError:
             agent = self.train_agent_for_env(env, eval_env)
 
@@ -147,7 +145,12 @@ class Experiment(ABC):
 
     def load_agent_for_env(self, env):
         task_name = self.get_env_task_name(env)
-        return self.alg_class.load(self.models_dir / task_name / 'best_model', env)
+        return self.load_agent_for_task(task_name, init_env=env)
+
+    def load_agent_for_task(self, task_name, init_env=None):
+        loaded_agent = self.alg_class.load(self.models_dir / task_name / 'best_model', init_env)
+        print(f'loaded agent for task {task_name}')
+        return loaded_agent
 
     def get_env_task_name(self, env):
         if isinstance(env, DummyVecEnv):

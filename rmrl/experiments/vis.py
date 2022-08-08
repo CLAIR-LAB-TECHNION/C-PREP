@@ -5,9 +5,6 @@ import pprint
 from rmrl.utils.misc import sha3_hash
 from .configurations import *
 from .with_transfer import WithTransferExperiment
-from stable_baselines3.common.vec_env.dummy_vec_env import DummyVecEnv
-
-from functools import partial
 
 
 class Plotter:

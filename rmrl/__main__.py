@@ -27,14 +27,15 @@ def main():
     print(f'collect configurations execution time {end - start}\n')
 
     # run all experiments
-    print(f'running {len(args.experiment) * len(cfgs)} experiments')
+    runner = ExperimentsRunner(args.experiment, cfgs, args.timesteps, args.log_interval, args.n_eval_episodes,
+                               args.eval_freq, args.max_no_improvement_evals, args.min_evals, args.sample_seed,
+                               args.num_src_samples, args.num_tgt_samples, args.num_workers, args.verbose)
+    print(f'running {runner.num_runs} experiments')
     if args.count_only:
         exit()
 
     start = time.time()
-    ExperimentsRunner(args.experiment, cfgs, args.timesteps, args.log_interval, args.n_eval_episodes, args.eval_freq,
-                      args.max_no_improvement_evals, args.min_evals, args.sample_seed, args.num_workers,
-                      args.verbose).run()
+    runner.run()
     end = time.time()
     print(f'all experiments execution time {end - start}\n')
 
@@ -202,7 +203,18 @@ def parse_args():
     exp_group.add_argument('--sample_seed',
                            help='random seed for context sampling',
                            type=int,
-                           default=SAMPLE_SEED)
+                           nargs='*',
+                           default=SAMPLE_SEEDS)
+    exp_group.add_argument('--num_src_samples',
+                           help='the number of samples in the source contexts set',
+                           type=int,
+                           nargs='*',
+                           default=NUM_SRC_SAMPLES)
+    exp_group.add_argument('--num_tgt_samples',
+                           help='the number of samples in the target contexts set',
+                           type=int,
+                           nargs='*',
+                           default=NUM_TGT_SAMPLES)
 
     # policy config args
     policy_group = parser.add_argument_group('policy configurations')

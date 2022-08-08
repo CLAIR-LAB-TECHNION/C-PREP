@@ -2,8 +2,10 @@ import pickle
 import time
 import warnings
 from concurrent.futures import ProcessPoolExecutor
+from itertools import product
 from multiprocessing import Lock
 from typing import List
+import math
 
 from tqdm.auto import tqdm
 
@@ -25,18 +27,6 @@ EXP_TO_FNS = {
 pbar_lock = Lock()
 
 
-class SingleThreadExecutor:
-    def submit(self, fn, *args):
-        v = fn(*args)
-        return self
-
-    def add_done_callback(self, cb):
-        cb()
-
-def single_thread_executor(fn, *args):
-    return fn(*args)
-
-
 def pbar_callback(pbar):
     pbar_lock.acquire()
 
@@ -50,7 +40,7 @@ def pbar_callback(pbar):
 class ExperimentsRunner:
     def __init__(self, experiments: List[SupportedExperiments], cfgs: List[ExperimentConfiguration], total_timesteps,
                  log_interval, n_eval_episodes, eval_freq, max_no_improvement_evals, min_evals,
-                 sample_seed, num_workers, verbose):
+                 sample_seed, num_src_samples, num_tgt_samples, num_workers, verbose):
         self.experiments = experiments
         self.cfgs = cfgs
         self.total_timesteps = total_timesteps
@@ -60,15 +50,13 @@ class ExperimentsRunner:
         self.max_no_improvement_evals = max_no_improvement_evals
         self.min_evals = min_evals
         self.sample_seed = sample_seed
+        self.num_src_samples = num_src_samples
+        self.num_tgt_samples = num_tgt_samples
         self.num_workers = num_workers
         self.verbose = int(verbose)  # assert int input for sb3
 
     def run(self):
         self._run_multiprocess()
-        # if self.num_workers > 1:
-        #     self._run_multiprocess()
-        # else:
-        #     self._run()
 
     def _run_multiprocess(self):
         with ProcessPoolExecutor(self.num_workers) as executor:
@@ -77,23 +65,14 @@ class ExperimentsRunner:
     def _run(self, executor):
         start = time.time()
 
-        # add progressbar
-        # all_pbar = tqdm(total=len(self.experiments) * len(self.cfgs), desc='all experiments')
-
         exp_classes = [EXP_TO_FNS[exp_label] for exp_label in self.experiments]
         exp_objects = [exp_class(cfg, self.total_timesteps, self.log_interval, self.n_eval_episodes, self.eval_freq,
-                                self.max_no_improvement_evals, self.min_evals, dump_dir=EXPERIMENTS_DUMPS_DIR,
-                                verbose=self.verbose)
+                                 self.max_no_improvement_evals, self.min_evals, dump_dir=EXPERIMENTS_DUMPS_DIR,
+                                 verbose=self.verbose)
                        for exp_class in exp_classes
                        for cfg in self.cfgs]
 
-        # dump_dir_with_ts = EXPERIMENTS_DUMPS_DIR / datetime.now().strftime(TIMESTAMP_FORMAT)
-        c_src, c_tgt = self.load_or_sample_contexts(exp_objects[0], NUM_SRC_SAMPLES, NUM_TGT_SAMPLES, self.sample_seed)
-
-        results = list(tqdm(executor.map(self.run_exp_with_args,
-                                         exp_objects,
-                                         [c_src] * self.num_runs,
-                                         [c_tgt] * self.num_runs),
+        results = list(tqdm(executor.map(self.run_exp_with_args, *self.__get_map_args(exp_objects)),
                             total=self.num_runs,
                             desc='all experiments'))
 
@@ -145,4 +124,12 @@ class ExperimentsRunner:
 
     @property
     def num_runs(self):
-        return len(self.experiments) * len(self.cfgs)
+        return math.prod(map(len, [self.experiments, self.cfgs, self.sample_seed, self.num_src_samples,
+                                   self.num_tgt_samples]))
+
+    def __get_map_args(self, experiments):
+        return list(zip(*[(exp, *self.load_or_sample_contexts(exp, src_samples, tgt_samples, seed))
+                          for exp, src_samples, tgt_samples, seed in product(experiments,
+                                                                             self.num_src_samples,
+                                                                             self.num_tgt_samples,
+                                                                             self.sample_seed)]))

@@ -86,3 +86,10 @@ class PygData(gym.spaces.Space):
 
     def __repr__(self):
         return f'PygData(max_nodes={self.max_nodes}, nf_space={self.nf_space}, ef_space={self.ef_space})'
+
+    def __eq__(self, other):
+        return (isinstance(other, PygData) and
+                other.max_nodes == self.max_nodes and
+                other.nf_space == self.nf_space and
+                other.ef_space == self.ef_space and
+                other.must_have_edges == self.must_have_edges)

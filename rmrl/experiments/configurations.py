@@ -9,11 +9,12 @@ from rmrl.nn.models import cur_state_embedding
 from rmrl.reward_machines.potential_functions import ValueIteration
 
 # data constants and options
-NUM_SRC_SAMPLES = 10  # 500
-NUM_TGT_SAMPLES = 1
+NUM_SRC_SAMPLES = [10]  # 500
+NUM_TGT_SAMPLES = [1]
 OVERSAMPLE_FACTOR = 5
-SRC_SET_FRAC = 0.8
-SAMPLE_SEED = 24
+NUM_SAMPLE_SEEDS = 10
+BASE_SAMPLE_SEED = 24
+SAMPLE_SEEDS = [BASE_SAMPLE_SEED * i for i in range(1, NUM_SAMPLE_SEEDS + 1)]
 
 LEARNING_RATES = [1e-4]  # [1 / (10 ** i) for i in range(1, 6)]
 BATCH_SIZES = [32]  # [2 ** i for i in range(3, 10)]

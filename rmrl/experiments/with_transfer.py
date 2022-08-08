@@ -1,17 +1,10 @@
-import hashlib
+import glob
 
-from stable_baselines3.common.on_policy_algorithm import OnPolicyAlgorithm
-
-from rmrl.utils.misc import sha3_hash
-from .experiment import Experiment
-
-import tensorboard as tb
+import pandas as pd
+from tensorboard.backend.event_processing import event_accumulator
 
 from .configurations import SupportedExperiments
-from tensorboard.backend.event_processing import event_accumulator
-import pandas as pd
-
-import glob
+from .experiment import Experiment
 
 
 class WithTransferExperiment(Experiment):
@@ -28,15 +21,24 @@ class WithTransferExperiment(Experiment):
         src_agent = self.get_agent_for_env(src_env, src_eval_env)
         tgt_agent = self.get_agent_for_env(tgt_env, tgt_eval_env)
 
-        # create agent for target env with src agent parameters
-        transfer_agent = self.new_agent_for_env(tgt_env)
-        transfer_agent.set_parameters(src_agent.get_parameters())
+        self.transfer_agent(src_agent, src_env, tgt_env, tgt_eval_env)
 
-
+    def transfer_agent(self, src_agent, src_env, tgt_env, tgt_eval_env):
+        # get task name
         src_task_name = self.get_env_task_name(src_env)
         tgt_task_name = self.get_env_task_name(tgt_env)
-        self.train_agent(transfer_agent, tgt_eval_env, f'{tgt_task_name}_transfer_from_'
-                                                       f'{src_task_name}')
+        tsf_task_name = f'{tgt_task_name}_transfer_from_{src_task_name}'
+
+        try:
+            tsf_agent = self.load_agent_for_task(tsf_task_name, tgt_env)
+        except FileNotFoundError:
+            # create agent for target env with src agent parameters
+            tsf_agent = self.new_agent_for_env(tgt_env)
+            tsf_agent.set_parameters(src_agent.get_parameters())
+
+            tsf_agent = self.train_agent(tsf_agent, tgt_eval_env, tsf_task_name)
+
+        return tsf_agent
 
     def load_tb(self):
 
