@@ -1,4 +1,5 @@
 from enum import Enum
+import os
 from pathlib import Path
 from typing import Iterable, Union
 
@@ -46,6 +47,10 @@ EXPERIMENTS_DUMPS_DIR = Path('experiment_dumps/')
 CONTEXTS_DIR = Path('sampled_contexts/')
 PRETRAINED_GNN_DIR = Path('grpt_model/')
 
+MODELS_DIR = 'models'
+LOGS_DIR = 'logs'
+TB_LOG_DIR = 'tensorboard'
+EVAL_LOG_DIR = 'eval'
 
 # important dictionary keys for RMENV_Dict
 ENV_KEY = 'env'
@@ -135,6 +140,18 @@ class Algos(Enum):
 OFF_POLICY_ALGOS = [Algos.DQN]
 ON_POLICY_ALGOS = [Algos.PPO]
 
+ALL_ENUM_CFGS = [
+    SupportedExperiments,
+    SupportedEnvironments,
+    ContextSpaces,
+    Mods,
+    Algos
+]
+
+NAME_VALUE_SEP = '-'
+MULTI_VAL_SEP = ','
+CFG_VALS_SEP = '/'
+
 
 class ExperimentConfiguration:
     def __init__(self,
@@ -180,28 +197,82 @@ class ExperimentConfiguration:
                f'random seed: {self.seed}'
 
     def __repr__(self):
-        return '/'.join(self.__repr_value(n, v) for n, v in [('env', self.env),
-                                                             ('cspace', self.cspace),
-                                                             ('alg', self.alg),
-                                                             ('mods', self.mods),
-                                                             ('rm_kwargs', self.rm_kwargs),
-                                                             ('alg_kwargs', self.alg_kwargs),
-                                                             ('model_kwargs', self.model_kwargs),
-                                                             ('seed', self.seed)])
+        return CFG_VALS_SEP.join(self.__repr_value(n, v) for n, v in [('env', self.env),
+                                                                      ('cspace', self.cspace),
+                                                                      ('alg', self.alg),
+                                                                      ('mods', self.mods),
+                                                                      ('rm_kwargs', self.rm_kwargs),
+                                                                      ('alg_kwargs', self.alg_kwargs),
+                                                                      ('model_kwargs', self.model_kwargs),
+                                                                      ('seed', self.seed)])
 
     def __repr_value(self, name, value):
-        rv = f'{name}-'
+        rv = f'{name}{NAME_VALUE_SEP}'
         if isinstance(value, Enum):
             return self.__repr_value(name, value.value)
         elif callable(value):
             if hasattr(value, '__name__'):
                 return rv + value.__name__
             else:
-                return rv.__class__.__name__
+                return rv + value.__class__.__name__
         elif isinstance(value, dict):
-            return rv + '(' + ','.join(f'({self.__repr_value(k, v)})' for k, v in value.items()) + ')'
+            return rv + '(' + MULTI_VAL_SEP.join(f'({self.__repr_value(k, v)})' for k, v in value.items()) + ')'
         elif isinstance(value, list) or isinstance(value, tuple) or isinstance(value, set):
-            return rv + '(' + ','.join(self.__repr_value(str(i), v).split("-", 1)[-1]
+            return rv + '(' + MULTI_VAL_SEP.join(self.__repr_value(str(i), v).split("-", 1)[-1]
                                        for i, v in enumerate(value)) + ')'
         else:
             return rv + str(value)
+
+    @classmethod
+    def from_repr_value(cls, repr_val):
+        kwargs = {}
+        for v in repr_val.split(CFG_VALS_SEP):
+            cls.__get_repr_val_inner_value(v, kwargs)
+
+        return cls(**kwargs)
+
+    @classmethod
+    def load_all_configurations_in_path(cls, path):
+        cfg_reprs = []
+        for root, dirs, files in os.walk(path):
+            if LOGS_DIR in dirs:
+                cfg_reprs.append(root.replace(str(path) + '/', '', 1))
+            if MODELS_DIR in root or LOGS_DIR in root:
+                continue
+        return [cls.from_repr_value(repr_val) for repr_val in cfg_reprs]
+
+    @classmethod
+    def __get_repr_val_inner_value(cls, repr_val, kwargs):
+        name, value = repr_val.split(NAME_VALUE_SEP, 1)
+
+        if value == '()':
+            kwargs[name] = {}
+        elif value.startswith('(('):
+            inner_kwargs = {}
+            dict_vals = value[2:-2]
+            for v in dict_vals.split(f'){MULTI_VAL_SEP}('):
+                cls.__get_repr_val_inner_value(v, inner_kwargs)
+            kwargs[name] = inner_kwargs
+        elif value.startswith('('):
+            inner_list = []
+            list_vals = value[1:-1]
+            for v in list_vals.split(MULTI_VAL_SEP):
+                inner_list.append(cls.__get_repr_concrete_value(v,))
+            kwargs[name] = inner_list
+        else:
+            kwargs[name] = cls.__get_repr_concrete_value(value)
+
+    @staticmethod
+    def __get_repr_concrete_value(repr_val):
+        try:
+            return eval(repr_val)
+        except:
+            pass
+
+        for enum_cfg in ALL_ENUM_CFGS:
+            try:
+                return enum_cfg(repr_val)
+            except ValueError:
+                pass
+
+        raise ValueError(f'could not evaluate {repr_val}')

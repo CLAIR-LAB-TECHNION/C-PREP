@@ -15,11 +15,6 @@ from rmrl.utils.callbacks import TrueRewardRMEnvCallback, ProgressBarCallback
 from rmrl.utils.misc import sha3_hash
 from .configurations import *
 
-MODELS_DIR = 'models'
-LOGS_DIR = 'logs'
-TB_LOG_DIR = 'tensorboard'
-EVAL_LOG_DIR = 'eval'
-
 
 class Experiment(ABC):
     def __init__(self, cfg: ExperimentConfiguration, total_timesteps=5e5,
@@ -183,3 +178,14 @@ class Experiment(ABC):
     @property
     def eval_log_dir(self):
         return self.logs_dir / EVAL_LOG_DIR
+
+    @classmethod
+    def load_all_experiments_in_path(cls, path=None):
+        if path is None:
+            path = EXPERIMENTS_DUMPS_DIR
+        path = Path(path)
+
+        cfgs = ExperimentConfiguration.load_all_configurations_in_path(path / cls.__name__)
+        exps = [cls(cfg, dump_dir=path) for cfg in cfgs]
+
+        return exps
