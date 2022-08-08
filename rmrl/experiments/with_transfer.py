@@ -7,6 +7,7 @@ from .experiment import Experiment
 
 import tensorboard as tb
 
+from .configurations import SupportedExperiments
 from tensorboard.backend.event_processing import event_accumulator
 import pandas as pd
 
@@ -14,6 +15,10 @@ import glob
 
 
 class WithTransferExperiment(Experiment):
+
+    @property
+    def label(self):
+        return SupportedExperiments.WITH_TRANSFER
 
     def _run(self, envs, eval_envs):
         src_env, tgt_env = envs
@@ -27,8 +32,11 @@ class WithTransferExperiment(Experiment):
         transfer_agent = self.new_agent_for_env(tgt_env)
         transfer_agent.set_parameters(src_agent.get_parameters())
 
-        self.train_agent(transfer_agent, tgt_eval_env, f'{sha3_hash(tgt_env.task)}_transfer_from_'
-                                                       f'{sha3_hash(src_env.task)}')
+
+        src_task_name = self.get_env_task_name(src_env)
+        tgt_task_name = self.get_env_task_name(tgt_env)
+        self.train_agent(transfer_agent, tgt_eval_env, f'{tgt_task_name}_transfer_from_'
+                                                       f'{src_task_name}')
 
     def load_tb(self):
 

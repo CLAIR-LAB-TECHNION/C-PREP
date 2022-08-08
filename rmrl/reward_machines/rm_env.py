@@ -1,4 +1,4 @@
-import warnings
+from typing import Callable
 
 import gym
 import numpy as np
@@ -16,8 +16,8 @@ RM_DATA_KEY = 'rm'
 
 
 class RMEnvWrapper(gym.Wrapper):
-    def __init__(self, env: MultiTaskWrapper, rm: RewardMachine, rm_observations: bool = True,
-                 use_rm_reward: bool = True, abstract_state_props=True,
+    def __init__(self, env: MultiTaskWrapper, rm_fn: Callable[[MultiTaskWrapper], RewardMachine],
+                 rm_observations: bool = True, use_rm_reward: bool = True, abstract_state_props=True,
                  multidiscrete_to_box=True):
         super().__init__(env)
 
@@ -27,8 +27,10 @@ class RMEnvWrapper(gym.Wrapper):
         self.multidiscrete_to_box = multidiscrete_to_box
 
         # set RM data
-        self.rm = rm
-        self.rm_data = rm.to_pyg_data()
+        self.rm_fn = rm_fn
+        self.rm = None
+        self.rm_data = None
+        self.__first_reset = True
 
         # current state data will be set upon reset
         self.rm_cur_state = None
@@ -37,6 +39,10 @@ class RMEnvWrapper(gym.Wrapper):
 
     def reset(self, **kwargs):
         obs = super().reset(**kwargs)
+
+        if self.env.change_task_on_reset or self.__first_reset:
+            self.rm = self.rm_fn(self.env)
+            self.rm_data = self.rm.to_pyg_data()
 
         # save initial abstract state and obs as previous
         self.rm_cur_state = self.rm.L(obs)

@@ -28,5 +28,5 @@ class VelocityWrapper(MultiTaskWrapper):
 
         return obs, new_reward, done, info
 
-    def sample_task(self, n):
+    def _sample_task(self, n):
         return self._task_np_random.uniform(low=MIN_VEL, high=MAX_VEL, size=n)

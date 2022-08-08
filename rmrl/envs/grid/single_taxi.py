@@ -33,7 +33,7 @@ class FixedLocsWrapper(MultiTaskWrapper):
 
         super().__init__(env, initial_task, change_task_on_reset)
 
-    def sample_task(self, n):
+    def _sample_task(self, n):
         fixed_locs = []
         for _ in range(n):
             # call private method. BAD PRACTICE
@@ -120,7 +120,7 @@ class FixedLocsAddition(MultiTaskWrapper):
         self.fixed_locs_env = FixedLocsWrapper(env, initial_task, change_task_on_reset)
         super().__init__(env, initial_task, change_task_on_reset)
 
-    def sample_task(self, n):
+    def _sample_task(self, n):
         orig_task = self.env.sample_task(n)
         locs_task = self.fixed_locs_env.sample_task(n)
         return list(zip(locs_task, orig_task))
@@ -148,7 +148,7 @@ EMPTY_MAP = [
 WALL_LOCS = [(i, j) for i in range(len(EMPTY_MAP)) for j in range(len(EMPTY_MAP[0])) if EMPTY_MAP[i][j] == ':']
 
 class ChangeMapWrapper(MultiTaskWrapper):
-    def sample_task(self, n):
+    def _sample_task(self, n):
         # max number of walls to add
         num_locs = len(WALL_LOCS)
 

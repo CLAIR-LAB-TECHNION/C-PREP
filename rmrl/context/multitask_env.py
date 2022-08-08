@@ -8,10 +8,10 @@ class MultiTaskWrapper(gym.Wrapper, ABC):
     def __init__(self, env, initial_task=None, change_task_on_reset=True):
         super().__init__(env)
         self._task_np_random = np.random.default_rng()
+        self.fixed_contexts = None
 
         self.task = initial_task if initial_task is not None else self.sample_task(1)[0]
         self.change_task_on_reset = change_task_on_reset
-
 
     @property
     def task(self):
@@ -33,10 +33,22 @@ class MultiTaskWrapper(gym.Wrapper, ABC):
         super().seed(seed)
         self._task_np_random = np.random.default_rng(seed)
 
+    def set_fixed_contexts(self, contexts):
+        self.fixed_contexts = contexts
+
     @abstractmethod
     def _set_task(self, task):
         pass
 
-    @abstractmethod
     def sample_task(self, n):
+        if self.fixed_contexts is None:
+            return self._sample_task(n)
+        else:
+            samples_idx = self._task_np_random.choice(range(len(self.fixed_contexts)), n)
+            return [self.fixed_contexts[i] for i in samples_idx]
+
+    @abstractmethod
+    def _sample_task(self, n):
         pass
+
+

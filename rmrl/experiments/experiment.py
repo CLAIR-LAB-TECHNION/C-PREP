@@ -8,6 +8,7 @@ from stable_baselines3.common.on_policy_algorithm import OnPolicyAlgorithm
 from stable_baselines3.common.off_policy_algorithm import OffPolicyAlgorithm
 from stable_baselines3.common.callbacks import EvalCallback, StopTrainingOnNoModelImprovement
 from stable_baselines3.common.monitor import Monitor
+from stable_baselines3.common.vec_env.dummy_vec_env import DummyVecEnv
 
 from rmrl.nn.models import RMFeatureExtractorSB
 from rmrl.reward_machines.rm_env import RMEnvWrapper
@@ -46,24 +47,29 @@ class Experiment(ABC):
         self.rm_fn = fns_dict[RM_KEY]
 
     def run(self, *contexts):
-        envs = []
+        train_envs = []
         eval_envs = []
-        for context in contexts:
+        for context_set in contexts:
             # create two identical envs for training and eval
-            env = self.get_env_for_context(context)
-            eval_env = self.get_env_for_context(context)
+            envs = self.get_envs_per_context_in_set(context_set)
 
-            # convert env to RM env and save
-            rm_env = self.env_to_rm_env(env)
-            envs.append(rm_env)
+            # convert env to RM env
+            rm_envs = [self.env_to_rm_env(env) for env in envs]
 
-            # convert evaluation env to RM env and save
-            # eval_env = Monitor(eval_env)  # eval env not automatically wrapped with monitor
+            # convert to vec env for parallel training
+            rm_vec_env = DummyVecEnv([lambda: env for env in rm_envs])
+
+            # save training env
+            train_envs.append(rm_vec_env)
+
+            # create env for evaluation
+            eval_env = self.get_single_env_for_context_set(context_set)
             rm_eval_env = self.env_to_rm_env(eval_env, is_eval=True)
+            # rm_eval_env = Monitor(rm_eval_env)  # eval env not automatically wrapped with monitor
             eval_envs.append(rm_eval_env)
 
         start = time.time()
-        self._run(envs, eval_envs)
+        self._run(train_envs, eval_envs)
         end = time.time()
         print(f'execution time: {end - start}; experiment: {self.exp_name}')
 
@@ -81,6 +87,16 @@ class Experiment(ABC):
 
         return env
 
+    def get_envs_per_context_in_set(self, context_set):
+        return [self.get_env_for_context(c) for c in context_set]
+
+    def get_single_env_for_context_set(self, context_set):
+        env = self.env_fn(**self.cfg.env_kwargs, change_task_on_reset=True)
+        env.set_fixed_contexts(context_set)
+        env.reset()
+
+        return env
+
     def env_to_rm_env(self, env, is_eval=False):
         # create RM and reshape rewards
         rm = self.rm_fn(env, **self.cfg.rm_kwargs)
@@ -89,14 +105,16 @@ class Experiment(ABC):
 
         # init env with RM support
         rm_env = RMEnvWrapper(env=env,
-                              rm=rm,
+                              rm_fn=lambda e: self.rm_fn(e, **self.cfg.rm_kwargs),
                               rm_observations=Mods.GECO in self.cfg,
                               use_rm_reward=Mods.RS in self.cfg and not is_eval)  # use orig rewards for eval
+
+        rm_env.reset()
 
         return rm_env
 
     def new_agent_for_env(self, env):
-        num_props = env.rm.num_propositions
+        num_props = env.envs[0].rm.num_propositions  # all rms should have the same rm
         policy_kwargs = dict(
             features_extractor_class=RMFeatureExtractorSB,
             features_extractor_kwargs=dict(embed_cur_state=Mods.AS in self.cfg,
@@ -118,22 +136,32 @@ class Experiment(ABC):
         )
 
     def get_agent_for_env(self, env, eval_env):
+        task_name = self.get_env_task_name(env)
         try:
             agent = self.load_agent_for_env(env)
-            print(f'loaded agent for task {sha3_hash(env.task)}')
+            print(f'loaded agent for task {task_name}')
         except FileNotFoundError:
-            print(f'training agent for task {sha3_hash(env.task)}')
+            print(f'training agent for task {task_name}')
             agent = self.train_agent_for_env(env, eval_env)
 
         return agent
 
     def load_agent_for_env(self, env):
-        return self.alg_class.load(self.models_dir / sha3_hash(env.task) / 'best_model', env)
+        task_name = self.get_env_task_name(env)
+        return self.alg_class.load(self.models_dir / task_name / 'best_model', env)
+
+    def get_env_task_name(self, env):
+        if isinstance(env, DummyVecEnv):
+            task = tuple(e.task for e in env.envs)
+        else:
+            task = tuple(env.fixed_contexts)
+
+        return sha3_hash(task)
 
     def train_agent_for_env(self, env, eval_env):
         agent = self.new_agent_for_env(env)
 
-        task_name = sha3_hash(env.task)
+        task_name = self.get_env_task_name(env)
         return self.train_agent(agent, eval_env, task_name=task_name)
 
     def train_agent(self, agent, eval_env, task_name):
@@ -189,3 +217,8 @@ class Experiment(ABC):
         exps = [cls(cfg, dump_dir=path) for cfg in cfgs]
 
         return exps
+
+    @property
+    @abstractmethod
+    def label(self):
+        pass
