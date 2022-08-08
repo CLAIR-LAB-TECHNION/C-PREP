@@ -6,7 +6,7 @@ from typing import List, Type
 import stable_baselines3 as sb3
 from stable_baselines3.common.on_policy_algorithm import OnPolicyAlgorithm
 from stable_baselines3.common.off_policy_algorithm import OffPolicyAlgorithm
-from stable_baselines3.common.callbacks import EvalCallback, StopTrainingOnNoModelImprovement
+from stable_baselines3.common.callbacks import EvalCallback, StopTrainingOnNoModelImprovement, CheckpointCallback
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env.dummy_vec_env import DummyVecEnv
 
@@ -141,7 +141,6 @@ class Experiment(ABC):
             agent = self.load_agent_for_env(env)
             print(f'loaded agent for task {task_name}')
         except FileNotFoundError:
-            print(f'training agent for task {task_name}')
             agent = self.train_agent_for_env(env, eval_env)
 
         return agent
@@ -178,11 +177,16 @@ class Experiment(ABC):
                                      log_path=self.eval_log_dir / task_name,
                                      best_model_save_path=self.models_dir / task_name,
                                      verbose=self.verbose)
+        checkpoint_callback = CheckpointCallback(save_freq=self.eval_freq,
+                                                 save_path=self.models_dir / task_name / 'checkpoints',
+                                                 name_prefix='chkp',
+                                                 verbose=self.verbose)
 
         # train agent
+        print(f'training agent for task {task_name}')
         return agent.learn(
             total_timesteps=self.total_timesteps,
-            callback=[true_reward_callback, pb_callback, eval_callback],
+            callback=[true_reward_callback, pb_callback, eval_callback, checkpoint_callback],
             log_interval=self.log_interval,
             tb_log_name=task_name,
         )

@@ -46,10 +46,10 @@ class Plotter:
         ax1.set_title(f'Policy performance on SRC context')
         ax1.set_xlabel('timesteps')
         ax1.set_ylabel('mean reward')
-        ax1.set_xlim(*self.xlim)
         ax1.axhline(self.u_bound, ls='--')
         ax1.axhline(self.l_bound, ls='--')
         self.plot_evals(src_evals, ax=ax1)
+        ax1.set_xlim(*self.xlim)
         ax1.legend()
 
         ax2.set_title(f'Policy performance on TGT context')
@@ -61,6 +61,7 @@ class Plotter:
             self.plot_evals(tgt_evals, ax=ax2)
         if self.show_transfer:
             self.plot_evals(tsf_evals, ax=ax2)
+        ax2.set_xlim(*self.xlim)
         ax2.legend()
 
     def plot_compare_individual_seed(self, src, tgt, axes=None):
