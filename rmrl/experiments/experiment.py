@@ -1,6 +1,6 @@
 import time
 from abc import ABC, abstractmethod
-from pathlib import Path
+from functools import partial
 from typing import List, Type
 
 import stable_baselines3 as sb3
@@ -57,12 +57,12 @@ class Experiment(ABC):
             rm_envs = [self.env_to_rm_env(env) for env in envs]
 
             # convert to vec env for parallel training
-            rm_vec_env = DummyVecEnv([lambda: env for env in rm_envs])
+            rm_vec_env = DummyVecEnv([partial(lambda env: env, env) for env in rm_envs])
 
             # save training env
             train_envs.append(rm_vec_env)
 
-            # create env for evaluation
+            # create env for evaluation (no parallel)
             eval_env = self.get_single_env_for_context_set(context_set)
             rm_eval_env = self.env_to_rm_env(eval_env, is_eval=True)
             # rm_eval_env = Monitor(rm_eval_env)  # eval env not automatically wrapped with monitor

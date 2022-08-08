@@ -5,17 +5,21 @@ import pprint
 from rmrl.utils.misc import sha3_hash
 from .configurations import *
 from .with_transfer import WithTransferExperiment
+from stable_baselines3.common.vec_env.dummy_vec_env import DummyVecEnv
+
+from functools import partial
 
 
 class Plotter:
     def __init__(self, dump_dir, cfg_constraints, u_bound, l_bound, show_scratch=True, show_transfer=True,
-                 with_std=False):
+                 with_std=False, xlim=None):
         self.constraints = cfg_constraints
         self.u_bound = u_bound
         self.l_bound = l_bound
         self.show_scratch = show_scratch
         self.show_transfer = show_transfer
         self.with_std = with_std
+        self.xlim = xlim or tuple()
 
         experiments = WithTransferExperiment.load_all_experiments_in_path(dump_dir)
         self.experiments = list(filter(self.__check_cfg_constraints, experiments))
@@ -23,8 +27,8 @@ class Plotter:
         self.pprinter = pprint.PrettyPrinter(indent=2)
 
     def load_exp_evals(self, src, tgt):
-        src_name = sha3_hash(src)
-        tgt_name = sha3_hash(tgt)
+        src_name = sha3_hash(tuple(src))
+        tgt_name = sha3_hash(tuple(tgt))
 
         src_evals, tgt_evals, tsf_evals = [], [], []
         for exp in self.experiments:
@@ -42,6 +46,7 @@ class Plotter:
         ax1.set_title(f'Policy performance on SRC context')
         ax1.set_xlabel('timesteps')
         ax1.set_ylabel('mean reward')
+        ax1.set_xlim(*self.xlim)
         ax1.axhline(self.u_bound, ls='--')
         ax1.axhline(self.l_bound, ls='--')
         self.plot_evals(src_evals, ax=ax1)

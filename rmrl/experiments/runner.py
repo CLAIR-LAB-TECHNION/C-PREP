@@ -1,7 +1,7 @@
 import pickle
 import time
 import warnings
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
 from multiprocessing import Lock
 from typing import List
 
@@ -71,7 +71,7 @@ class ExperimentsRunner:
         #     self._run()
 
     def _run_multiprocess(self):
-        with ThreadPoolExecutor(self.num_workers) as executor:
+        with ProcessPoolExecutor(self.num_workers) as executor:
             self._run(executor=executor)
 
     def _run(self, executor):
@@ -94,17 +94,8 @@ class ExperimentsRunner:
                                          exp_objects,
                                          [c_src] * self.num_runs,
                                          [c_tgt] * self.num_runs),
-                            total=self.num_runs))
-
-
-        # if exp_label == SupportedExperiments.NO_TRANSFER:
-        #     executor(exp.run, c_tgt)
-        # elif exp_label == SupportedExperiments.WITH_TRANSFER:
-        #     executor(exp.run, c_src, c_tgt)
-        # else:
-        #     raise NotImplementedError(f'unsupported experiment label {exp_label.value}')
-
-        # all_pbar.update()
+                            total=self.num_runs,
+                            desc='all experiments'))
 
         end = time.time()
         print(f'time to run all experiments: {end - start}')
@@ -121,7 +112,7 @@ class ExperimentsRunner:
     @staticmethod
     def load_or_sample_contexts(exp: Experiment, num_src_samples, num_tgt_samples, sample_seed: int):
         contexts_file = (CONTEXTS_DIR_NAME / exp.cfg.env_name / exp.cfg.cspace_name /
-                         f'src_samples={num_src_samples}__seed={sample_seed}')
+                         f'src_samples={num_src_samples}__tgt_samples={num_tgt_samples}__seed={sample_seed}')
         try:
             with open(contexts_file, 'rb') as f:
                 src_contexts, tgt_contexts = pickle.load(f)
