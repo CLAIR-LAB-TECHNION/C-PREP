@@ -1,7 +1,7 @@
 import pickle
 import time
 import warnings
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from itertools import product
 from multiprocessing import Lock
 from typing import List
@@ -61,7 +61,7 @@ class ExperimentsRunner:
         self._run_multiprocess()
 
     def _run_multiprocess(self):
-        with ProcessPoolExecutor(self.num_workers) as executor:
+        with ThreadPoolExecutor(self.num_workers) as executor:
             self._run(executor=executor)
 
     def _run(self, executor):

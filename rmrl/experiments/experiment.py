@@ -1,3 +1,4 @@
+import pickle
 import time
 from abc import ABC, abstractmethod
 from functools import partial
@@ -8,7 +9,7 @@ from stable_baselines3.common.on_policy_algorithm import OnPolicyAlgorithm
 from stable_baselines3.common.off_policy_algorithm import OffPolicyAlgorithm
 from stable_baselines3.common.callbacks import EvalCallback, StopTrainingOnNoModelImprovement, CheckpointCallback
 from stable_baselines3.common.monitor import Monitor
-from stable_baselines3.common.vec_env.dummy_vec_env import DummyVecEnv
+from stable_baselines3.common.vec_env import VecEnv, DummyVecEnv
 
 from rmrl.nn.models import RMFeatureExtractorSB
 from rmrl.reward_machines.rm_env import RMEnvWrapper
@@ -74,7 +75,7 @@ class Experiment(ABC):
         print(f'execution time: {end - start}; experiment: {self.exp_name}')
 
     @abstractmethod
-    def _run(self, envs: List[RMEnvWrapper], eval_envs: List[RMEnvWrapper]):
+    def _run(self, envs: List[DummyVecEnv], eval_envs: List[RMEnvWrapper]):
         pass
 
     def get_experiment_env(self):
@@ -136,6 +137,14 @@ class Experiment(ABC):
         )
 
     def get_agent_for_env(self, env, eval_env):
+        # save contexts on which the agent was trained.
+        # this marks the end of a successful training session
+        contexts = self.get_env_task(env)
+        task_context_path = self.saved_contexts_dir / self.get_env_task_name(env)
+        os.makedirs(task_context_path.parent, exist_ok=True)
+        with open(task_context_path, 'wb') as f:
+            pickle.dump(contexts, f)
+
         try:
             agent = self.load_agent_for_env(env)
         except FileNotFoundError:
@@ -152,12 +161,14 @@ class Experiment(ABC):
         print(f'loaded agent for task {task_name}')
         return loaded_agent
 
-    def get_env_task_name(self, env):
-        if isinstance(env, DummyVecEnv):
-            task = tuple(e.task for e in env.envs)
+    def get_env_task(self, env):
+        if isinstance(env, VecEnv):
+            return [e.task for e in env.envs]
         else:
-            task = tuple(env.fixed_contexts)
+            return env.fixed_contexts
 
+    def get_env_task_name(self, env):
+        task = tuple(self.get_env_task(env))
         return sha3_hash(task)
 
     def train_agent_for_env(self, env, eval_env):
@@ -213,6 +224,10 @@ class Experiment(ABC):
     @property
     def eval_log_dir(self):
         return self.logs_dir / EVAL_LOG_DIR
+
+    @property
+    def saved_contexts_dir(self):
+        return self.exp_dump_dir / SAVED_CONTEXTS_DIR
 
     @classmethod
     def load_all_experiments_in_path(cls, path=None):
