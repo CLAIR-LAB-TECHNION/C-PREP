@@ -8,11 +8,6 @@ from .experiment import Experiment
 
 
 class WithTransferExperiment(Experiment):
-
-    @property
-    def label(self):
-        return SupportedExperiments.WITH_TRANSFER
-
     def _run(self, envs, eval_envs):
         src_env, tgt_env = envs
         src_eval_env, tgt_eval_env = eval_envs

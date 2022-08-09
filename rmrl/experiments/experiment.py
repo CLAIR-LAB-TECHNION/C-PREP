@@ -226,6 +226,5 @@ class Experiment(ABC):
         return exps
 
     @property
-    @abstractmethod
     def label(self):
-        pass
+        return SupportedExperiments(self.__class__.__name__)

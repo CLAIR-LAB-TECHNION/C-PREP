@@ -44,6 +44,9 @@ MIN_EVALS = 50
 DEFAULT_RS_GAMMA = 0.9
 DEFAULT_POT_FN = ValueIteration()
 
+# CV experiment defaults
+DEFAULT_NUM_TGT_SAMPLES_FOR_CV = 1
+
 # default directories
 EXPERIMENTS_DUMPS_DIR = Path('experiment_dumps/')
 CONTEXTS_DIR = Path('sampled_contexts/')
@@ -65,6 +68,7 @@ CONTEXT_SPACES_KEY = 'context_spaces'
 class SupportedExperiments(Enum):
     NO_TRANSFER = 'NoTransferExperiment'
     WITH_TRANSFER = 'WithTransferExperiment'
+    CV_TRANSFER = 'CVTransferExperiment'
 
 
 class SupportedEnvironments(Enum):

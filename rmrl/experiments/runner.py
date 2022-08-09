@@ -13,6 +13,7 @@ from .configurations import *
 from .experiment import Experiment
 from .no_transfer import NoTransferExperiment
 from .with_transfer import WithTransferExperiment
+from .cv_transfer import CVTransferExperiment
 
 TIMESTAMP_FORMAT = '%Y-%m-%d-%H_%M_%S.%f'
 
@@ -21,7 +22,8 @@ CONTEXTS_DIR_NAME = Path('sampled_contexts')
 
 EXP_TO_FNS = {
     SupportedExperiments.NO_TRANSFER: NoTransferExperiment,
-    SupportedExperiments.WITH_TRANSFER: WithTransferExperiment
+    SupportedExperiments.WITH_TRANSFER: WithTransferExperiment,
+    SupportedExperiments.CV_TRANSFER: CVTransferExperiment
 }
 
 pbar_lock = Lock()
@@ -85,6 +87,8 @@ class ExperimentsRunner:
             exp.run(c_tgt)
         elif exp.label == SupportedExperiments.WITH_TRANSFER:
             exp.run(c_src, c_tgt)
+        elif exp.label == SupportedExperiments.CV_TRANSFER:
+            exp.run(c_src + c_tgt)
         else:
             raise NotImplementedError(f'unsupported experiment label {exp.label.value}')
 
