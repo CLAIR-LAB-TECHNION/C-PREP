@@ -93,7 +93,8 @@ class Monitor(gym.Wrapper):
             self.needs_reset = True
             ep_rew = sum(self.rewards)
             ep_len = len(self.rewards)
-            ep_info = {"r": round(ep_rew, 6), "l": ep_len, "t": round(time.time() - self.t_start, 6)}
+            ep_info = {"r": round(ep_rew, 6), "l": ep_len, "t": round(time.time() - self.t_start, 6),
+                       "s": self.rewards}
             for key in self.info_keywords:
                 ep_info[key] = info[key]
             self.episode_returns.append(ep_rew)
