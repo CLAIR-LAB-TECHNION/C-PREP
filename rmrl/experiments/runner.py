@@ -1,19 +1,19 @@
+import math
 import pickle
 import time
 import warnings
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 from itertools import product
 from multiprocessing import Lock
 from typing import List
-import math
 
 from tqdm.auto import tqdm
 
 from .configurations import *
+from .cv_transfer import CVTransferExperiment
 from .experiment import Experiment
 from .no_transfer import NoTransferExperiment
 from .with_transfer import WithTransferExperiment
-from .cv_transfer import CVTransferExperiment
 
 TIMESTAMP_FORMAT = '%Y-%m-%d-%H_%M_%S.%f'
 
@@ -27,16 +27,6 @@ EXP_TO_FNS = {
 }
 
 pbar_lock = Lock()
-
-
-def pbar_callback(pbar):
-    pbar_lock.acquire()
-
-    pbar.update()
-    if pbar.n == pbar.total:
-        pbar.close()
-
-    pbar_lock.release()
 
 
 class ExperimentsRunner:
@@ -58,13 +48,6 @@ class ExperimentsRunner:
         self.verbose = int(verbose)  # assert int input for sb3
 
     def run(self):
-        self._run_multiprocess()
-
-    def _run_multiprocess(self):
-        with ThreadPoolExecutor(self.num_workers) as executor:
-            self._run(executor=executor)
-
-    def _run(self, executor):
         start = time.time()
 
         exp_classes = [EXP_TO_FNS[exp_label] for exp_label in self.experiments]
@@ -74,12 +57,27 @@ class ExperimentsRunner:
                        for exp_class in exp_classes
                        for cfg in self.cfgs]
 
-        results = list(tqdm(executor.map(self.run_exp_with_args, *self.__get_map_args(exp_objects)),
-                            total=self.num_runs,
-                            desc='all experiments'))
+        exp_args, c_src_args, c_tgt_args = self.__get_map_args(exp_objects)
+
+        if self.num_workers > 1:
+            self._run_multiprocess(exp_args, c_src_args, c_tgt_args)
+        else:
+            self._run(exp_args, c_src_args, c_tgt_args)
 
         end = time.time()
         print(f'time to run all experiments: {end - start}')
+
+    def _run_multiprocess(self, exp_args, c_src_args, c_tgt_args):
+        with ThreadPoolExecutor(self.num_workers) as executor:
+            list(tqdm(iterable=executor.map(self.run_exp_with_args, exp_args, c_src_args, c_tgt_args),
+                      total=self.num_runs,
+                      desc='all experiments'))
+
+    def _run(self, exp_args, c_src_args, c_tgt_args):
+        for run_args in tqdm(zip(exp_args, c_src_args, c_tgt_args),
+                                      total=self.num_runs,
+                                      desc='all experiments'):
+            self.run_exp_with_args(*run_args)
 
     @staticmethod
     def run_exp_with_args(exp, c_src, c_tgt):
