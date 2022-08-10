@@ -17,9 +17,6 @@ from .with_transfer import WithTransferExperiment
 
 TIMESTAMP_FORMAT = '%Y-%m-%d-%H_%M_%S.%f'
 
-EXPERIMENTS_DUMPS_DIR = Path('experiment_dumps')
-CONTEXTS_DIR_NAME = Path('sampled_contexts')
-
 EXP_TO_FNS = {
     SupportedExperiments.NO_TRANSFER: NoTransferExperiment,
     SupportedExperiments.WITH_TRANSFER: WithTransferExperiment,
@@ -92,7 +89,7 @@ class ExperimentsRunner:
 
     @staticmethod
     def load_or_sample_contexts(exp: Experiment, num_src_samples, num_tgt_samples, sample_seed: int):
-        contexts_file = (CONTEXTS_DIR_NAME / exp.cfg.env_name / exp.cfg.cspace_name /
+        contexts_file = (CONTEXTS_DIR / exp.cfg.env_name / exp.cfg.cspace_name /
                          f'src_samples={num_src_samples}__tgt_samples={num_tgt_samples}__seed={sample_seed}')
         try:
             with open(contexts_file, 'rb') as f:
