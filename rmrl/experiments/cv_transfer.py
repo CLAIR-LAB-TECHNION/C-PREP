@@ -33,6 +33,6 @@ class CVTransferExperiment(WithTransferExperiment):
         self._cur_fold = None
 
     @property
-    def logs_dir(self):
-        orig_dir = super().logs_dir
+    def exp_dump_dir(self):
+        orig_dir = super().exp_dump_dir
         return orig_dir if self._cur_fold is None else orig_dir / f'fold-{self._cur_fold}'
