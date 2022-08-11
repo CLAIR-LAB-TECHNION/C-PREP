@@ -18,6 +18,7 @@ SAMPLE_SEEDS = [BASE_SAMPLE_SEED * i for i in range(1, NUM_SAMPLE_SEEDS + 1)]
 
 LEARNING_RATES = [1e-4]  # [1 / (10 ** i) for i in range(1, 6)]
 BATCH_SIZES = [32]  # [2 ** i for i in range(3, 10)]
+GAMMA = [0.99]
 TOTAL_TIMESTEPS = 5e5
 DQN_EXPLORATION_FRACTIONS = [0.3]  # np.linspace(0, 1, 10).tolist()
 OUT_DIMS = [32]  # [16, 32, 64, 128, 256]
@@ -41,7 +42,7 @@ MAX_NO_IMPROVEMENT_EVALS = 10
 MIN_EVALS = 50
 
 # defaults for reward shaping
-DEFAULT_RS_GAMMA = 0.9
+DEFAULT_RS_GAMMA = 0.99
 DEFAULT_POT_FN = ValueIteration()
 
 # CV experiment defaults

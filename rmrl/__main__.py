@@ -63,6 +63,7 @@ def get_all_configurations(single_run_args_list):
         alg_kwargs = dict(
             learning_rate=run_args.learning_rate,
             batch_size=run_args.batch_size,
+            gamma=run_args.gamma
         )
 
         # alg-specific kwargs
@@ -198,6 +199,11 @@ def parse_args():
                                 type=int,
                                 nargs='*',
                                 default=BATCH_SIZES)
+    learning_group.add_argument('--gamma',
+                                help='discount factor for chosen RL algo',
+                                type=float,
+                                nargs='*',
+                                default=GAMMA)
     learning_group.add_argument('--timesteps',
                                 help='max number of timesteps for the trained agent',
                                 type=lambda x: int(float(x)),
