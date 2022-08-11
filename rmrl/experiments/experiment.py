@@ -1,27 +1,27 @@
 import pickle
 import time
+import warnings
 from abc import ABC, abstractmethod
 from functools import partial
 from typing import List, Type
 
 import stable_baselines3 as sb3
-from stable_baselines3.common.on_policy_algorithm import OnPolicyAlgorithm
-from stable_baselines3.common.off_policy_algorithm import OffPolicyAlgorithm
-from stable_baselines3.common.callbacks import EvalCallback, StopTrainingOnNoModelImprovement, CheckpointCallback
-from stable_baselines3.common.monitor import Monitor
-from stable_baselines3.common.vec_env import VecEnv, DummyVecEnv
-
 from rmrl.nn.models import RMFeatureExtractorSB
 from rmrl.reward_machines.rm_env import RMEnvWrapper
 from rmrl.utils.callbacks import TrueRewardRMEnvCallback, ProgressBarCallback
 from rmrl.utils.misc import sha3_hash
+from stable_baselines3.common.callbacks import EvalCallback, StopTrainingOnNoModelImprovement, CheckpointCallback
+from stable_baselines3.common.monitor import Monitor
+from stable_baselines3.common.off_policy_algorithm import OffPolicyAlgorithm
+from stable_baselines3.common.on_policy_algorithm import OnPolicyAlgorithm
+from stable_baselines3.common.vec_env import DummyVecEnv
 from .configurations import *
 
 
 class Experiment(ABC):
     def __init__(self, cfg: ExperimentConfiguration, total_timesteps=5e5,
                  log_interval=1, n_eval_episodes=100, eval_freq=1000, max_no_improvement_evals=10, min_evals=50,
-                 dump_dir=None, verbose=0,):
+                 dump_dir=None, verbose=0, ):
         self.cfg = cfg
         self.total_timesteps = total_timesteps
         self.log_interval = log_interval
@@ -46,6 +46,8 @@ class Experiment(ABC):
         fns_dict = RMENV_DICT[self.cfg.env][CONTEXT_SPACES_KEY][self.cfg.cspace]
         self.env_fn = fns_dict[ENV_KEY]
         self.rm_fn = fns_dict[RM_KEY]
+
+        self.env_kwargs = RMENV_DICT[self.cfg.env][ENV_KWARGS_KEY]
 
     def run(self, *contexts):
         train_envs = []
@@ -79,7 +81,7 @@ class Experiment(ABC):
         pass
 
     def get_experiment_env(self):
-        return self.env_fn(**self.cfg.env_kwargs)
+        return self.env_fn(**self.env_kwargs)
 
     def get_env_for_context(self, context):
         env = self.get_experiment_env()
@@ -92,7 +94,7 @@ class Experiment(ABC):
         return [self.get_env_for_context(c) for c in context_set]
 
     def get_single_env_for_context_set(self, context_set):
-        env = self.env_fn(**self.cfg.env_kwargs, change_task_on_reset=True)
+        env = self.env_fn(**self.env_kwargs, change_task_on_reset=True)
         env.set_fixed_contexts(context_set)
         env.reset()
 
@@ -121,8 +123,8 @@ class Experiment(ABC):
             features_extractor_kwargs=dict(embed_cur_state=Mods.AS in self.cfg,
                                            # TODO more generic call to grpt
                                            pretrained_gnn_path=f'grpt_model/{num_props}_props/gnn'
-                                                               if Mods.GECOUPT in self.cfg
-                                                               else None,
+                                           if Mods.GECOUPT in self.cfg
+                                           else None,
                                            **self.cfg.model_kwargs)
         )
 
@@ -137,14 +139,6 @@ class Experiment(ABC):
         )
 
     def get_agent_for_env(self, env, eval_env):
-        # save contexts on which the agent was trained.
-        # this marks the end of a successful training session
-        contexts = self.get_env_task(env)
-        task_context_path = self.saved_contexts_dir / self.get_env_task_name(env)
-        os.makedirs(task_context_path.parent, exist_ok=True)
-        with open(task_context_path, 'wb') as f:
-            pickle.dump(contexts, f)
-
         try:
             agent = self.load_agent_for_env(env)
         except FileNotFoundError:
@@ -162,7 +156,7 @@ class Experiment(ABC):
         return loaded_agent
 
     def get_env_task(self, env):
-        if isinstance(env, VecEnv):
+        if isinstance(env, DummyVecEnv):
             return [e.task for e in env.envs]
         else:
             return env.fixed_contexts
@@ -227,7 +221,7 @@ class Experiment(ABC):
 
     @property
     def saved_contexts_dir(self):
-        return self.exp_dump_dir / SAVED_CONTEXTS_DIR
+        return self.dump_dir / SAVED_CONTEXTS_DIR / self.cfg.env_name / self.cfg.cspace_name
 
     @classmethod
     def load_all_experiments_in_path(cls, path=None):
@@ -243,3 +237,40 @@ class Experiment(ABC):
     @property
     def label(self):
         return SupportedExperiments(self.__class__.__name__)
+
+    def load_or_sample_contexts(self):
+        num_src_samples = self.cfg.num_src_samples
+        num_tgt_samples = self.cfg.num_tgt_samples
+        contexts_file = (self.saved_contexts_dir /
+                         f'src_samples={num_src_samples}__'
+                         f'tgt_samples={num_tgt_samples}__'
+                         f'seed={self.cfg.seed}')
+        try:
+            with open(contexts_file, 'rb') as f:
+                src_contexts, tgt_contexts = pickle.load(f)
+        except (FileNotFoundError, EOFError):
+            # create env for sampling
+            env = self.get_experiment_env()
+
+            # set seed for constant sampling
+            env.seed(self.cfg.seed)
+
+            # sample contexts
+            num_samples = num_src_samples + num_tgt_samples
+            contexts = env.sample_task(num_samples * OVERSAMPLE_FACTOR)  # oversample
+            contexts = list(set(contexts))  # remove duplicates
+            contexts = contexts[:num_samples]  # reduce to desired number of
+
+            # check enough contexts
+            if len(contexts) < num_samples:
+                warnings.warn(f'wanted {num_samples} contexts for env {self.cfg.env_name} in context. '
+                              f'sampled {len(contexts)}')
+
+            src_contexts, tgt_contexts = contexts[:num_src_samples], contexts[num_src_samples:]
+
+            # save contexts
+            contexts_file.parent.mkdir(exist_ok=True, parents=True)
+            with open(contexts_file, 'wb') as f:
+                pickle.dump((src_contexts, tgt_contexts), f)
+
+        return src_contexts, tgt_contexts

@@ -12,9 +12,6 @@ from rmrl.reward_machines.potential_functions import ValueIteration
 NUM_SRC_SAMPLES = [10]
 NUM_TGT_SAMPLES = [1]
 OVERSAMPLE_FACTOR = 5
-NUM_SAMPLE_SEEDS = 5
-BASE_SAMPLE_SEED = 24
-SAMPLE_SEEDS = [BASE_SAMPLE_SEED * i for i in range(1, NUM_SAMPLE_SEEDS + 1)]
 
 LEARNING_RATES = [1e-4]  # [1 / (10 ** i) for i in range(1, 6)]
 BATCH_SIZES = [32]  # [2 ** i for i in range(3, 10)]
@@ -50,14 +47,13 @@ DEFAULT_NUM_TGT_SAMPLES_FOR_CV = 1
 
 # default directories
 EXPERIMENTS_DUMPS_DIR = Path('experiment_dumps/')
-CONTEXTS_DIR = Path('sampled_contexts/')
 PRETRAINED_GNN_DIR = Path('grpt_model/')
 
 MODELS_DIR = 'models'
 LOGS_DIR = 'logs'
 TB_LOG_DIR = 'tensorboard'
 EVAL_LOG_DIR = 'eval'
-SAVED_CONTEXTS_DIR = 'contexts'
+SAVED_CONTEXTS_DIR = 'sampled_contexts'
 
 # important dictionary keys for RMENV_Dict
 ENV_KEY = 'env'
@@ -170,6 +166,8 @@ class ExperimentConfiguration:
                  rm_kwargs: dict,
                  model_kwargs: dict,
                  alg_kwargs: dict,
+                 num_src_samples: int,
+                 num_tgt_samples: int,
                  seed: int):
         self.env = env
         self.cspace = cspace
@@ -178,9 +176,9 @@ class ExperimentConfiguration:
         self.rm_kwargs = rm_kwargs
         self.model_kwargs = model_kwargs
         self.alg_kwargs = alg_kwargs
+        self.num_src_samples = num_src_samples
+        self.num_tgt_samples = num_tgt_samples
         self.seed = seed
-
-        self.env_kwargs = RMENV_DICT[env][ENV_KWARGS_KEY]
 
     @property
     def env_name(self):
@@ -194,25 +192,13 @@ class ExperimentConfiguration:
     def all_kwargs(self):
         return dict(**self.rm_kwargs, **self.model_kwargs, **self.alg_kwargs)
 
-    def __contains__(self, item: Union[Mods, Algos]):
+    def __contains__(self, item):
         return (item in self.mods or  # item is a contained modification
                 item in [self.env, self.cspace, self.alg],  # item is one of the single values
-                item in self.all_kwargs.keys())
-
-    def __str__(self):
-        return f'underlying RL algorithm: {self.alg.value}\n' \
-               f'modifications: {", ".join(map(lambda m: m.value, self.mods))}\n' \
-               f'random seed: {self.seed}'
+                item in self.all_kwargs.items())
 
     def __repr__(self):
-        return CFG_VALS_SEP.join(self.__repr_value(n, v) for n, v in [('env', self.env),
-                                                                      ('cspace', self.cspace),
-                                                                      ('alg', self.alg),
-                                                                      ('mods', self.mods),
-                                                                      ('rm_kwargs', self.rm_kwargs),
-                                                                      ('alg_kwargs', self.alg_kwargs),
-                                                                      ('model_kwargs', self.model_kwargs),
-                                                                      ('seed', self.seed)])
+        return CFG_VALS_SEP.join(self.__repr_value(n, v) for n, v in vars(self).items())
 
     def __repr_value(self, name, value):
         rv = f'{name}{NAME_VALUE_SEP}'

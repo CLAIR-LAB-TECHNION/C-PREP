@@ -1,11 +1,12 @@
 import argparse
-from collections import OrderedDict
-from collections.abc import Iterable as IterableType
+import math
 import pprint
 import time
+from collections import OrderedDict
+from collections.abc import Iterable as IterableType
 from itertools import product
+
 from tqdm.auto import tqdm
-import math
 
 from rmrl.experiments.configurations import *
 from rmrl.experiments.runner import ExperimentsRunner
@@ -33,8 +34,8 @@ def main():
 
     # run all experiments
     runner = ExperimentsRunner(args.experiment, cfgs, args.timesteps, args.log_interval, args.n_eval_episodes,
-                               args.eval_freq, args.max_no_improvement_evals, args.min_evals, args.sample_seed,
-                               args.num_src_samples, args.num_tgt_samples, args.num_workers, args.verbose)
+                               args.eval_freq, args.max_no_improvement_evals, args.min_evals, args.num_src_samples,
+                               args.num_tgt_samples, args.num_workers, args.verbose)
     print(f'running {runner.num_runs} experiments')
     if args.count_only:
         exit()
@@ -83,12 +84,14 @@ def get_all_configurations(single_run_args_list):
         cfg = ExperimentConfiguration(
             env=run_args.env,
             cspace=run_args.context,
-            seed=run_args.seed,
             alg=run_args.alg,
             mods=run_args.mods,
             rm_kwargs=rm_kwargs,
             model_kwargs=model_kwargs,
-            alg_kwargs=alg_kwargs
+            alg_kwargs=alg_kwargs,
+            num_src_samples=run_args.num_src_samples,
+            num_tgt_samples=run_args.num_tgt_samples,
+            seed=run_args.seed
         )
 
         if repr(cfg) not in unique_cfgs_map:
@@ -96,13 +99,15 @@ def get_all_configurations(single_run_args_list):
 
     return list(unique_cfgs_map.values())
 
+
 def get_single_run_args_list(args):
     args_dict = vars(args)
     iterable_args_dict = OrderedDict(filter(lambda kv: isinstance(kv[1], IterableType), args_dict.items()))
     single_value_args_dict = {k: v for k, v in args_dict.items() if k not in iterable_args_dict}
 
     single_run_args_dict_items_set = set()
-    for subset_v in tqdm(product(*iterable_args_dict.values()), total=math.prod(map(len, iterable_args_dict.values()))):
+    for subset_v in tqdm(product(*iterable_args_dict.values()), total=math.prod(map(len, iterable_args_dict.values())),
+                         desc='collecting configurations'):
         d = dict(zip(iterable_args_dict.keys(), subset_v))
         d.update(single_value_args_dict)
 
@@ -155,11 +160,6 @@ def parse_args():
                            type=int,
                            nargs='*',
                            default=SEEDS)
-    exp_group.add_argument('--sample_seed',
-                           help='random seed for context sampling',
-                           type=int,
-                           nargs='*',
-                           default=SAMPLE_SEEDS)
     exp_group.add_argument('--num_src_samples',
                            help='the number of samples in the source contexts set',
                            type=int,
