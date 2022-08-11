@@ -1,7 +1,11 @@
 import argparse
+from collections import OrderedDict
+from collections.abc import Iterable as IterableType
 import pprint
 import time
 from itertools import product
+from tqdm.auto import tqdm
+import math
 
 from rmrl.experiments.configurations import *
 from rmrl.experiments.runner import ExperimentsRunner
@@ -22,7 +26,8 @@ def main():
     # set up experiment configurations
     print('collecting experiment configurations')
     start = time.time()
-    cfgs = get_all_configurations(args)
+    single_run_args_list = get_single_run_args_list(args)
+    cfgs = get_all_configurations(single_run_args_list)
     end = time.time()
     print(f'collect configurations execution time {end - start}\n')
 
@@ -40,133 +45,82 @@ def main():
     print(f'all experiments execution time {end - start}\n')
 
 
-def get_all_configurations(args):
-    cfgs = []
-
-    for (
-            env,
-            context,
-            seed,
-            alg,
-            mods,
-            learning_rate,
-            batch_size,
-            goal_state_reward,
-            grid_resolution,
-            fuel_resolution,
-            ofe_hidden_dims,
-            ofe_out_dim,
-            gnn_hidden_dims,
-            gnn_out_dim,
-            gnn_agg,
-    ) in iterate_arg_combinations(args):
-        # prepare special kwargs
+def get_all_configurations(single_run_args_list):
+    unique_cfgs_map = {}
+    for run_args in single_run_args_list:
         rm_kwargs = dict(
-            goal_state_reward=goal_state_reward,
-            grid_resolution=grid_resolution,
-            fuel_resolution=fuel_resolution
+            goal_state_reward=run_args.goal_state_reward,
+            grid_resolution=run_args.grid_resolution,
+            fuel_resolution=run_args.fuel_resolution
         )
         model_kwargs = dict(
-            ofe_hidden_dims=ofe_hidden_dims,
-            ofe_out_dim=ofe_out_dim,
-            gnn_hidden_dims=gnn_hidden_dims,
-            gnn_out_dim=gnn_out_dim,
-            gnn_agg=gnn_agg
+            ofe_hidden_dims=run_args.ofe_hidden_dims,
+            ofe_out_dim=run_args.ofe_out_dim,
+            gnn_hidden_dims=run_args.gnn_hidden_dims,
+            gnn_out_dim=run_args.gnn_out_dim,
+            gnn_agg=run_args.gnn_agg
         )
         alg_kwargs = dict(
-            learning_rate=learning_rate,
-            batch_size=batch_size,
+            learning_rate=run_args.learning_rate,
+            batch_size=run_args.batch_size,
         )
 
-        # handle algorithm-specific kwargs
-        alg_specific_kwargs_list = []
-        if alg in OFF_POLICY_ALGOS:
-            for learning_starts in args.off_policy_learning_starts:
-                for train_freq in args.off_policy_train_freq:
-                    if args.off_policy_train_freq_episodes:
-                        train_freq = (train_freq, 'episode')
-                    for gradient_steps in args.off_policy_gradient_steps:
-                        if alg == Algos.DQN:
-                            for exploration_fraction in args.dqn_exploration_fraction:
-                                specific_kwargs = alg_kwargs.copy()
-                                specific_kwargs.update(dict(
-                                    learning_starts=learning_starts,
-                                    train_freq=train_freq,
-                                    gradient_steps=gradient_steps,
-                                    exploration_fraction=exploration_fraction
-                                ))
-                                alg_specific_kwargs_list.append(specific_kwargs)
-                        else:
-                            specific_kwargs = alg_kwargs.copy()
-                            specific_kwargs.update(dict(
-                                learning_starts=learning_starts,
-                                train_freq=train_freq,
-                                gradient_steps=gradient_steps
-                            ))
-                            alg_specific_kwargs_list.append(specific_kwargs)
-        elif alg in ON_POLICY_ALGOS:
-            for n_steps in args.on_policy_n_steps:
-                specific_kwargs = alg_kwargs.copy()
-                specific_kwargs.update(dict(
-                    n_steps=n_steps
-                ))
-                alg_specific_kwargs_list.append(specific_kwargs)
+        # alg-specific kwargs
+        if 'off_policy_learning_starts' in run_args:
+            alg_kwargs['learning_starts'] = run_args.off_policy_learning_starts
+        if 'off_policy_train_freq' in run_args:
+            alg_kwargs['train_freq'] = run_args.off_policy_train_freq
+        if 'off_policy_train_freq_episodes' in run_args:
+            alg_kwargs['train_freq_episodes'] = run_args.off_policy_train_freq_episodes
+        if 'off_policy_gradient_steps' in run_args:
+            alg_kwargs['gradient_steps'] = run_args.off_policy_gradient_steps
+        if 'on_policy_n_steps' in run_args:
+            alg_kwargs['n_steps'] = run_args.on_policy_n_steps
+        if 'dqn_exploration_fraction' in run_args:
+            alg_kwargs['exploration_fraction'] = run_args.dqn_exploration_fraction
 
-        cfgs.extend([
-            ExperimentConfiguration(
-                env=env,
-                cspace=context,
-                seed=seed,
-                alg=alg,
-                mods=mods,
-                rm_kwargs=rm_kwargs,
-                model_kwargs=model_kwargs,
-                alg_kwargs=alg_specific_kwargs
-            )
-            for alg_specific_kwargs in alg_specific_kwargs_list
-        ])
+        cfg = ExperimentConfiguration(
+            env=run_args.env,
+            cspace=run_args.context,
+            seed=run_args.seed,
+            alg=run_args.alg,
+            mods=run_args.mods,
+            rm_kwargs=rm_kwargs,
+            model_kwargs=model_kwargs,
+            alg_kwargs=alg_kwargs
+        )
 
-    return cfgs
+        if repr(cfg) not in unique_cfgs_map:
+            unique_cfgs_map[repr(cfg)] = cfg
 
+    return list(unique_cfgs_map.values())
 
-def iterate_arg_combinations(args):
-    return product(
-        args.env,
-        args.context,
-        args.seed,
-        args.alg,
-        args.mods,
-        args.learning_rate,
-        args.batch_size,
-        args.goal_state_reward,
-        args.grid_resolution,
-        args.fuel_resolution,
-        args.ofe_hidden_dims,
-        args.ofe_out_dim,
-        args.gnn_hidden_dims,
-        args.gnn_out_dim,
-        args.gnn_agg,
-    )
+def get_single_run_args_list(args):
+    args_dict = vars(args)
+    iterable_args_dict = OrderedDict(filter(lambda kv: isinstance(kv[1], IterableType), args_dict.items()))
+    single_value_args_dict = {k: v for k, v in args_dict.items() if k not in iterable_args_dict}
 
+    single_run_args_dict_items_set = set()
+    for subset_v in tqdm(product(*iterable_args_dict.values()), total=math.prod(map(len, iterable_args_dict.values()))):
+        d = dict(zip(iterable_args_dict.keys(), subset_v))
+        d.update(single_value_args_dict)
 
-def get_config_count(args):
-    return (
-            len(args.env) *
-            len(args.context) *
-            len(args.seed) *
-            len(args.alg) *
-            len(args.mods) *
-            len(args.learning_rate) *
-            len(args.batch_size) *
-            len(args.goal_state_reward) *
-            len(args.grid_resolution) *
-            len(args.fuel_resolution) *
-            len(args.ofe_hidden_dims) *
-            len(args.ofe_out_dim) *
-            len(args.gnn_hidden_dims) *
-            len(args.gnn_out_dim) *
-            len(args.gnn_agg)
-    )
+        alg = d['alg']
+        if alg not in OFF_POLICY_ALGOS:
+            d.pop('off_policy_learning_starts')
+            d.pop('off_policy_train_freq')
+            d.pop('off_policy_train_freq_episodes')
+            d.pop('off_policy_gradient_steps')
+        elif alg not in ON_POLICY_ALGOS:
+            d.pop('on_policy_n_steps')
+        if alg != Algos.DQN:
+            d.pop('dqn_exploration_fraction')
+
+        hashable_d = tuple((k, tuple(v)) if isinstance(v, Iterable) else (k, v) for k, v in d.items())
+        if hashable_d not in single_run_args_dict_items_set:
+            single_run_args_dict_items_set.add(hashable_d)
+
+    return [argparse.Namespace(**dict(d_items)) for d_items in single_run_args_dict_items_set]
 
 
 def parse_args():
@@ -378,13 +332,6 @@ def parse_args():
         args.gnn_hidden_dims = HIDDEN_DIMS
 
     return args
-
-
-# def split_group_args(parser, args):
-#     group_args = []
-#     for group in parser._action_groups:
-#         group_dict = {a.dest: getattr(args, a.dest, None) for a in group._group_actions}
-#         arg_groups[group.title] = argparse.Namespace(**group_dict)
 
 
 if __name__ == '__main__':

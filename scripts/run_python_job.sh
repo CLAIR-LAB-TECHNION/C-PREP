@@ -4,14 +4,14 @@
 # Parameters for sbatch
 #
 NUM_NODES=1
-NUM_CORES=2
-NUM_GPUS=$1
-JOB_NAME="rmrl_exp"
+NUM_CORES=$2
+NUM_GPUS=$3
+JOB_NAME=$1
 MAIL_USER="guy.azran@campus.technion.ac.il"
 MAIL_TYPE=ALL # Valid values are NONE, BEGIN, END, FAIL, REQUEUE, ALL
 
 # move num gpus argument
-shift
+shift 3
 
 ###
 # Conda parameters
@@ -26,8 +26,8 @@ sbatch \
 	--job-name $JOB_NAME \
 	--mail-user $MAIL_USER \
 	--mail-type $MAIL_TYPE \
-	-o 'slurm-%N-%j.out' \
-	-e 'slurm-%N-%j.err' \
+	-o 'slurm-${JOB_NAME}-%N-%j.out' \
+	-e 'slurm-${JOB_NAME}-%N-%j.err' \
 <<EOF
 #!/bin/bash
 echo "*** SLURM BATCH JOB '$JOB_NAME' STARTING ***"

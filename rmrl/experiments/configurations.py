@@ -9,10 +9,10 @@ from rmrl.nn.models import cur_state_embedding
 from rmrl.reward_machines.potential_functions import ValueIteration
 
 # data constants and options
-NUM_SRC_SAMPLES = [10]  # 500
+NUM_SRC_SAMPLES = [10]
 NUM_TGT_SAMPLES = [1]
 OVERSAMPLE_FACTOR = 5
-NUM_SAMPLE_SEEDS = 10
+NUM_SAMPLE_SEEDS = 5
 BASE_SAMPLE_SEED = 24
 SAMPLE_SEEDS = [BASE_SAMPLE_SEED * i for i in range(1, NUM_SAMPLE_SEEDS + 1)]
 
@@ -24,9 +24,9 @@ OUT_DIMS = [32]  # [16, 32, 64, 128, 256]
 HIDDEN_DIMS = [[32, 32]]  # list(set(tuple(sorted(hd)) for hd in powerset(OUT_DIMS, max_subset_len=2)))
 NODE_AGGS = [cur_state_embedding]  # [ignore_state_mean, cur_state_embedding]
 GOAL_STATE_REWARDS = [1]
-GRID_RESOLUTIONS = [None, (2, 2), (1, 1)]
-FUEL_RESOLUTIONS = [None]  # TODO update fuel resolutions
-NUM_SEEDS = 10
+GRID_RESOLUTIONS = [None]
+FUEL_RESOLUTIONS = [None]
+NUM_SEEDS = 6
 BASE_SEED = 42
 SEEDS = [BASE_SEED * i for i in range(1, NUM_SEEDS + 1)]
 ON_POLICY_N_STEPS = [1024]
