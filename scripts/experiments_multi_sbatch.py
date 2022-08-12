@@ -26,7 +26,7 @@ def main():
     job_threads = []
     for i, run_args in enumerate(single_run_args_list, 1):
         # prepare args for job
-        popen_args = f'scripts/slurm_job_run.sh rmrl_exp_{i} 2 0 -m rmrl'.split()
+        popen_args = f'scripts/slurm_job_run.sh rmrl_exp_{i} 2 0 python -m rmrl'.split()
         for arg_name, arg_val in vars(run_args).items():
             if arg_val is None:
                 continue  # omit arg and use default
