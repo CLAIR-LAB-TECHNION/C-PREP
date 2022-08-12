@@ -23,6 +23,7 @@ def main():
         sem.release()  # release semaphore and allow new job to be run
         all_jobs_pbar.update()  # update pbar that one job is complete
 
+    job_threads = []
     for i, run_args in enumerate(single_run_args_list, 1):
         # prepare args for job
         popen_args = f'scripts/run_python_job.sh rmrl_exp_{i} 2 0 -m rmrl'.split()
@@ -33,7 +34,12 @@ def main():
 
         # run job
         sem.acquire()  # stop at semaphore if number of jobs is at maximum
-        popen_and_call(on_job_end, popen_args)
+        t = popen_and_call(on_job_end, popen_args)
+        job_threads.append(t)
+
+    # wait for all jobs to complete
+    for t in job_threads:
+        t.join()
 
     all_jobs_pbar.close()
 
