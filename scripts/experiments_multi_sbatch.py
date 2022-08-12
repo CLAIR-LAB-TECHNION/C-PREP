@@ -28,7 +28,7 @@ def main():
         # prepare args for job
         popen_args = f'scripts/slurm_job_run.sh rmrl{i} 2 0 python -m rmrl'.split()
         for arg_name, arg_val in vars(run_args).items():
-            if arg_val is None:
+            if arg_val is None or arg_val is False:
                 continue  # omit arg and use default
             popen_args += [f'--{arg_name}'] + __prep_arg(arg_val)
 
