@@ -1,4 +1,5 @@
 #!/bin/bash
+
 echo "*** SLURM BATCH JOB '$JOB_NAME' STARTING ***"
 
 # Setup the conda env

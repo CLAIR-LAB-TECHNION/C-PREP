@@ -4,7 +4,7 @@
 # Parameters for sbatch
 #
 COMMAND=$1  # valid values are srun, sbatch
-JOB_NAME=$2
+export JOB_NAME=$2
 NUM_NODES=1
 NUM_CORES=$3
 NUM_GPUS=$4
@@ -17,8 +17,12 @@ shift 4
 ###
 # Conda parameters
 #
-CONDA_HOME=$HOME/miniconda3
-CONDA_ENV=rmrl
+export CONDA_HOME=$HOME/miniconda3
+export CONDA_ENV=rmrl
+
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
+mkdir -p slurm_logs
 
 $COMMAND \
 	-N $NUM_NODES \
@@ -27,7 +31,7 @@ $COMMAND \
 	--job-name $JOB_NAME \
 	--mail-user $MAIL_USER \
 	--mail-type $MAIL_TYPE \
-	-o 'slurm-'"${JOB_NAME}"'-%N-%j.out' \
-	-e 'slurm-'"${JOB_NAME}"'-%N-%j.err' \
-	$@
+	-o 'slurm_logs/'"${JOB_NAME}"'-%N-%j.out' \
+	-e 'slurm_logs/'"${JOB_NAME}"'-%N-%j.err' \
+	$SCRIPT_DIR/slurm_script.sh $@
 
