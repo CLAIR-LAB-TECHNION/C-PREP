@@ -26,8 +26,8 @@ sbatch \
 	--job-name $JOB_NAME \
 	--mail-user $MAIL_USER \
 	--mail-type $MAIL_TYPE \
-	-o 'slurm-${JOB_NAME}-%N-%j.out' \
-	-e 'slurm-${JOB_NAME}-%N-%j.err' \
+	-o 'slurm-'"${JOB_NAME}"'-%N-%j.out' \
+	-e 'slurm-'"${JOB_NAME}"'-%N-%j.err' \
 <<EOF
 #!/bin/bash
 echo "*** SLURM BATCH JOB '$JOB_NAME' STARTING ***"
