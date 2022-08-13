@@ -101,14 +101,16 @@ class Experiment(ABC):
         return env
 
     def env_to_rm_env(self, env, is_eval=False):
-        # create RM and reshape rewards
-        rm = self.rm_fn(env, **self.cfg.rm_kwargs)
-        pots = self.pot_fn(rm, self.rs_gamma)
-        rm.reshape_rewards(pots, self.rs_gamma)
+        def rm_fn_with_rs(env):
+            # create RM and reshape rewards
+            rm = self.rm_fn(env, **self.cfg.rm_kwargs)
+            pots = self.pot_fn(rm, self.rs_gamma)
+            rm.reshape_rewards(pots, self.rs_gamma)
+            return rm
 
         # init env with RM support
         rm_env = RMEnvWrapper(env=env,
-                              rm_fn=lambda e: self.rm_fn(e, **self.cfg.rm_kwargs),
+                              rm_fn=rm_fn_with_rs,
                               rm_observations=Mods.GECO in self.cfg,
                               use_rm_reward=Mods.RS in self.cfg and not is_eval)  # use orig rewards for eval
 
