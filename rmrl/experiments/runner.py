@@ -69,15 +69,19 @@ class ExperimentsRunner:
 
     @staticmethod
     def run_exp_with_args(exp):
-        c_src, c_tgt = exp.load_or_sample_contexts()
-        if exp.label == SupportedExperiments.NO_TRANSFER:
-            exp.run(c_tgt)
-        elif exp.label == SupportedExperiments.WITH_TRANSFER:
-            exp.run(c_src, c_tgt)
-        elif exp.label == SupportedExperiments.CV_TRANSFER:
-            exp.run(c_src + c_tgt)
-        else:
-            raise NotImplementedError(f'unsupported experiment label {exp.label.value}')
+        try:
+            c_src, c_tgt = exp.load_or_sample_contexts()
+            if exp.label == SupportedExperiments.NO_TRANSFER:
+                exp.run(c_tgt)
+            elif exp.label == SupportedExperiments.WITH_TRANSFER:
+                exp.run(c_src, c_tgt)
+            elif exp.label == SupportedExperiments.CV_TRANSFER:
+                exp.run(c_src + c_tgt)
+            else:
+                raise NotImplementedError(f'unsupported experiment label {exp.label.value}')
+        except:
+            open(exp.exp_dump_dir / 'FAIL', 'w').close()
+            raise
 
     @property
     def num_runs(self):
