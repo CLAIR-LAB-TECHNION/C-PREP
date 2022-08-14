@@ -6,6 +6,7 @@ from tensorboard.backend.event_processing import event_accumulator
 from .configurations import SupportedExperiments
 from .experiment import Experiment
 
+TRANSFER_FROM_MIDFIX = '_transfer_from_'
 
 class WithTransferExperiment(Experiment):
     def _run(self, envs, eval_envs):
@@ -22,7 +23,7 @@ class WithTransferExperiment(Experiment):
         # get task name
         src_task_name = self.get_env_task_name(src_env)
         tgt_task_name = self.get_env_task_name(tgt_env)
-        tsf_task_name = f'{tgt_task_name}_transfer_from_{src_task_name}'
+        tsf_task_name = f'{tgt_task_name}{TRANSFER_FROM_MIDFIX}{src_task_name}'
 
         try:
             tsf_agent = self.load_agent_for_task(tsf_task_name, tgt_env)

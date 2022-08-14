@@ -1,5 +1,6 @@
 from enum import Enum
 import os
+import pprint
 from pathlib import Path
 from typing import Iterable, Union
 
@@ -196,6 +197,9 @@ class ExperimentConfiguration:
         return (item in self.mods or  # item is a contained modification
                 item in [self.env, self.cspace, self.alg],  # item is one of the single values
                 item in self.all_kwargs.items())
+
+    def __str__(self):
+        return pprint.pformat(vars(self), indent=2)
 
     def __repr__(self):
         return CFG_VALS_SEP.join(self.__repr_value(n, v) for n, v in vars(self).items())
