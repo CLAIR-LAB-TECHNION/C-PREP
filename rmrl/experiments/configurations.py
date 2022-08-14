@@ -1,8 +1,8 @@
-from enum import Enum
 import os
 import pprint
+from enum import Enum
 from pathlib import Path
-from typing import Iterable, Union
+from typing import Iterable
 
 from rmrl.envs.grid.reward_machines.single_taxi import TaxiEnvRM
 from rmrl.envs.grid.single_taxi import fixed_entities_env, changing_map_env
@@ -155,7 +155,7 @@ ALL_ENUM_CFGS = [
 
 NAME_VALUE_SEP = '-'
 MULTI_VAL_SEP = ','
-CFG_VALS_SEP = '/'
+CFG_VALS_SEP = os.path.sep
 
 
 class ExperimentConfiguration:
@@ -217,7 +217,7 @@ class ExperimentConfiguration:
             return rv + '(' + MULTI_VAL_SEP.join(f'({self.__repr_value(k, v)})' for k, v in value.items()) + ')'
         elif isinstance(value, list) or isinstance(value, tuple) or isinstance(value, set):
             return rv + '(' + MULTI_VAL_SEP.join(self.__repr_value(str(i), v).split("-", 1)[-1]
-                                       for i, v in enumerate(value)) + ')'
+                                                 for i, v in enumerate(value)) + ')'
         else:
             return rv + str(value)
 
@@ -255,7 +255,7 @@ class ExperimentConfiguration:
             inner_list = []
             list_vals = value[1:-1]
             for v in list_vals.split(MULTI_VAL_SEP):
-                inner_list.append(cls.__get_repr_concrete_value(v,))
+                inner_list.append(cls.__get_repr_concrete_value(v, ))
             kwargs[name] = inner_list
         else:
             kwargs[name] = cls.__get_repr_concrete_value(value)

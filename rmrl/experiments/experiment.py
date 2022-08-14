@@ -40,7 +40,7 @@ class Experiment(ABC):
         self.pot_fn = cfg.rm_kwargs.pop('pot_fn', DEFAULT_POT_FN)
 
         # get algorithm class
-        self.alg_class: Union[Type[OnPolicyAlgorithm], Type[OffPolicyAlgorithm]] = getattr(sb3, cfg.alg.value)
+        self.alg_class = getattr(sb3, cfg.alg.value)
 
         # get env and RM functions
         fns_dict = RMENV_DICT[self.cfg.env][CONTEXT_SPACES_KEY][self.cfg.cspace]
