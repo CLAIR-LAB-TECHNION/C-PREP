@@ -57,5 +57,7 @@ class ProgressBarCallback(BaseCallback):
     def _on_step(self) -> bool:
         self.pbar.update(self.model.n_envs)
 
+        return True
+
     def _on_training_end(self) -> None:
         self.pbar.close()
