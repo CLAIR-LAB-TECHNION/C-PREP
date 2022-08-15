@@ -1,12 +1,7 @@
 #!/bin/bash
 
-FILES=$(find . -name "chkp_*")
 
-for f in $FILES; do
-  with_zip=${f##*chkp_}
-  num=$(cut -d '_' -f 1 <<< "$with_zip")
-  rem=$(($num % $1))
-  if [ $rem -ne 0 ]; then
-    rm $f
-  fi
-done
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
+find . -type f -name "chkp_*" -exec $SCRIPT_DIR/single_checkpoint_handle.sh $1 {} \;
+
