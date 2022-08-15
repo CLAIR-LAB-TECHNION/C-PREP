@@ -21,7 +21,7 @@ from .configurations import *
 class Experiment(ABC):
     def __init__(self, cfg: ExperimentConfiguration, total_timesteps=5e5,
                  log_interval=1, n_eval_episodes=100, eval_freq=1000, max_no_improvement_evals=10, min_evals=50,
-                 dump_dir=None, verbose=0, ):
+                 chkp_freq=None, dump_dir=None, verbose=0):
         self.cfg = cfg
         self.total_timesteps = total_timesteps
         self.log_interval = log_interval
@@ -29,6 +29,7 @@ class Experiment(ABC):
         self.eval_freq = eval_freq
         self.max_no_improvement_evals = max_no_improvement_evals
         self.min_evals = min_evals
+        self.chkp_freq = chkp_freq
         self.dump_dir = Path(dump_dir or '.')
         self.verbose = verbose
 
@@ -187,16 +188,22 @@ class Experiment(ABC):
                                      log_path=self.eval_log_dir / task_name,
                                      best_model_save_path=self.models_dir / task_name,
                                      verbose=self.verbose)
-        checkpoint_callback = CheckpointCallback(save_freq=self.eval_freq,
-                                                 save_path=self.models_dir / task_name / 'checkpoints',
-                                                 name_prefix='chkp',
-                                                 verbose=self.verbose)
+
+        callbacks = [true_reward_callback, pb_callback, eval_callback]
+
+        # add checkpoint callback if requested
+        if self.chkp_freq is not None:
+            checkpoint_callback = CheckpointCallback(save_freq=self.chkp_freq,
+                                                     save_path=self.models_dir / task_name / 'checkpoints',
+                                                     name_prefix='chkp',
+                                                     verbose=self.verbose + 1)  # they check verbose > 1 here
+            callbacks.append(checkpoint_callback)
 
         # train agent
         print(f'training agent for task {task_name}')
         return agent.learn(
             total_timesteps=self.total_timesteps,
-            callback=[true_reward_callback, pb_callback, eval_callback, checkpoint_callback],
+            callback=callbacks,
             log_interval=self.log_interval,
             tb_log_name=task_name,
         )

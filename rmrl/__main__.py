@@ -34,8 +34,8 @@ def main():
 
     # run all experiments
     runner = ExperimentsRunner(args.experiment, cfgs, args.timesteps, args.log_interval, args.n_eval_episodes,
-                               args.eval_freq, args.max_no_improvement_evals, args.min_evals, args.num_src_samples,
-                               args.num_tgt_samples, args.num_workers, args.verbose)
+                               args.eval_freq, args.max_no_improvement_evals, args.min_evals, args.chkp_freq,
+                               args.num_workers, args.verbose)
     print(f'running {runner.num_runs} experiments')
     if args.count_only:
         exit()
@@ -317,6 +317,9 @@ def parse_args():
                                 '--max_no_improvement_evals argument',
                            type=int,
                            default=MIN_EVALS)
+    log_group.add_argument('--chkp_freq',
+                           help='the frequency in which checkpoint models are saved (in steps)',
+                           type=lambda x: int(float(x)))
 
     # technical params
     tech_group = parser.add_argument_group('technical configurations')
