@@ -31,6 +31,7 @@ $COMMAND \
 	--job-name $JOB_NAME \
 	--mail-user $MAIL_USER \
 	--mail-type $MAIL_TYPE \
+	--nodelist socrates,newton9,lambda4 \
 	-o 'slurm_logs/'"${JOB_NAME}"'-%N-%j.out' \
 	-e 'slurm_logs/'"${JOB_NAME}"'-%N-%j.err' \
 	$SCRIPT_DIR/slurm_script.sh $@
