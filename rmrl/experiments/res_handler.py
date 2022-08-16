@@ -122,7 +122,7 @@ class ResultsHandler:
         path_to_idx = self.__filter_out_unconstrained(path_to_idx, cfg_constraints)
 
         all_res = self.get_path_results(path_to_idx, cfg_idx_to_path, gamma)
-        self.plot_compare_evals(
+        self.__plot_compare_evals(
             src_evals={k: v[SRC_KEY] for k, v in all_res.items()},
             tgt_evals={k: v[TGT_KEY] for k, v in all_res.items()},
             tsf_evals={k: v[TSF_KEY] for k, v in all_res.items()},
@@ -140,9 +140,9 @@ class ResultsHandler:
 
         plt.show()
 
-    def plot_compare_evals(self, src_evals, tgt_evals, tsf_evals, l_bound, u_bound, show_src_scratch, show_tgt_scratch,
-                           show_tgt_transfer, src_xlim, tgt_xlim, plt_kwargs, record_median=False, with_deviation=False,
-                           axes=None):
+    def __plot_compare_evals(self, src_evals, tgt_evals, tsf_evals, l_bound, u_bound, show_src_scratch, show_tgt_scratch,
+                             show_tgt_transfer, src_xlim, tgt_xlim, plt_kwargs, record_median=False, with_deviation=False,
+                             axes=None):
         if axes is None:
             _, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 7))
         else:
@@ -159,7 +159,7 @@ class ResultsHandler:
             ax1.axhline(l_bound, ls='--')
 
         if show_src_scratch:
-            self.plot_evals(src_evals, plt_kwargs, record_median=record_median, with_deviation=with_deviation, ax=ax1)
+            self.__plot_evals(src_evals, plt_kwargs, record_median=record_median, with_deviation=with_deviation, ax=ax1)
             ax1.set_xlim(src_xlim)
             ax1.legend()
 
@@ -171,16 +171,16 @@ class ResultsHandler:
         if l_bound is not None:
             ax2.axhline(l_bound, ls='--')
         if show_tgt_scratch:
-            self.plot_evals(tgt_evals, plt_kwargs, record_median=record_median, with_deviation=with_deviation, ax=ax2)
+            self.__plot_evals(tgt_evals, plt_kwargs, record_median=record_median, with_deviation=with_deviation, ax=ax2)
         if show_tgt_transfer:
-            self.plot_evals(tsf_evals, plt_kwargs, is_transfer=True, record_median=record_median,
-                            with_deviation=with_deviation, ax=ax2)
+            self.__plot_evals(tsf_evals, plt_kwargs, is_transfer=True, record_median=record_median,
+                              with_deviation=with_deviation, ax=ax2)
 
         if show_tgt_scratch or show_tgt_transfer:
             ax2.set_xlim(tgt_xlim)
             ax2.legend()
 
-    def plot_evals(self, evals, plt_kwargs, is_transfer=False, record_median=False,  with_deviation=False, ax=None):
+    def __plot_evals(self, evals, plt_kwargs, is_transfer=False, record_median=False, with_deviation=False, ax=None):
         if isinstance(plt_kwargs, dict):
             plt_kwargs = [plt_kwargs.copy() for _ in range(len(evals))]
 
@@ -191,10 +191,10 @@ class ResultsHandler:
             if is_transfer:
                 if 'ls' not in kwargs and 'linestyle' not in kwargs:
                     kwargs['ls'] = '-.'
-            self.plot_single_eval(npz, k, record_median=record_median, with_deviation=with_deviation, ax=ax, **kwargs)
+            self.__plot_single_eval(npz, k, record_median=record_median, with_deviation=with_deviation, ax=ax, **kwargs)
 
-    def plot_single_eval(self, res_dict, eval_key=None, record_median=False, with_deviation=False,
-                         ax=None, **plt_kwargs):
+    def __plot_single_eval(self, res_dict, eval_key=None, record_median=False, with_deviation=False,
+                           ax=None, **plt_kwargs):
         if ax is None:
             _, ax = plt.subplots(1, 1, figsize=(10, 7))
 
@@ -294,6 +294,18 @@ class ResultsHandler:
         # TODO
         pass
 
+    def print_experiments(self, exp_agg_type=None, cfg_constraints=None):
+        if exp_agg_type is None:
+            self.print_all_experiments(cfg_constraints)
+        elif exp_agg_type == "seed":
+            self.print_seed_agg_experiments(cfg_constraints)
+        elif exp_agg_type == "fold":
+            self.print_fold_agg_experiments(cfg_constraints)
+        elif exp_agg_type == "fold_and_seed":
+            self.print_fold_and_seed_agg_experiments(cfg_constraints)
+        else:
+            raise ValueError(f'bad agg type "{exp_agg_type}". can be None, "seed", "fold", or "fold_and_seed"')
+
     def print_all_experiments(self, cfg_constraints=None):
         self.__print_exp_dict(self.exp_obj_dict, self.exp_path_dict, cfg_constraints)
 
@@ -308,9 +320,10 @@ class ResultsHandler:
                               cfg_constraints)
 
     def __print_exp_dict(self, d, cfg_idx_to_path, cfg_constraints=None):
+        d = dict(filter(lambda kv: all(self.__check_cfg_constraints_for_exp(exp, cfg_constraints) for exp in kv[1]),
+                        d.items()))
+        print(f'num experiments: {len(d)}')
         for i, exp_list in d.items():
-            if not all(self.__check_cfg_constraints_for_exp(exp, cfg_constraints) for exp in exp_list):
-                continue
             print(f'{i}: {cfg_idx_to_path[i]}')
             print()
 
