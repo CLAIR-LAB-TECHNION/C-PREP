@@ -119,7 +119,7 @@ class ResultsHandler:
 
                 # filter experiments according to constraints
 
-        path_to_idx = self.__filter_out_unconstrained(path_to_idx, self.exp_obj_dict, cfg_constraints)
+        path_to_idx = self.__filter_out_unconstrained(path_to_idx, cfg_constraints)
 
         all_res = self.get_path_results(path_to_idx, cfg_idx_to_path, gamma)
         self.plot_compare_evals(
@@ -308,30 +308,49 @@ class ResultsHandler:
                               cfg_constraints)
 
     def __print_exp_dict(self, d, cfg_idx_to_path, cfg_constraints=None):
-        for i, exp in d.items():
-            if not self.__check_cfg_constraints(exp, cfg_constraints):
+        for i, exp_list in d.items():
+            if not all(self.__check_cfg_constraints_for_exp(exp, cfg_constraints) for exp in exp_list):
                 continue
             print(f'{i}: {cfg_idx_to_path[i]}')
             print()
 
-    @staticmethod
-    def __check_cfg_constraints(exp, constraints):
+    @classmethod
+    def __check_cfg_constraints_for_exp(cls, exp, constraints):
         if not constraints:
             return True
 
-        if isinstance(constraints, list):
-            return any(all(getattr(exp.cfg, k) == v for k, v in constraints_dict.items())
-                       for constraints_dict in constraints)
+        if not isinstance(constraints, list):
+            constraints = [constraints]
 
-        return all(getattr(exp.cfg, k) == v for k, v in constraints.items())
+        return any(cls.__check_single_cfg_constraint_for_cfg(vars(exp.cfg), constraints_dict)
+                   for constraints_dict in constraints)
 
     @classmethod
-    def __filter_out_unconstrained(cls, path_to_idx_d, idx_to_obj_d, constraints):
+    def __check_single_cfg_constraint_for_cfg(cls, cfg, constraint):
+        if not isinstance(cfg, dict) and not isinstance(constraint, dict):
+
+            # ensure same iterable type
+            if isinstance(cfg, list):
+                cfg = tuple(cfg)
+            if isinstance(constraint, list):
+                constraint = tuple(constraint)
+
+            return cfg == constraint
+        elif isinstance(cfg, dict) and isinstance(constraint, dict):
+            # check there are any differences
+            for k, v in constraint.items():
+                if k not in cfg or not cls.__check_single_cfg_constraint_for_cfg(cfg[k], v):
+                    return False
+            return True
+        else:
+            return False
+
+    def __filter_out_unconstrained(self, path_to_idx_d, constraints):
         if not constraints:
             return path_to_idx_d  # don't go over items if no constraints
 
         # for each path keep only configurations that are
-        d = {k: list(filter(lambda i: cls.__check_cfg_constraints(idx_to_obj_d[i], constraints), v))
+        d = {k: list(filter(lambda i: self.__check_cfg_constraints_for_exp(self.exp_obj_dict[i][0], constraints), v))
              for k, v in path_to_idx_d.items()}
         d = {k: v for k, v in d.items() if v}
 
