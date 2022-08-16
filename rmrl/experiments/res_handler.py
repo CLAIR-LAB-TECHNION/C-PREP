@@ -35,20 +35,20 @@ class ResultsHandler:
 
         self.path_to_idx_seed_agg = self.__get_exp_agg(r'/seed-[0-9]+')
         self.exp_path_dict_seed_agg = dict(enumerate(self.path_to_idx_seed_agg.keys(), 1))
-        self.exp_obj_dict_seed_agg = {k: [self.exp_obj_dict[i]
+        self.exp_obj_dict_seed_agg = {k: [self.exp_obj_dict[i][0]
                                           for i in self.path_to_idx_seed_agg[p]]
                                       for k, p in self.exp_path_dict_seed_agg.items()}
 
         if exp_type == CVTransferExperiment:
             self.path_to_idx_fold_agg = self.__get_exp_agg(CFG_VALS_SEP + r'fold-[0-9]+')
             self.exp_path_dict_fold_agg = dict(enumerate(self.path_to_idx_fold_agg.keys(), 1))
-            self.exp_obj_dict_fold_agg = {k: [self.exp_obj_dict[i]
+            self.exp_obj_dict_fold_agg = {k: [self.exp_obj_dict[i][0]
                                               for i in self.path_to_idx_fold_agg[p]]
                                           for k, p in self.exp_path_dict_fold_agg.items()}
 
             self.path_to_idx_fold_and_seed_agg = self.__get_exp_agg(CFG_VALS_SEP + r'seed-[0-9]+/fold-[0-9]+')
             self.exp_path_dict_fold_and_seed_agg = dict(enumerate(self.path_to_idx_fold_and_seed_agg.keys(), 1))
-            self.exp_obj_dict_fold_and_seed_agg = {k: [self.exp_obj_dict[i]
+            self.exp_obj_dict_fold_and_seed_agg = {k: [self.exp_obj_dict[i][0]
                                                        for i in self.path_to_idx_fold_and_seed_agg[p]]
                                                    for k, p in self.exp_path_dict_fold_and_seed_agg.items()}
 
