@@ -1,3 +1,4 @@
+import re
 from typing import Type
 
 import matplotlib as mpl
@@ -146,9 +147,12 @@ class ResultsHandler:
             _, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 7))
         else:
             ax1, ax2 = axes
+
+        y_label = ('median' if record_median else 'average') + ' return'
+
         ax1.set_title(f'Policy performance on SRC context')
         ax1.set_xlabel('timesteps')
-        ax1.set_ylabel('average return')
+        ax1.set_ylabel(y_label)
         if u_bound is not None:
             ax1.axhline(u_bound, ls='--')
         if l_bound is not None:
@@ -161,7 +165,7 @@ class ResultsHandler:
 
         ax2.set_title(f'Policy performance on TGT context')
         ax2.set_xlabel('timesteps')
-        ax2.set_ylabel('mean reward')
+        ax2.set_ylabel(y_label)
         if u_bound is not None:
             ax2.axhline(u_bound, ls='--')
         if l_bound is not None:
