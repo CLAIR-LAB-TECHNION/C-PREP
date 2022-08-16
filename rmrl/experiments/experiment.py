@@ -1,3 +1,5 @@
+import shutil
+
 import pickle
 import time
 import warnings
@@ -21,7 +23,7 @@ from .configurations import *
 class Experiment(ABC):
     def __init__(self, cfg: ExperimentConfiguration, total_timesteps=5e5,
                  log_interval=1, n_eval_episodes=100, eval_freq=1000, max_no_improvement_evals=10, min_evals=50,
-                 chkp_freq=None, dump_dir=None, verbose=0):
+                 chkp_freq=None, dump_dir=None, verbose=0, force_retrain=False):
         self.cfg = cfg
         self.total_timesteps = total_timesteps
         self.log_interval = log_interval
@@ -32,6 +34,7 @@ class Experiment(ABC):
         self.chkp_freq = chkp_freq
         self.dump_dir = Path(dump_dir or '.')
         self.verbose = verbose
+        self.force_retrain = force_retrain
 
         # save cfg as experiment name
         self.exp_name = f'{self.__class__.__name__}/{repr(cfg)}'
@@ -143,6 +146,8 @@ class Experiment(ABC):
 
     def get_agent_for_env(self, env, eval_env):
         try:
+            if self.force_retrain:  # don't look for existing model if forcing retrain
+                raise FileNotFoundError
             agent = self.load_agent_for_env(env)
         except FileNotFoundError:
             agent = self.train_agent_for_env(env, eval_env)

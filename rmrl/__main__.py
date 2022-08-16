@@ -35,7 +35,7 @@ def main():
     # run all experiments
     runner = ExperimentsRunner(args.experiment, cfgs, args.timesteps, args.log_interval, args.n_eval_episodes,
                                args.eval_freq, args.max_no_improvement_evals, args.min_evals, args.chkp_freq,
-                               args.num_workers, args.verbose)
+                               args.num_workers, args.verbose, args.force)
     print(f'running {runner.num_runs} experiments')
     if args.count_only:
         exit()
@@ -327,6 +327,9 @@ def parse_args():
                             help='max number of threads for running experiments in parallel',
                             type=int,
                             default=1)
+    tech_group.add_argument('--force',
+                            help='if set, deletes the existing modela and retrains',
+                            action='store_true')
 
     args = parser.parse_args()
 
