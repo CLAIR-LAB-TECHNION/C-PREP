@@ -28,7 +28,7 @@ class TaxiEnvRM(RewardMachine):
         num_sector_cols = (self.dm.map_width // sector_res_w) + (self.dm.map_width % sector_res_w != 0)
         self.num_sectors = num_sector_rows * num_sector_cols
         self.loc_to_sec = {
-            (r, c): (r // sector_res_h) * num_sector_rows + (c // sector_res_w)
+            (r, c): (r // sector_res_h) * num_sector_cols + (c // sector_res_w)
             for r, c in self.dm.iter_free_locations()
         }
         self.sec_to_locs = {i: [] for i in range(self.num_sectors)}
