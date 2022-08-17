@@ -80,6 +80,8 @@ class ExperimentsRunner:
                 exp.run(c_src + c_tgt)
             else:
                 raise NotImplementedError(f'unsupported experiment label {exp.label.value}')
+
+            open(exp.exp_dump_dir / 'DONE', 'w').close()
         except:
             open(exp.exp_dump_dir / 'FAIL', 'w').close()
             raise
