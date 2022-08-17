@@ -22,7 +22,7 @@ DQN_EXPLORATION_FRACTIONS = [0.3]  # np.linspace(0, 1, 10).tolist()
 OUT_DIMS = [32]  # [16, 32, 64, 128, 256]
 HIDDEN_DIMS = [[32, 32]]  # list(set(tuple(sorted(hd)) for hd in powerset(OUT_DIMS, max_subset_len=2)))
 NODE_AGGS = [cur_state_embedding]  # [ignore_state_mean, cur_state_embedding]
-GOAL_STATE_REWARDS = [1]
+GOAL_STATE_REWARDS = [1.]
 GRID_RESOLUTIONS = [None]
 FUEL_RESOLUTIONS = [None]
 NUM_SEEDS = 30
