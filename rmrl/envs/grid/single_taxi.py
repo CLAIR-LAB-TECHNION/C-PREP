@@ -16,7 +16,7 @@ def fixed_entities_env(initial_task=None, change_task_on_reset=False, **env_kwar
 
 
 def changing_map_env(initial_task=None, change_task_on_reset=False, **env_kwargs):
-    env = single_taxi_v0.gym_env(**env_kwargs, domain_map=EMPTY_MAP)
+    env = single_taxi_v0.gym_env(**env_kwargs)
     env = ChangeMapWrapper(env, initial_task=initial_task, change_task_on_reset=change_task_on_reset)
     env = FixedLocsAddition(env, initial_task=initial_task, change_task_on_reset=change_task_on_reset)
     return env
@@ -134,23 +134,27 @@ class FixedLocsAddition(MultiTaskWrapper):
         return self.fixed_locs_env.reset(**kwargs)
 
 
-EMPTY_MAP = [
-    "+-----------------------+",
-    "| : : : : : : : : : : : |",
-    "| : : : : : : : : : : : |",
-    "| : : : : : : : : : : : |",
-    "| : : : : : : : : : : : |",
-    "| : : : : : : : : : : : |",
-    "| : : : : : : : : : : : |",
-    "| : : : : : : : : : : : |",
-    "+-----------------------+",
-]
-WALL_LOCS = [(i, j) for i in range(len(EMPTY_MAP)) for j in range(len(EMPTY_MAP[0])) if EMPTY_MAP[i][j] == ':']
-
 class ChangeMapWrapper(MultiTaskWrapper):
+    def __init__(self, env, initial_task=None, change_task_on_reset=True):
+        self.empty_map = self.__make_empty_map(env.unwrapped.domain_map.domain_map)
+        self.wall_locs = [(i, j)
+                          for i in range(len(self.empty_map))
+                          for j in range(len(self.empty_map[0]))
+                          if self.empty_map[i][j] == ':']
+
+        super().__init__(env, initial_task, change_task_on_reset)
+
+    @staticmethod
+    def __make_empty_map(domain_map):
+        for i in range(1, len(domain_map) - 1):
+            for j in range(2, len(domain_map[0]) - 2, 2):
+                domain_map[i][j] = ':'
+
+        return domain_map
+
     def _sample_task(self, n):
         # max number of walls to add
-        num_locs = len(WALL_LOCS)
+        num_locs = len(self.wall_locs)
 
         wall_pos_list = []
         for _ in range(n):
@@ -158,12 +162,12 @@ class ChangeMapWrapper(MultiTaskWrapper):
 
             # sample wall positions
             walls_idx = self._task_np_random.choice(range(num_locs), num_locs_to_sample, replace=False)
-            walls_pos = [WALL_LOCS[idx] for idx in walls_idx]
+            walls_pos = [self.wall_locs[idx] for idx in walls_idx]
 
             # assert walls do not make some areas unreachable
-            for j in range(1, len(EMPTY_MAP[0]) - 1):
+            for j in range(1, len(self.empty_map[0]) - 1):
                 # check if entire column is walls (i.e. blocking)
-                column_locs = [(i, j) for i in range(1, len(EMPTY_MAP) - 1)]
+                column_locs = [(i, j) for i in range(1, len(self.empty_map) - 1)]
                 if all(loc in walls_pos for loc in column_locs):
                     # column is full of walls
                     # choose one to remove
@@ -177,7 +181,7 @@ class ChangeMapWrapper(MultiTaskWrapper):
         return wall_pos_list
 
     def _set_task(self, task):
-        map_arr = [[v for v in row] for row in EMPTY_MAP]
+        map_arr = [[v for v in row] for row in self.empty_map]
         for i, j in task:
             map_arr[i][j] = '|'
 
