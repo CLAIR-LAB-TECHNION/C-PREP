@@ -4,6 +4,7 @@ from typing import Type
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
+from tqdm.auto import tqdm
 
 from .configurations import *
 from .cv_transfer import CVTransferExperiment
@@ -222,7 +223,7 @@ class ResultsHandler:
     def get_path_results(self, path_to_idx, cfg_idx_to_path, gamma):
         res = {}
         path_to_cfg_idx = {v: k for k, v in cfg_idx_to_path.items()}
-        for p, idx in path_to_idx.items():
+        for p, idx in tqdm(path_to_idx.items(), desc='getting all results'):
             per_idx_results = self.load_results_for_indices(idx)
 
             # aggregate episode data
@@ -237,7 +238,7 @@ class ResultsHandler:
     def mean_discounted_rewards(self, npz_res_dict, gamma, key):
         returns = [
             self.discounted_return_results(npz_res_dict[i][key][RESULTS_KEY], gamma)
-            for i in npz_res_dict
+            for i in tqdm(npz_res_dict, desc='calculating returns')
         ]
 
         # pad with NaN values
@@ -247,7 +248,7 @@ class ResultsHandler:
                 r,
                 np.full((max_len - r.shape[0],) + r.shape[1:], np.nan)
             ])
-            for r in returns
+            for r in tqdm(returns, desc='aggregating returns')
         ])
 
         return {
@@ -264,7 +265,7 @@ class ResultsHandler:
 
     def load_results_for_indices(self, idx):
         results = {}
-        for i in idx:
+        for i in tqdm(idx, desc='loading results for indices'):
             p = Path(self.exp_path_dict[i]) / LOGS_DIR / EVAL_LOG_DIR
             tsf_files = list(p.glob(f'*{TRANSFER_FROM_MIDFIX}*'))
 
