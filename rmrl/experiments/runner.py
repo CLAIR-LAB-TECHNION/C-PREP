@@ -23,17 +23,11 @@ pbar_lock = Lock()
 
 
 class ExperimentsRunner:
-    def __init__(self, experiments: List[SupportedExperiments], cfgs: List[ExperimentConfiguration], total_timesteps,
-                 log_interval, n_eval_episodes, eval_freq, max_no_improvement_evals, min_evals, chkp_freq, num_workers,
-                 verbose, force_retrain):
+    def __init__(self, experiments: List[SupportedExperiments], cfgs: List[ExperimentConfiguration], log_interval,
+                 chkp_freq, num_workers, verbose, force_retrain):
         self.experiments = experiments
         self.cfgs = cfgs
-        self.total_timesteps = total_timesteps
         self.log_interval = log_interval
-        self.n_eval_episodes = n_eval_episodes
-        self.eval_freq = eval_freq
-        self.max_no_improvement_evals = max_no_improvement_evals
-        self.min_evals = min_evals
         self.chkp_freq = chkp_freq
         self.num_workers = num_workers
         self.verbose = int(verbose)  # assert int input for sb3
@@ -43,8 +37,7 @@ class ExperimentsRunner:
         start = time.time()
 
         exp_classes = [EXP_TO_FNS[exp_label] for exp_label in self.experiments]
-        exp_objects = [exp_class(cfg, self.total_timesteps, self.log_interval, self.n_eval_episodes, self.eval_freq,
-                                 self.max_no_improvement_evals, self.min_evals, chkp_freq=self.chkp_freq,
+        exp_objects = [exp_class(cfg, self.log_interval, chkp_freq=self.chkp_freq,
                                  dump_dir=EXPERIMENTS_DUMPS_DIR, verbose=self.verbose,
                                  force_retrain=self.force_retrain)
                        for exp_class in exp_classes

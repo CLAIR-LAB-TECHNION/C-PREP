@@ -21,16 +21,10 @@ from .configurations import *
 
 
 class Experiment(ABC):
-    def __init__(self, cfg: ExperimentConfiguration, total_timesteps=5e5,
-                 log_interval=1, n_eval_episodes=100, eval_freq=1000, max_no_improvement_evals=10, min_evals=50,
-                 chkp_freq=None, dump_dir=None, verbose=0, force_retrain=False):
+    def __init__(self, cfg: ExperimentConfiguration, log_interval=1, chkp_freq=None, dump_dir=None, verbose=0,
+                 force_retrain=False):
         self.cfg = cfg
-        self.total_timesteps = total_timesteps
         self.log_interval = log_interval
-        self.n_eval_episodes = n_eval_episodes
-        self.eval_freq = eval_freq
-        self.max_no_improvement_evals = max_no_improvement_evals
-        self.min_evals = min_evals
         self.chkp_freq = chkp_freq
         self.dump_dir = Path(dump_dir or '.')
         self.verbose = verbose
@@ -183,13 +177,19 @@ class Experiment(ABC):
         # init callbacks for learning
         true_reward_callback = TrueRewardRMEnvCallback()  # log the original reward (not RM reward)
         pb_callback = ProgressBarCallback()
-        early_stop_callback = StopTrainingOnNoModelImprovement(max_no_improvement_evals=self.max_no_improvement_evals,
-                                                               min_evals=self.min_evals,
-                                                               verbose=False)
+
+        if self.cfg.max_no_improvement_evals is None:
+            early_stop_callback = None
+        else:
+            early_stop_callback = StopTrainingOnNoModelImprovement(
+                max_no_improvement_evals=self.cfg.max_no_improvement_evals,
+                min_evals=self.cfg.min_timesteps // self.cfg.eval_freq,
+                verbose=self.verbose
+            )
         eval_callback = EvalCallback(eval_env=Monitor(eval_env),
                                      callback_after_eval=early_stop_callback,
-                                     n_eval_episodes=self.n_eval_episodes,
-                                     eval_freq=self.eval_freq,
+                                     n_eval_episodes=self.cfg.n_eval_episodes,
+                                     eval_freq=self.cfg.eval_freq,
                                      log_path=self.eval_log_dir / task_name,
                                      best_model_save_path=self.models_dir / task_name,
                                      verbose=self.verbose)
@@ -207,7 +207,7 @@ class Experiment(ABC):
         # train agent
         print(f'training agent for task {task_name}')
         return agent.learn(
-            total_timesteps=self.total_timesteps,
+            total_timesteps=self.cfg.max_timesteps,
             callback=callbacks,
             log_interval=self.log_interval,
             tb_log_name=task_name,

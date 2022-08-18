@@ -33,9 +33,8 @@ def main():
     print(f'collect configurations execution time {end - start}\n')
 
     # run all experiments
-    runner = ExperimentsRunner(args.experiment, cfgs, args.timesteps, args.log_interval, args.n_eval_episodes,
-                               args.eval_freq, args.max_no_improvement_evals, args.min_evals, args.chkp_freq,
-                               args.num_workers, args.verbose, args.force)
+    runner = ExperimentsRunner(args.experiment, cfgs, args.log_interval, args.chkp_freq, args.num_workers, args.verbose,
+                               args.force)
     print(f'running {runner.num_runs} experiments')
     if args.count_only:
         exit()
@@ -81,18 +80,13 @@ def get_all_configurations(single_run_args_list):
         if 'dqn_exploration_fraction' in run_args:
             alg_kwargs['exploration_fraction'] = run_args.dqn_exploration_fraction
 
-        cfg = ExperimentConfiguration(
-            env=run_args.env,
-            cspace=run_args.context,
-            alg=run_args.alg,
-            mods=run_args.mods,
-            rm_kwargs=rm_kwargs,
-            model_kwargs=model_kwargs,
-            alg_kwargs=alg_kwargs,
-            num_src_samples=run_args.num_src_samples,
-            num_tgt_samples=run_args.num_tgt_samples,
-            seed=run_args.seed
-        )
+        cfg = ExperimentConfiguration(env=run_args.env, cspace=run_args.context, alg=run_args.alg, mods=run_args.mods,
+                                      rm_kwargs=rm_kwargs, model_kwargs=model_kwargs, alg_kwargs=alg_kwargs,
+                                      num_src_samples=run_args.num_src_samples,
+                                      num_tgt_samples=run_args.num_tgt_samples, max_timesteps=run_args.timesteps,
+                                      eval_freq=run_args.eval_freq, n_eval_episodes=run_args.n_eval_episodes,
+                                      max_no_improvement_evals=run_args.max_no_improvement_evals,
+                                      min_timesteps=run_args.min_timesteps, seed=run_args.seed)
 
         if repr(cfg) not in unique_cfgs_map:
             unique_cfgs_map[repr(cfg)] = cfg
@@ -310,13 +304,11 @@ def parse_args():
     log_group.add_argument('--max_no_improvement_evals',
                            help='training will stop if no improvement is seen for this many evaluations for early '
                                 'stopping',
-                           type=int,
-                           default=MAX_NO_IMPROVEMENT_EVALS)
-    log_group.add_argument('--min_evals',
+                           type=int)
+    log_group.add_argument('--min_timesteps',
                            help='minimal number of evaluations that must occur, regardless of the '
                                 '--max_no_improvement_evals argument',
-                           type=int,
-                           default=MIN_EVALS)
+                           type=int)
     log_group.add_argument('--chkp_freq',
                            help='the frequency in which checkpoint models are saved (in steps)',
                            type=lambda x: int(float(x)))
@@ -342,6 +334,11 @@ def parse_args():
         args.ofe_hidden_dims = HIDDEN_DIMS
     if args.gnn_hidden_dims is None:
         args.gnn_hidden_dims = HIDDEN_DIMS
+
+    if args.max_no_improvement_evals is None:
+        args.min_timesteps = None
+    elif args.min_timesteps is None:
+        args.min_timesteps = args.timesteps
 
     return args
 

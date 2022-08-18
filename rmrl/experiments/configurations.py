@@ -37,7 +37,7 @@ LOG_INTERVAL = 1
 N_EVAL_EPISODES = 100
 EVAL_FREQ = 1000
 MAX_NO_IMPROVEMENT_EVALS = 10
-MIN_EVALS = 50
+MIN_TIMESTEPS = 50_000
 
 # defaults for reward shaping
 DEFAULT_RS_GAMMA = 0.99
@@ -159,17 +159,10 @@ CFG_VALS_SEP = os.path.sep
 
 
 class ExperimentConfiguration:
-    def __init__(self,
-                 env: SupportedEnvironments,
-                 cspace: ContextSpaces,
-                 alg: Algos,
-                 mods: Iterable[Mods],
-                 rm_kwargs: dict,
-                 model_kwargs: dict,
-                 alg_kwargs: dict,
-                 num_src_samples: int,
-                 num_tgt_samples: int,
-                 seed: int):
+    def __init__(self, env: SupportedEnvironments, cspace: ContextSpaces, alg: Algos, mods: Iterable[Mods],
+                 rm_kwargs: dict, model_kwargs: dict, alg_kwargs: dict, num_src_samples: int, num_tgt_samples: int,
+                 max_timesteps: int, eval_freq: int, n_eval_episodes: int, max_no_improvement_evals: int,
+                 min_timesteps: int, seed: int):
         self.env = env
         self.cspace = cspace
         self.alg = alg
@@ -179,6 +172,11 @@ class ExperimentConfiguration:
         self.alg_kwargs = alg_kwargs
         self.num_src_samples = num_src_samples
         self.num_tgt_samples = num_tgt_samples
+        self.max_timesteps = max_timesteps
+        self.eval_freq = eval_freq
+        self.n_eval_episodes = n_eval_episodes
+        self.max_no_improvement_evals = max_no_improvement_evals
+        self.min_timesteps = min_timesteps
         self.seed = seed
 
     @property
