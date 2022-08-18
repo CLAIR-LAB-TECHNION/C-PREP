@@ -139,7 +139,7 @@ class RMEnvWrapper(gym.Wrapper):
 
             # check if to include the abstract propositions
             if self.abstract_state_props:
-                obs_dict[CUR_STATE_PROPS_KEY] = self.rm_cur_state
+                obs_dict[CUR_STATE_PROPS_KEY] = np.array(self.rm_cur_state)
 
             # check if to include rm graph data
             if self.rm_observations:
