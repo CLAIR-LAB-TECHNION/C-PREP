@@ -308,7 +308,7 @@ def parse_args():
     log_group.add_argument('--min_timesteps',
                            help='minimal number of evaluations that must occur, regardless of the '
                                 '--max_no_improvement_evals argument',
-                           type=int)
+                           type=lambda x: int(float(x)))
     log_group.add_argument('--chkp_freq',
                            help='the frequency in which checkpoint models are saved (in steps)',
                            type=lambda x: int(float(x)))
