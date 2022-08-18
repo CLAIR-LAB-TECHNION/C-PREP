@@ -79,6 +79,21 @@ class ResultsHandler:
 
         return exp_dict_agg
 
+    def get_experiment_contexts_envs_and_agents(self, exp_idx):
+        exp = self.exp_obj_dict[exp_idx][0]
+        src_context, tgt_context = exp.load_or_sample_contexts()
+        src_vec_env = exp.get_experiment_rm_vec_env_for_context_set(src_context)
+        src_eval_env = exp.get_single_rm_env_for_context_set(src_context)
+        src_agent = exp.load_agent_for_env(src_vec_env)
+        tgt_vec_env = exp.get_experiment_rm_vec_env_for_context_set(tgt_context)
+        tgt_eval_env = exp.get_single_rm_env_for_context_set(tgt_context)
+        tgt_agent = exp.load_agent_for_env(tgt_vec_env)
+        tsf_agent = exp.transfer_agent(src_agent, src_vec_env, tgt_vec_env, tgt_eval_env)
+
+        return (src_context, src_vec_env, src_eval_env, src_agent,
+                tgt_context, tgt_vec_env, tgt_eval_env, tgt_agent,
+                tsf_agent)
+
     def plot_experiments_eval(self,
                               experiments_idx=None,
                               plot_kwargs_per_idx=None,
@@ -99,16 +114,16 @@ class ResultsHandler:
         # get correct object dict
         if exp_agg_type is None:
             cfg_idx_to_path = self.exp_path_dict
-            path_to_idx = self.path_to_idx
+            path_to_idx = self.path_to_idx.copy()
         elif exp_agg_type == "seed":
             cfg_idx_to_path = self.exp_path_dict_seed_agg
-            path_to_idx = self.path_to_idx_seed_agg
+            path_to_idx = self.path_to_idx_seed_agg.copy()
         elif exp_agg_type == "fold":
             cfg_idx_to_path = self.exp_path_dict_fold_agg
-            path_to_idx = self.path_to_idx_fold_agg
+            path_to_idx = self.path_to_idx_fold_agg.copy()
         elif exp_agg_type == "fold_and_seed":
             cfg_idx_to_path = self.exp_path_dict_fold_and_seed_agg
-            path_to_idx = self.path_to_idx_fold_and_seed_agg
+            path_to_idx = self.path_to_idx_fold_and_seed_agg.copy()
         else:
             raise ValueError(f'bad agg type "{exp_agg_type}". can be None, "seed", "fold", or "fold_and_seed"')
 
@@ -374,7 +389,7 @@ class ResultsHandler:
     def load_all_run_dump_paths(path):
         run_paths = []
         for root, dirs, files in os.walk(path):
-            if LOGS_DIR in dirs:
+            if 'DONE' in files:
                 run_paths.append(root)
             if MODELS_DIR in root or LOGS_DIR in root:
                 continue

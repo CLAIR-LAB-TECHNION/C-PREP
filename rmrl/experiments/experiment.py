@@ -26,7 +26,7 @@ class Experiment(ABC):
         self.cfg = cfg
         self.log_interval = log_interval
         self.chkp_freq = chkp_freq
-        self.dump_dir = Path(dump_dir or '.')
+        self.dump_dir = Path(dump_dir or EXPERIMENTS_DUMPS_DIR)
         self.verbose = verbose
         self.force_retrain = force_retrain
 
@@ -78,6 +78,18 @@ class Experiment(ABC):
     def _run(self, envs: List[DummyVecEnv], eval_envs: List[RMEnvWrapper]):
         pass
 
+    def get_experiment_rm_vec_env_for_context_set(self, context_set):
+        # create two identical envs for training and eval
+        envs = self.get_envs_per_context_in_set(context_set)
+
+        # convert env to RM env
+        rm_envs = [self.env_to_rm_env(env) for env in envs]
+
+        # convert to vec env for parallel training
+        rm_vec_env = DummyVecEnv([partial(lambda env: env, env) for env in rm_envs])
+
+        return rm_vec_env
+
     def get_experiment_env(self):
         return self.env_fn(**self.env_kwargs)
 
@@ -90,6 +102,12 @@ class Experiment(ABC):
 
     def get_envs_per_context_in_set(self, context_set):
         return [self.get_env_for_context(c) for c in context_set]
+
+    def get_single_rm_env_for_context_set(self, context_set):
+        env = self.get_single_env_for_context_set(context_set)
+        rm_env = self.env_to_rm_env(env, is_eval=True)
+
+        return rm_env
 
     def get_single_env_for_context_set(self, context_set):
         env = self.env_fn(**self.env_kwargs, change_task_on_reset=True)
