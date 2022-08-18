@@ -117,7 +117,10 @@ class FixedLocsWrapper(MultiTaskWrapper):
 
 class FixedLocsAddition(MultiTaskWrapper):
     def __init__(self, env: MultiTaskWrapper, initial_task=None, change_task_on_reset=True):
-        self.fixed_locs_env = FixedLocsWrapper(env, initial_task, change_task_on_reset)
+        # force no changing task on reset for original and location fixer
+        env.change_task_on_reset = False
+        self.fixed_locs_env = FixedLocsWrapper(env, initial_task, change_task_on_reset=False)
+
         super().__init__(env, initial_task, change_task_on_reset)
 
     def _sample_task(self, n):
@@ -131,6 +134,7 @@ class FixedLocsAddition(MultiTaskWrapper):
         self.fixed_locs_env.task = locs_task
 
     def reset(self, **kwargs):
+        super().reset(**kwargs)
         return self.fixed_locs_env.reset(**kwargs)
 
 
