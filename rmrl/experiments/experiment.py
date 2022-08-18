@@ -109,7 +109,7 @@ class Experiment(ABC):
         # init env with RM support
         rm_env = RMEnvWrapper(env=env,
                               rm_fn=rm_fn_with_rs,
-                              rm_observations=Mods.GECO in self.cfg,
+                              rm_observations=Mods.GECO in self.cfg or Mods.GECOUPT in self.cfg,
                               use_rm_reward=Mods.RS in self.cfg and not is_eval)  # use orig rewards for eval
 
         rm_env.reset()
