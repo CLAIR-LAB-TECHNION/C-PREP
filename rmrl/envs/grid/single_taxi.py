@@ -125,7 +125,7 @@ class FixedLocsAddition(MultiTaskWrapper):
 
     def _sample_task(self, n):
         orig_task = self.env.sample_task(n)
-        locs_task = self.fixed_locs_env.sample_task(n)
+        locs_task = self.fixed_locs_env.sample_task(1) * n
         return list(zip(locs_task, orig_task))
 
     def _set_task(self, task):
