@@ -396,15 +396,10 @@ class EvalCallback(EventCallback):
                 n_eval_episodes=self.n_eval_episodes,
                 render=self.render,
                 deterministic=self.deterministic,
-                return_episode_step_rewards=True,
+                return_episode_rewards=True,
                 warn=self.warn,
                 callback=self._log_success_callback,
             )
-
-            # pad rewards
-            max_ep_len = max(episode_lengths)
-            episode_rewards = [ep_r + [0] * (max_ep_len - ep_len)
-                               for ep_r, ep_len in zip(episode_rewards, episode_lengths)]
 
             if self.log_path is not None:
                 self.evaluations_timesteps.append(self.num_timesteps)
@@ -425,8 +420,7 @@ class EvalCallback(EventCallback):
                     **kwargs,
                 )
 
-            acc_rewards = np.sum(episode_rewards, axis=-1)
-            mean_reward, std_reward = np.mean(acc_rewards), np.std(acc_rewards)
+            mean_reward, std_reward = np.mean(episode_rewards), np.std(episode_rewards)
             mean_ep_length, std_ep_length = np.mean(episode_lengths), np.std(episode_lengths)
             self.last_mean_reward = mean_reward
 

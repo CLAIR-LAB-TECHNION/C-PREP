@@ -17,7 +17,6 @@ def evaluate_policy(
     callback: Optional[Callable[[Dict[str, Any], Dict[str, Any]], None]] = None,
     reward_threshold: Optional[float] = None,
     return_episode_rewards: bool = False,
-    return_episode_step_rewards: bool = False,
     warn: bool = True,
 ) -> Union[Tuple[float, float], Tuple[List[float], List[int]]]:
     """
@@ -73,7 +72,6 @@ def evaluate_policy(
     n_envs = env.num_envs
     episode_rewards = []
     episode_lengths = []
-    episode_step_rewards = []
 
     episode_counts = np.zeros(n_envs, dtype="int")
     # Divides episodes among different sub environments in the vector as evenly as possible
@@ -81,7 +79,6 @@ def evaluate_policy(
 
     current_rewards = np.zeros(n_envs)
     current_lengths = np.zeros(n_envs, dtype="int")
-    all_rewards = [[] for _ in range(n_envs)]
     observations = env.reset()
     states = None
     episode_starts = np.ones((env.num_envs,), dtype=bool)
@@ -99,8 +96,6 @@ def evaluate_policy(
                 info = infos[i]
                 episode_starts[i] = done
 
-                all_rewards[i].append(reward)
-
                 if callback is not None:
                     callback(locals(), globals())
 
@@ -115,17 +110,14 @@ def evaluate_policy(
                             # has been wrapped with it. Use those rewards instead.
                             episode_rewards.append(info["episode"]["r"])
                             episode_lengths.append(info["episode"]["l"])
-                            episode_step_rewards.append(info["episode"]["s"])
                             # Only increment at the real end of an episode
                             episode_counts[i] += 1
                     else:
                         episode_rewards.append(current_rewards[i])
                         episode_lengths.append(current_lengths[i])
-                        episode_step_rewards.append(all_rewards[i])
                         episode_counts[i] += 1
                     current_rewards[i] = 0
                     current_lengths[i] = 0
-                    all_rewards[i] = []
 
         if render:
             env.render()
@@ -136,6 +128,4 @@ def evaluate_policy(
         assert mean_reward > reward_threshold, "Mean reward below threshold: " f"{mean_reward:.2f} < {reward_threshold:.2f}"
     if return_episode_rewards:
         return episode_rewards, episode_lengths
-    elif return_episode_step_rewards:
-        return episode_step_rewards, episode_lengths
     return mean_reward, std_reward
