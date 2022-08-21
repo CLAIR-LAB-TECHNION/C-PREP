@@ -159,11 +159,13 @@ def parse_args():
                            type=int,
                            nargs='+',
                            default=NUM_TGT_SAMPLES)
+    exp_group.add_argument('--num_seeds',
+                           help='number of different random seed runs',
+                           type=int)
     exp_group.add_argument('--seed',
                            help='random seed for experiment',
                            type=int,
-                           nargs='*',
-                           default=SEEDS)
+                           nargs='+')
 
     # policy config args
     policy_group = parser.add_argument_group('policy configurations')
@@ -347,10 +349,18 @@ def parse_args():
         args.min_timesteps = args.timesteps
 
     # seeds mutual exclusion
-    if args.num_seeds is not None:
-        if len(args.seed) != 1:
+    if args.num_seeds is None:  # --num_seeds not given
+        if args.seed is None:  # if seed was given, use only that seed
+            args.seed = [SEED[0] * i for i in range(1, NUM_SEEDS + 1)]
+    elif args.seed is None:  # num seeds given but no specific seed given.
+        args.seed = [SEED[0] * i for i in range(1, args.num_seeds + 1)]
+    else:  # both given
+        if len(args.seed) == 1:  # can only give 1 seed if num_seeds is given
+            args.seed = [args.seed[0] * i for i in range(1, NUM_SEEDS + 1)]
+        else:
             raise argparse.ArgumentError(None, 'cannot use `--num_seeds` argument with more than one base `--seed`')
-        args.seed = [args.seed[0] * i for i in range(1, args.num_seeds + 1)]
+    del args.num_seeds  # in any case remove num seeds from arguments
+
 
     return args
 
