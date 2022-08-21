@@ -297,8 +297,8 @@ class ResultsHandler:
             tsf_filename = tsf_files[0].name  # exactly 1 tsf file
 
             match = re.match(fr'(.+){TRANSFER_FROM_MIDFIX}(.+)', str(tsf_filename))
-            src_context_name = match.group(1)
-            tgt_context_name = match.group(2)
+            src_context_name = match.group(2)
+            tgt_context_name = match.group(1)
 
             results[i] = {
                 SRC_KEY: self.load_exp_eval_in_path(p / src_context_name),
