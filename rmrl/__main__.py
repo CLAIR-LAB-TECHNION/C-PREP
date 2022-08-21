@@ -1,6 +1,5 @@
 import argparse
 import math
-import pprint
 import time
 from collections import OrderedDict
 from collections.abc import Iterable as IterableType
@@ -49,6 +48,7 @@ def get_all_configurations(single_run_args_list):
     unique_cfgs_map = {}
     for run_args in single_run_args_list:
         rm_kwargs = dict(
+            rs_gamma=run_args.rs_gamma,
             goal_state_reward=run_args.goal_state_reward,
             grid_resolution=run_args.grid_resolution,
             fuel_resolution=run_args.fuel_resolution,
@@ -252,6 +252,11 @@ def parse_args():
                           type=int,
                           nargs='*',
                           default=FUEL_RESOLUTIONS)
+    rm_group.add_argument('--rs_gamma',
+                          help='discount factor for reward shaping',
+                          type=float,
+                          nargs='*',
+                          default=DEFAULT_RS_GAMMA)
 
     # RM feature extractor params
     model_group = parser.add_argument_group('NN model configurations')

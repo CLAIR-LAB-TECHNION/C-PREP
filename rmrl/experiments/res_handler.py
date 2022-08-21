@@ -82,10 +82,10 @@ class ResultsHandler:
     def get_experiment_contexts_envs_and_agents(self, exp_idx):
         exp = self.exp_obj_dict[exp_idx][0]
         src_context, tgt_context = exp.load_or_sample_contexts()
-        src_vec_env = exp.get_experiment_rm_vec_env_for_context_set(src_context)
+        src_vec_env = exp.get_single_rm_env_for_context_set(src_context)
         src_eval_env = exp.get_single_rm_env_for_context_set(src_context)
         src_agent = exp.load_agent_for_env(src_vec_env)
-        tgt_vec_env = exp.get_experiment_rm_vec_env_for_context_set(tgt_context)
+        tgt_vec_env = exp.get_single_rm_env_for_context_set(tgt_context)
         tgt_eval_env = exp.get_single_rm_env_for_context_set(tgt_context)
         tgt_agent = exp.load_agent_for_env(tgt_vec_env)
         tsf_agent = exp.transfer_agent(src_agent, src_vec_env, tgt_vec_env, tgt_eval_env)
@@ -156,8 +156,10 @@ class ResultsHandler:
 
         plt.show()
 
-    def __plot_compare_evals(self, src_evals, tgt_evals, tsf_evals, l_bound, u_bound, show_src_scratch, show_tgt_scratch,
-                             show_tgt_transfer, src_xlim, tgt_xlim, plt_kwargs, record_median=False, with_deviation=False,
+    def __plot_compare_evals(self, src_evals, tgt_evals, tsf_evals, l_bound, u_bound, show_src_scratch,
+                             show_tgt_scratch,
+                             show_tgt_transfer, src_xlim, tgt_xlim, plt_kwargs, record_median=False,
+                             with_deviation=False,
                              axes=None):
         if axes is None:
             _, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 7))

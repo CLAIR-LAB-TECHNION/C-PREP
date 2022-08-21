@@ -1,21 +1,17 @@
-import shutil
-
 import pickle
 import time
 import warnings
 from abc import ABC, abstractmethod
 from functools import partial
-from typing import List, Type
+from typing import List
 
 import stable_baselines3 as sb3
 from rmrl.nn.models import RMFeatureExtractorSB
 from rmrl.reward_machines.rm_env import RMEnvWrapper
-from rmrl.utils.callbacks import TrueRewardRMEnvCallback, ProgressBarCallback
+from rmrl.utils.callbacks import RMEnvRewardCallback, ProgressBarCallback, CustomEvalCallback
 from rmrl.utils.misc import sha3_hash
-from stable_baselines3.common.callbacks import EvalCallback, StopTrainingOnNoModelImprovement, CheckpointCallback
+from stable_baselines3.common.callbacks import StopTrainingOnNoModelImprovement, CheckpointCallback
 from stable_baselines3.common.monitor import Monitor
-from stable_baselines3.common.off_policy_algorithm import OffPolicyAlgorithm
-from stable_baselines3.common.on_policy_algorithm import OnPolicyAlgorithm
 from stable_baselines3.common.vec_env import DummyVecEnv
 from .configurations import *
 
@@ -51,23 +47,11 @@ class Experiment(ABC):
         train_envs = []
         eval_envs = []
         for context_set in contexts:
-            # # create two identical envs for training and eval
-            # envs = self.get_single_env_for_context_set(context_set)
-            #
-            # # convert env to RM env
-            # rm_envs = [self.env_to_rm_env(env) for env in envs]
-            #
-            # # convert to vec env for parallel training
-            # rm_vec_env = DummyVecEnv([partial(lambda env: env, env) for env in rm_envs])
+            # create and save training env for this context set
+            train_envs.append(self.get_single_rm_env_for_context_set(context_set))
 
-            # save training env
-            train_envs.append(self.get_single_rm_env_for_context_set(context_set, False))
-
-            # create env for evaluation (no parallel)
-            # eval_env = self.get_single_env_for_context_set(context_set)
-            # rm_eval_env = self.env_to_rm_env(eval_env, is_eval=True)
-            # rm_eval_env = Monitor(rm_eval_env)  # eval env not automatically wrapped with monitor
-            eval_envs.append(self.get_single_rm_env_for_context_set(context_set, True))
+            # create and save evaluation env for this context set
+            eval_envs.append(self.get_single_rm_env_for_context_set(context_set))
 
         start = time.time()
         self._run(train_envs, eval_envs)
@@ -75,7 +59,7 @@ class Experiment(ABC):
         print(f'execution time: {end - start}; experiment: {self.exp_name}')
 
     @abstractmethod
-    def _run(self, envs: List[DummyVecEnv], eval_envs: List[RMEnvWrapper]):
+    def _run(self, envs: List[RMEnvWrapper], eval_envs: List[RMEnvWrapper]):
         pass
 
     def get_experiment_rm_vec_env_for_context_set(self, context_set):
@@ -103,9 +87,10 @@ class Experiment(ABC):
     def get_envs_per_context_in_set(self, context_set):
         return [self.get_env_for_context(c) for c in context_set]
 
-    def get_single_rm_env_for_context_set(self, context_set, is_eval):
+    def get_single_rm_env_for_context_set(self, context_set):
         env = self.get_single_env_for_context_set(context_set)
-        rm_env = self.env_to_rm_env(env, is_eval=is_eval)
+        env = Monitor(env)  # push monitor in between to keep original rewards in logs
+        rm_env = self.env_to_rm_env(env)
 
         return rm_env
 
@@ -116,7 +101,7 @@ class Experiment(ABC):
 
         return env
 
-    def env_to_rm_env(self, env, is_eval=False):
+    def env_to_rm_env(self, env):
         def rm_fn_with_rs(task_env):
             # create RM and reshape rewards
             rm = self.rm_fn(task_env, **self.cfg.rm_kwargs)
@@ -128,7 +113,7 @@ class Experiment(ABC):
         rm_env = RMEnvWrapper(env=env,
                               rm_fn=rm_fn_with_rs,
                               rm_observations=Mods.GECO in self.cfg or Mods.GECOUPT in self.cfg,
-                              use_rm_reward=Mods.RS in self.cfg and not is_eval)  # use orig rewards for eval
+                              use_rm_reward=Mods.RS in self.cfg)  # use orig rewards for eval
 
         rm_env.reset()
 
@@ -193,7 +178,7 @@ class Experiment(ABC):
 
     def train_agent(self, agent, eval_env, task_name):
         # init callbacks for learning
-        true_reward_callback = TrueRewardRMEnvCallback()  # log the original reward (not RM reward)
+        true_reward_callback = RMEnvRewardCallback()  # log the original reward (not RM reward)
         pb_callback = ProgressBarCallback()
 
         if self.cfg.max_no_improvement_evals is None:
@@ -204,15 +189,15 @@ class Experiment(ABC):
                 min_evals=self.cfg.min_timesteps // self.cfg.eval_freq,
                 verbose=self.verbose
             )
-        eval_callback = EvalCallback(eval_env=Monitor(eval_env),
-                                     callback_after_eval=early_stop_callback,
-                                     n_eval_episodes=self.cfg.n_eval_episodes,
-                                     eval_freq=self.cfg.eval_freq,
-                                     log_path=self.eval_log_dir / task_name,
-                                     best_model_save_path=self.models_dir / task_name,
-                                     verbose=self.verbose)
+        eval_callback = CustomEvalCallback(eval_env=eval_env,
+                                           callback_after_eval=early_stop_callback,
+                                           n_eval_episodes=self.cfg.n_eval_episodes,
+                                           eval_freq=self.cfg.eval_freq,
+                                           log_path=self.eval_log_dir / task_name,
+                                           best_model_save_path=self.models_dir / task_name,
+                                           verbose=self.verbose)
 
-        callbacks = [true_reward_callback, eval_callback]
+        callbacks = [true_reward_callback, pb_callback, eval_callback]
 
         # add checkpoint callback if requested
         if self.chkp_freq is not None:
