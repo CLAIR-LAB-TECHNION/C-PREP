@@ -134,36 +134,36 @@ def parse_args():
     exp_group.add_argument('--experiment',
                            help='the experiment type to run',
                            choices=SupportedExperiments,
-                           nargs='*',
+                           nargs='+',
                            type=SupportedExperiments,
                            default=list(SupportedExperiments))
     exp_group.add_argument('--env',
                            help='the environment on which to experiment',
                            choices=SupportedEnvironments,
-                           nargs='*',
+                           nargs='+',
                            type=SupportedEnvironments,
                            default=list(SupportedEnvironments))
     exp_group.add_argument('--context',
                            help='context to be tested in compatible env',
                            choices=ContextSpaces,
-                           nargs='*',
+                           nargs='+',
                            type=ContextSpaces,
                            default=list(ContextSpaces))
+    exp_group.add_argument('--num_src_samples',
+                           help='the number of samples in the source contexts set',
+                           type=int,
+                           nargs='+',
+                           default=NUM_SRC_SAMPLES)
+    exp_group.add_argument('--num_tgt_samples',
+                           help='the number of samples in the target contexts set',
+                           type=int,
+                           nargs='+',
+                           default=NUM_TGT_SAMPLES)
     exp_group.add_argument('--seed',
                            help='random seed for experiment',
                            type=int,
                            nargs='*',
                            default=SEEDS)
-    exp_group.add_argument('--num_src_samples',
-                           help='the number of samples in the source contexts set',
-                           type=int,
-                           nargs='*',
-                           default=NUM_SRC_SAMPLES)
-    exp_group.add_argument('--num_tgt_samples',
-                           help='the number of samples in the target contexts set',
-                           type=int,
-                           nargs='*',
-                           default=NUM_TGT_SAMPLES)
 
     # policy config args
     policy_group = parser.add_argument_group('policy configurations')
@@ -171,7 +171,7 @@ def parse_args():
                               help='the underlying RL algorithm',
                               choices=Algos,
                               type=Algos,
-                              nargs='*',
+                              nargs='+',
                               default=list(Algos))
     policy_group.add_argument('--mods',
                               help='if true, will include abstract state in model input',
@@ -186,17 +186,17 @@ def parse_args():
     learning_group.add_argument('--learning_rate',
                                 help='model learning rate',
                                 type=float,
-                                nargs='*',
+                                nargs='+',
                                 default=LEARNING_RATES)
     learning_group.add_argument('--batch_size',
                                 help='training mini-batch size',
                                 type=int,
-                                nargs='*',
+                                nargs='+',
                                 default=BATCH_SIZES)
     learning_group.add_argument('--gamma',
                                 help='discount factor for chosen RL algo',
                                 type=float,
-                                nargs='*',
+                                nargs='+',
                                 default=GAMMA)
     learning_group.add_argument('--timesteps',
                                 help='max number of timesteps for the trained agent',
@@ -207,17 +207,17 @@ def parse_args():
     learning_group.add_argument('--on_policy_n_steps',
                                 help='for on-policy algorithms only! number of steps per experience rollout',
                                 type=lambda x: int(float(x)),
-                                nargs='*',
+                                nargs='+',
                                 default=ON_POLICY_N_STEPS)
     learning_group.add_argument('--off_policy_learning_starts',
                                 help='for off-policy algorithms only! minimal number of steps to take before learning',
                                 type=lambda x: int(float(x)),
-                                nargs='*',
+                                nargs='+',
                                 default=OFF_POLICY_LEARNING_STARTS)
     learning_group.add_argument('--off_policy_train_freq',
                                 help='for off-policy algorithms only! number of steps per rollout',
                                 type=lambda x: int(float(x)),
-                                nargs='*',
+                                nargs='+',
                                 default=OFF_POLICY_TRAIN_FREQ)
     learning_group.add_argument('--off_policy_train_freq_episodes',
                                 help='for off-policy algorithms only! change `train_freq` to be measured in episodes',
@@ -225,12 +225,12 @@ def parse_args():
     learning_group.add_argument('--off_policy_gradient_steps',
                                 help='for on-policy algorithms only! number of learning steps per rollout. -1 == all',
                                 type=lambda x: int(float(x)),
-                                nargs='*',
+                                nargs='+',
                                 default=OFF_POLICY_GRADIENT_STEPS)
     learning_group.add_argument('--dqn_exploration_fraction',
                                 help='for DQN only! fraction of training using declining epsilon greedy',
                                 type=float,
-                                nargs='*',
+                                nargs='+',
                                 default=DQN_EXPLORATION_FRACTIONS)
 
     # RM params
@@ -239,7 +239,7 @@ def parse_args():
     rm_group.add_argument('--goal_state_reward',
                           help='RM reward when reaching the goal state',
                           type=float,
-                          nargs='*',
+                          nargs='+',
                           default=GOAL_STATE_REWARDS)
     rm_group.add_argument('--grid_resolution',
                           help='number of cells per grid sector',
@@ -250,12 +250,12 @@ def parse_args():
     rm_group.add_argument('--fuel_resolution',
                           help='number of fuel waypoints',
                           type=int,
-                          nargs='*',
+                          nargs='+',
                           default=FUEL_RESOLUTIONS)
     rm_group.add_argument('--rs_gamma',
                           help='discount factor for reward shaping',
                           type=float,
-                          nargs='*',
+                          nargs='+',
                           default=DEFAULT_RS_GAMMA)
 
     # RM feature extractor params
@@ -270,7 +270,7 @@ def parse_args():
                              help='number of output features of the observation feature extractor MLP',
                              type=int,
                              default=OUT_DIMS,
-                             nargs='*')
+                             nargs='+')
     model_group.add_argument('--gnn_hidden_dims',
                              help='number of hidden features in the layers of the RM GNN',
                              nargs='*',
@@ -281,12 +281,12 @@ def parse_args():
                              help='number of output features of the RM GNN',
                              type=int,
                              default=OUT_DIMS,
-                             nargs='*')
+                             nargs='+')
     model_group.add_argument('--gnn_agg',
                              help='the type of aggregation to perform on RM node embeddings',
                              choices=NODE_AGGS,
                              type=lambda x: getattr(models, x),
-                             nargs='*',
+                             nargs='+',
                              default=NODE_AGGS)
 
     # logging params
@@ -340,10 +340,17 @@ def parse_args():
     if args.gnn_hidden_dims is None:
         args.gnn_hidden_dims = HIDDEN_DIMS
 
+    # evals mutual exclusion
     if args.max_no_improvement_evals is None:
         args.min_timesteps = None
     elif args.min_timesteps is None:
         args.min_timesteps = args.timesteps
+
+    # seeds mutual exclusion
+    if args.num_seeds is not None:
+        if len(args.seed) != 1:
+            raise argparse.ArgumentError(None, 'cannot use `--num_seeds` argument with more than one base `--seed`')
+        args.seed = [args.seed[0] * i for i in range(1, args.num_seeds + 1)]
 
     return args
 
