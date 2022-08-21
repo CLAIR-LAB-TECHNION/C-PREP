@@ -51,23 +51,23 @@ class Experiment(ABC):
         train_envs = []
         eval_envs = []
         for context_set in contexts:
-            # create two identical envs for training and eval
-            envs = self.get_envs_per_context_in_set(context_set)
-
-            # convert env to RM env
-            rm_envs = [self.env_to_rm_env(env) for env in envs]
-
-            # convert to vec env for parallel training
-            rm_vec_env = DummyVecEnv([partial(lambda env: env, env) for env in rm_envs])
+            # # create two identical envs for training and eval
+            # envs = self.get_single_env_for_context_set(context_set)
+            #
+            # # convert env to RM env
+            # rm_envs = [self.env_to_rm_env(env) for env in envs]
+            #
+            # # convert to vec env for parallel training
+            # rm_vec_env = DummyVecEnv([partial(lambda env: env, env) for env in rm_envs])
 
             # save training env
-            train_envs.append(rm_vec_env)
+            train_envs.append(self.get_single_rm_env_for_context_set(context_set, False))
 
             # create env for evaluation (no parallel)
-            eval_env = self.get_single_env_for_context_set(context_set)
-            rm_eval_env = self.env_to_rm_env(eval_env, is_eval=True)
+            # eval_env = self.get_single_env_for_context_set(context_set)
+            # rm_eval_env = self.env_to_rm_env(eval_env, is_eval=True)
             # rm_eval_env = Monitor(rm_eval_env)  # eval env not automatically wrapped with monitor
-            eval_envs.append(rm_eval_env)
+            eval_envs.append(self.get_single_rm_env_for_context_set(context_set, True))
 
         start = time.time()
         self._run(train_envs, eval_envs)
@@ -103,9 +103,9 @@ class Experiment(ABC):
     def get_envs_per_context_in_set(self, context_set):
         return [self.get_env_for_context(c) for c in context_set]
 
-    def get_single_rm_env_for_context_set(self, context_set):
+    def get_single_rm_env_for_context_set(self, context_set, is_eval):
         env = self.get_single_env_for_context_set(context_set)
-        rm_env = self.env_to_rm_env(env, is_eval=True)
+        rm_env = self.env_to_rm_env(env, is_eval=is_eval)
 
         return rm_env
 
@@ -117,9 +117,9 @@ class Experiment(ABC):
         return env
 
     def env_to_rm_env(self, env, is_eval=False):
-        def rm_fn_with_rs(env):
+        def rm_fn_with_rs(task_env):
             # create RM and reshape rewards
-            rm = self.rm_fn(env, **self.cfg.rm_kwargs)
+            rm = self.rm_fn(task_env, **self.cfg.rm_kwargs)
             pots = self.pot_fn(rm, self.rs_gamma)
             rm.reshape_rewards(pots, self.rs_gamma)
             return rm
@@ -135,7 +135,7 @@ class Experiment(ABC):
         return rm_env
 
     def new_agent_for_env(self, env):
-        num_props = env.envs[0].rm.num_propositions  # all rms should have the same rm
+        num_props = env.rm.num_propositions  # all rms should have the same rm
         policy_kwargs = dict(
             features_extractor_class=RMFeatureExtractorSB,
             features_extractor_kwargs=dict(embed_cur_state=Mods.AS in self.cfg,
@@ -212,7 +212,7 @@ class Experiment(ABC):
                                      best_model_save_path=self.models_dir / task_name,
                                      verbose=self.verbose)
 
-        callbacks = [true_reward_callback, pb_callback, eval_callback]
+        callbacks = [true_reward_callback, eval_callback]
 
         # add checkpoint callback if requested
         if self.chkp_freq is not None:

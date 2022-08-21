@@ -51,7 +51,7 @@ def get_all_configurations(single_run_args_list):
         rm_kwargs = dict(
             goal_state_reward=run_args.goal_state_reward,
             grid_resolution=run_args.grid_resolution,
-            fuel_resolution=run_args.fuel_resolution
+            fuel_resolution=run_args.fuel_resolution,
         )
         model_kwargs = dict(
             ofe_hidden_dims=run_args.ofe_hidden_dims,
@@ -302,12 +302,12 @@ def parse_args():
                            type=int,
                            default=EVAL_FREQ)
     log_group.add_argument('--max_no_improvement_evals',
-                           help='training will stop if no improvement is seen for this many evaluations for early '
-                                'stopping',
+                           help='training will stop if no improvement is seen for this many evaluations. does not stop '
+                                'if `min_timesteps` has not yet been reached. by default there is no early stopping.',
                            type=int)
     log_group.add_argument('--min_timesteps',
                            help='minimal number of evaluations that must occur, regardless of the '
-                                '--max_no_improvement_evals argument',
+                                '--max_no_improvement_evals argument. ignored by default',
                            type=lambda x: int(float(x)))
     log_group.add_argument('--chkp_freq',
                            help='the frequency in which checkpoint models are saved (in steps)',

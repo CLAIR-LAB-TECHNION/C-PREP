@@ -40,7 +40,7 @@ MAX_NO_IMPROVEMENT_EVALS = 10
 MIN_TIMESTEPS = 50_000
 
 # defaults for reward shaping
-DEFAULT_RS_GAMMA = 0.99
+DEFAULT_RS_GAMMA = 0.9
 DEFAULT_POT_FN = ValueIteration()
 
 # CV experiment defaults
@@ -85,7 +85,7 @@ RMENV_DICT = {
         ENV_KWARGS_KEY: {
             'num_passengers': 1,
             'pickup_only': True,
-            'max_steps': 25,
+            'max_steps': 100,
             'domain_map': [
                 "+-------+",
                 "| : | : |",
@@ -193,7 +193,7 @@ class ExperimentConfiguration:
 
     def __contains__(self, item):
         return (item in self.mods or  # item is a contained modification
-                item in [self.env, self.cspace, self.alg],  # item is one of the single values
+                item in [self.env, self.cspace, self.alg] or  # item is one of the single values
                 item in self.all_kwargs.items())
 
     def __str__(self):

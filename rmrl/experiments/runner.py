@@ -53,16 +53,17 @@ class ExperimentsRunner:
 
     def _run_multiprocess(self, exp_objects):
         with ThreadPoolExecutor(self.num_workers) as executor:
-            list(tqdm(iterable=executor.map(self.run_exp_with_args, exp_objects),
+            list(tqdm(iterable=executor.map(self._run_exp, exp_objects),
                       total=self.num_runs,
                       desc='all experiments'))
 
     def _run(self, exp_objects):
         for exp in tqdm(exp_objects, total=self.num_runs, desc='all experiments'):
-            self.run_exp_with_args(exp)
+            self._run_exp(exp)
 
     @staticmethod
-    def run_exp_with_args(exp):
+    def _run_exp(exp):
+        print(f'running experiment with CFG: {repr(exp.cfg)}')
         try:
             c_src, c_tgt = exp.load_or_sample_contexts()
             if exp.label == SupportedExperiments.NO_TRANSFER:
