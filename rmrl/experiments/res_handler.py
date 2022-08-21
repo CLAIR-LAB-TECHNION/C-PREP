@@ -21,6 +21,7 @@ SRC_KEY = 'src'
 
 TIMESTEPS_KEY = 'timesteps'
 RESULTS_KEY = 'results'
+RETURNS_KEY = 'returns'
 
 COLORS = list(mpl.colors.BASE_COLORS.keys())
 
@@ -99,8 +100,8 @@ class ResultsHandler:
                               plot_kwargs_per_idx=None,
                               cfg_constraints=None,
                               exp_agg_type=None,  # None, "seed", "fold", or "fold_and_seed"
-                              gamma=1,
                               record_median=False,
+                              record_returns=False,
                               with_deviation=False,
                               src_xlim=None,
                               tgt_xlim=None,
@@ -137,7 +138,7 @@ class ResultsHandler:
 
         path_to_idx = self.__filter_out_unconstrained(path_to_idx, cfg_constraints)
 
-        all_res = self.get_path_results(path_to_idx, cfg_idx_to_path, gamma)
+        all_res = self.get_path_results(path_to_idx, cfg_idx_to_path, record_returns)
         self.__plot_compare_evals(
             src_evals={k: v[SRC_KEY] for k, v in all_res.items()},
             tgt_evals={k: v[TGT_KEY] for k, v in all_res.items()},
@@ -150,6 +151,7 @@ class ResultsHandler:
             src_xlim=src_xlim,
             tgt_xlim=tgt_xlim,
             plt_kwargs=plot_kwargs_per_idx or {},
+            record_returns=record_returns,
             record_median=record_median,
             with_deviation=with_deviation
         )
@@ -158,15 +160,14 @@ class ResultsHandler:
 
     def __plot_compare_evals(self, src_evals, tgt_evals, tsf_evals, l_bound, u_bound, show_src_scratch,
                              show_tgt_scratch,
-                             show_tgt_transfer, src_xlim, tgt_xlim, plt_kwargs, record_median=False,
-                             with_deviation=False,
-                             axes=None):
+                             show_tgt_transfer, src_xlim, tgt_xlim, plt_kwargs, record_returns=False,
+                             record_median=False, with_deviation=False, axes=None):
         if axes is None:
             _, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 7))
         else:
             ax1, ax2 = axes
 
-        y_label = ('median' if record_median else 'average') + ' return'
+        y_label = ('median' if record_median else 'average') + (' return' if record_returns else ' acc reward')
 
         ax1.set_title(f'Policy performance on SRC context')
         ax1.set_xlabel('timesteps')
@@ -237,7 +238,9 @@ class ResultsHandler:
                 stds = np.array([np.std(yy) for yy in ys])
                 ax.fill_between(x, to_plot - stds, to_plot + stds, alpha=0.2, color=plt_kwargs['color'])
 
-    def get_path_results(self, path_to_idx, cfg_idx_to_path, gamma):
+    def get_path_results(self, path_to_idx, cfg_idx_to_path, record_returns):
+        val_key = RETURNS_KEY if record_returns else RESULTS_KEY
+
         res = {}
         path_to_cfg_idx = {v: k for k, v in cfg_idx_to_path.items()}
         for p, idx in tqdm(path_to_idx.items(), desc='getting all results'):
@@ -245,16 +248,16 @@ class ResultsHandler:
 
             # aggregate episode data
             res[path_to_cfg_idx[p]] = {
-                SRC_KEY: self.mean_discounted_rewards(per_idx_results, gamma, SRC_KEY),
-                TGT_KEY: self.mean_discounted_rewards(per_idx_results, gamma, TGT_KEY),
-                TSF_KEY: self.mean_discounted_rewards(per_idx_results, gamma, TSF_KEY),
+                SRC_KEY: self.mean_discounted_rewards(per_idx_results, SRC_KEY, val_key),
+                TGT_KEY: self.mean_discounted_rewards(per_idx_results, TGT_KEY, val_key),
+                TSF_KEY: self.mean_discounted_rewards(per_idx_results, TSF_KEY, val_key),
             }
 
         return res
 
-    def mean_discounted_rewards(self, npz_res_dict, gamma, key):
+    def mean_discounted_rewards(self, npz_res_dict, ctx_key, val_key):
         returns = [
-            self.discounted_return_results(npz_res_dict[i][key][RESULTS_KEY], gamma)
+            npz_res_dict[i][ctx_key][val_key]
             for i in tqdm(npz_res_dict, desc='calculating returns')
         ]
 
@@ -269,7 +272,7 @@ class ResultsHandler:
         ])
 
         return {
-            TIMESTEPS_KEY: max([npz_res_dict[i][key][TIMESTEPS_KEY] for i in npz_res_dict], key=lambda v: len(v)),
+            TIMESTEPS_KEY: max([npz_res_dict[i][ctx_key][TIMESTEPS_KEY] for i in npz_res_dict], key=lambda v: len(v)),
             RESULTS_KEY: np.mean(padded_returns, axis=-1).T  # transpose to make it [timestep, cfg]
         }
 
