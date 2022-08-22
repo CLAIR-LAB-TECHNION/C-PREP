@@ -210,9 +210,10 @@ class ResultsHandler:
             if is_transfer:
                 if 'ls' not in kwargs and 'linestyle' not in kwargs:
                     kwargs['ls'] = '-.'
-            self.__plot_single_eval(npz, k, record_median=record_median, with_deviation=with_deviation, ax=ax, **kwargs)
+            self.__plot_single_eval(npz, k, is_transfer=is_transfer, record_median=record_median,
+                                    with_deviation=with_deviation, ax=ax, **kwargs)
 
-    def __plot_single_eval(self, res_dict, eval_key=None, record_median=False, with_deviation=False,
+    def __plot_single_eval(self, res_dict, eval_key=None, is_transfer=False, record_median=False, with_deviation=False,
                            ax=None, **plt_kwargs):
         if ax is None:
             _, ax = plt.subplots(1, 1, figsize=(10, 7))
@@ -226,7 +227,9 @@ class ResultsHandler:
             to_plot = np.array([np.mean(yy) for yy in ys])
 
         if 'label' not in plt_kwargs:
-            plt_kwargs['label'] = eval_key
+            plt_kwargs['label'] = str(eval_key)
+        if is_transfer:
+            plt_kwargs['label'] += ' tsf'
         ax.plot(x, to_plot, **plt_kwargs)
 
         if with_deviation:
