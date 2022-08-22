@@ -84,6 +84,9 @@ class CustomEvalCallback(EvalCallback):
             self._returns_buffer.append(self._return)
             self._reset_discounts()
 
+    def _on_training_start(self) -> None:
+        self._on_step()  # do step on training start for zero-shot testing
+
     def _on_step(self) -> bool:
 
         continue_training = True
