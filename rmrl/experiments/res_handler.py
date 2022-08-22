@@ -261,7 +261,7 @@ class ResultsHandler:
     def mean_discounted_rewards(self, npz_res_dict, ctx_key, val_key):
         returns = [
             npz_res_dict[i][ctx_key][val_key]
-            for i in tqdm(npz_res_dict, desc='calculating returns')
+            for i in npz_res_dict
         ]
 
         # pad with NaN values
@@ -271,7 +271,7 @@ class ResultsHandler:
                 r,
                 np.full((max_len - r.shape[0],) + r.shape[1:], np.nan)
             ])
-            for r in tqdm(returns, desc='aggregating returns')
+            for r in returns
         ])
 
         return {
@@ -288,7 +288,7 @@ class ResultsHandler:
 
     def load_results_for_indices(self, idx):
         results = {}
-        for i in tqdm(idx, desc='loading results for indices'):
+        for i in idx:
             p = Path(self.exp_path_dict[i]) / LOGS_DIR / EVAL_LOG_DIR
             tsf_files = list(p.glob(f'*{TRANSFER_FROM_MIDFIX}*'))
 
