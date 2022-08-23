@@ -11,6 +11,10 @@ from .cv_transfer import CVTransferExperiment
 from .no_transfer import NoTransferExperiment
 from .with_transfer import WithTransferExperiment
 
+DONE_FILE = 'DONE'
+FAIL_FILE = 'FAIL'
+
+
 TIMESTAMP_FORMAT = '%Y-%m-%d-%H_%M_%S.%f'
 
 EXP_TO_FNS = {
@@ -64,6 +68,23 @@ class ExperimentsRunner:
     @staticmethod
     def _run_exp(exp):
         print(f'running experiment with CFG: {repr(exp.cfg)}')
+
+        done_file = exp.exp_dump_dir / DONE_FILE
+        fail_file = exp.exp_dump_dir / FAIL_FILE
+
+        if done_file.is_file() and not exp.force_retrain:
+            print('experiment already done')
+            return
+        else:
+            print('redoing experiment')
+            if done_file.is_file():
+                done_file.unlink()
+                print('overwriting done experiment')
+            if fail_file.is_file():
+                fail_file.unlink()
+                print('experiment failed in the passed. retraining all agents')
+            exp.force_retrain = True
+
         try:
             c_src, c_tgt = exp.load_or_sample_contexts()
             if exp.label == SupportedExperiments.NO_TRANSFER:
@@ -75,9 +96,9 @@ class ExperimentsRunner:
             else:
                 raise NotImplementedError(f'unsupported experiment label {exp.label.value}')
 
-            open(exp.exp_dump_dir / 'DONE', 'w').close()
+            open(exp.exp_dump_dir / DONE_FILE, 'w').close()
         except:
-            open(exp.exp_dump_dir / 'FAIL', 'w').close()
+            open(exp.exp_dump_dir / FAIL_FILE, 'w').close()
             raise
 
     @property
