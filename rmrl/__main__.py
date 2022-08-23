@@ -71,7 +71,7 @@ def get_all_configurations(single_run_args_list):
             alg_kwargs['learning_starts'] = run_args.off_policy_learning_starts
         if 'off_policy_train_freq' in run_args:
             alg_kwargs['train_freq'] = run_args.off_policy_train_freq
-        if run_args.off_policy_train_freq_episodes:
+        if 'off_policy_train_freq_episodes' in run_args and run_args.off_policy_train_freq_episodes:
             alg_kwargs['train_freq'] = (run_args.off_policy_train_freq, 'episode')
         if 'off_policy_gradient_steps' in run_args:
             alg_kwargs['gradient_steps'] = run_args.off_policy_gradient_steps
