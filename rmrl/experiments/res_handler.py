@@ -222,9 +222,9 @@ class ResultsHandler:
         ys = res_dict['results']
 
         if record_median:
-            to_plot = np.array([np.median(yy) for yy in ys])
+            to_plot = np.array([np.nanmedian(yy) for yy in ys])
         else:
-            to_plot = np.array([np.mean(yy) for yy in ys])
+            to_plot = np.array([np.nanmean(yy) for yy in ys])
 
         if 'label' not in plt_kwargs:
             plt_kwargs['label'] = str(eval_key)
