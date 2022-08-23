@@ -31,7 +31,8 @@ class ResultsHandler:
         self.exp_type = exp_type
         self.exp_dump_dir = Path(dump_dir or EXPERIMENTS_DUMPS_DIR) / exp_type.__name__
 
-        self.exp_path_dict = dict(enumerate(self.load_all_run_dump_paths(), 1))
+        done_paths, self.failed_experiments, self.incomplete_experiments = self.load_all_run_dump_paths()
+        self.exp_path_dict = dict(enumerate(done_paths, 1))
         self.path_to_idx = {v: [k] for k, v in self.exp_path_dict.items()}
         self.exp_obj_dict = {i: [self.make_exp_for_path(p)] for i, p in self.exp_path_dict.items()}
 
@@ -343,17 +344,6 @@ class ResultsHandler:
         self.__print_exp_dict(self.exp_obj_dict_fold_and_seed_agg, self.exp_path_dict_fold_and_seed_agg,
                               cfg_constraints)
 
-    def failed_experiments(self):
-        return self.load_all_run_dump_paths('FAIL')
-
-    def incomplete_experiments(self):
-        run_paths = []
-        for root, dirs, files in os.walk(self.exp_dump_dir):
-            if MODELS_DIR in dirs or LOGS_DIR in dirs:
-                if 'DONE' not in files and 'FAIL' not in files:
-                    run_paths.append(root)
-        return run_paths
-
     def __print_exp_dict(self, d, cfg_idx_to_path, cfg_constraints=None):
         d = dict(filter(lambda kv: all(self.__check_cfg_constraints_for_exp(exp, cfg_constraints) for exp in kv[1]),
                         d.items()))
@@ -404,12 +394,19 @@ class ResultsHandler:
 
         return d
 
-    def load_all_run_dump_paths(self, choose_file='DONE'):
-        run_paths = []
+    def load_all_run_dump_paths(self):
+        done_paths = []
+        failed_paths = []
+        inc_paths = []
         for root, dirs, files in os.walk(self.exp_dump_dir):
-            if choose_file in files:
-                run_paths.append(root)
-        return run_paths
+            if 'DONE' in files and 'FAIL' not in files:
+                done_paths.append(root)
+            elif 'FAIL' in files:
+                failed_paths.append(root)
+            elif MODELS_DIR in dirs or LOGS_DIR in dirs:
+                inc_paths.append(root)
+
+        return done_paths, failed_paths, inc_paths
 
     def make_exp_for_path(self, path):
         no_exp_name_repr = path.replace(str(self.exp_dump_dir) + '/', '', 1)
