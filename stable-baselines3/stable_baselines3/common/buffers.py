@@ -132,8 +132,10 @@ class BaseBuffer(ABC):
         :return:
         """
         if array.dtype == object:
-            device_fn = np.vectorize(lambda x: x if x is None else x.to(self.device))
-            return device_fn(array)
+            out = np.empty_like(array)
+            for i, data in enumerate(array):
+                out[i] = data.to(self.device)
+            return out
 
         if copy:
             return th.tensor(array).to(self.device)
