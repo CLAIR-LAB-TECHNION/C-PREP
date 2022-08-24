@@ -47,38 +47,9 @@ def main():
 def get_all_configurations(single_run_args_list):
     unique_cfgs_map = {}
     for run_args in single_run_args_list:
-        rm_kwargs = dict(
-            rs_gamma=run_args.rs_gamma,
-            goal_state_reward=run_args.goal_state_reward,
-            grid_resolution=run_args.grid_resolution,
-            fuel_resolution=run_args.fuel_resolution,
-        )
-        model_kwargs = dict(
-            ofe_hidden_dims=run_args.ofe_hidden_dims,
-            ofe_out_dim=run_args.ofe_out_dim,
-            gnn_hidden_dims=run_args.gnn_hidden_dims,
-            gnn_out_dim=run_args.gnn_out_dim,
-            gnn_agg=run_args.gnn_agg
-        )
-        alg_kwargs = dict(
-            learning_rate=run_args.learning_rate,
-            batch_size=run_args.batch_size,
-            gamma=run_args.gamma
-        )
-
-        # alg-specific kwargs
-        if 'off_policy_learning_starts' in run_args:
-            alg_kwargs['learning_starts'] = run_args.off_policy_learning_starts
-        if 'off_policy_train_freq' in run_args:
-            alg_kwargs['train_freq'] = run_args.off_policy_train_freq
-        if 'off_policy_train_freq_episodes' in run_args and run_args.off_policy_train_freq_episodes:
-            alg_kwargs['train_freq'] = (run_args.off_policy_train_freq, 'episode')
-        if 'off_policy_gradient_steps' in run_args:
-            alg_kwargs['gradient_steps'] = run_args.off_policy_gradient_steps
-        if 'on_policy_n_steps' in run_args:
-            alg_kwargs['n_steps'] = run_args.on_policy_n_steps
-        if 'dqn_exploration_fraction' in run_args:
-            alg_kwargs['exploration_fraction'] = run_args.dqn_exploration_fraction
+        rm_kwargs = __get_rm_kwargs(run_args)
+        model_kwargs = __get_model_kwargs(run_args)
+        alg_kwargs = __get_alg_kwargs(run_args)
 
         cfg = ExperimentConfiguration(env=run_args.env, cspace=run_args.context, alg=run_args.alg, mods=run_args.mods,
                                       rm_kwargs=rm_kwargs, model_kwargs=model_kwargs, alg_kwargs=alg_kwargs,
@@ -92,6 +63,50 @@ def get_all_configurations(single_run_args_list):
             unique_cfgs_map[repr(cfg)] = cfg
 
     return list(unique_cfgs_map.values())
+
+
+def __get_rm_kwargs(run_args):
+    rm_kwargs = dict(
+        rs_gamma=run_args.rs_gamma,
+        goal_state_reward=run_args.goal_state_reward,
+        grid_resolution=run_args.grid_resolution,
+        fuel_resolution=run_args.fuel_resolution,
+    )
+
+    return rm_kwargs
+
+
+def __get_model_kwargs(run_args):
+    model_kwargs = dict(
+        ofe_hidden_dims=run_args.ofe_hidden_dims,
+        ofe_out_dim=run_args.ofe_out_dim,
+    )
+
+    return model_kwargs
+
+
+def __get_alg_kwargs(run_args):
+    alg_kwargs = dict(
+        learning_rate=run_args.learning_rate,
+        batch_size=run_args.batch_size,
+        gamma=run_args.gamma
+    )
+
+    # alg-specific kwargs
+    if 'off_policy_learning_starts' in run_args:
+        alg_kwargs['learning_starts'] = run_args.off_policy_learning_starts
+    if 'off_policy_train_freq' in run_args:
+        alg_kwargs['train_freq'] = run_args.off_policy_train_freq
+    if 'off_policy_train_freq_episodes' in run_args and run_args.off_policy_train_freq_episodes:
+        alg_kwargs['train_freq'] = (run_args.off_policy_train_freq, 'episode')
+    if 'off_policy_gradient_steps' in run_args:
+        alg_kwargs['gradient_steps'] = run_args.off_policy_gradient_steps
+    if 'on_policy_n_steps' in run_args:
+        alg_kwargs['n_steps'] = run_args.on_policy_n_steps
+    if 'dqn_exploration_fraction' in run_args:
+        alg_kwargs['exploration_fraction'] = run_args.dqn_exploration_fraction
+
+    return alg_kwargs
 
 
 def get_single_run_args_list(args):
