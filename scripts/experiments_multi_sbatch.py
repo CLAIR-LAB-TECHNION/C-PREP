@@ -9,6 +9,7 @@ import sys
 
 
 def main():
+    job_prefix = sys.argv.pop(1)
     node_name = sys.argv.pop(1)
     num_cpus = sys.argv.pop(1)
     num_gpus = sys.argv.pop(1)
@@ -31,7 +32,7 @@ def main():
     job_threads = []
     for i, run_args in enumerate(single_run_args_list, 1):
         # prepare args for job
-        popen_args = f'scripts/slurm_job_run.sh rmrl{i} {node_name} {num_cpus} {num_gpus} python -m rmrl'.split()
+        popen_args = f'scripts/slurm_job_run.sh {job_prefix}{i} {node_name} {num_cpus} {num_gpus} python -m rmrl'.split()
         for arg_name, arg_val in vars(run_args).items():
             if arg_val is None or arg_val is False:
                 continue  # omit arg and use default
