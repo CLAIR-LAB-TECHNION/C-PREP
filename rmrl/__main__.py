@@ -337,7 +337,6 @@ def parse_args():
                              nargs='+')
     model_group.add_argument('--gnn_agg',
                              help='the type of aggregation to perform on RM node embeddings',
-                             choices=NODE_AGGS,
                              type=lambda x: getattr(models, x),
                              nargs='+',
                              default=NODE_AGGS)
