@@ -3,6 +3,7 @@ import pprint
 from enum import Enum
 from pathlib import Path
 from typing import Iterable
+from torch_geometric.nn import GATConv
 
 from rmrl.envs.grid.reward_machines.single_taxi import TaxiEnvRM
 from rmrl.envs.grid.single_taxi import fixed_entities_env, changing_map_env
@@ -21,6 +22,7 @@ TOTAL_TIMESTEPS = 5e5
 DQN_EXPLORATION_FRACTIONS = [0.3]  # np.linspace(0, 1, 10).tolist()
 OUT_DIMS = [32]  # [16, 32, 64, 128, 256]
 HIDDEN_DIMS = [[32, 32]]  # list(set(tuple(sorted(hd)) for hd in powerset(OUT_DIMS, max_subset_len=2)))
+GNN_TYPE = [GATConv]
 NODE_AGGS = [cur_state_embedding]  # [ignore_state_mean, cur_state_embedding]
 GOAL_STATE_REWARDS = [1.]
 GRID_RESOLUTIONS = [None]

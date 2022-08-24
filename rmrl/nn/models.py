@@ -3,17 +3,20 @@ import torch
 import torch_scatter
 from torch import nn
 from torch_geometric.data import Data, Batch
-from torch_geometric.nn import GINEConv, GATConv, GATv2Conv, Sequential, MessagePassing
+from torch_geometric.nn import GINEConv, GATConv, GATv2Conv, TransformerConv, Sequential
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 from rmrl.reward_machines.rm_env import ORIG_OBS_KEY, CUR_STATE_PROPS_KEY, RM_DATA_KEY
 from rmrl.utils.misc import debatch_graph_to_specific_node
 
 from typing import Type, Dict, Union
 
+GnnWithEdgeAttr = Type[Union[GINEConv, GATConv, GATv2Conv, TransformerConv]]
+
 ACTIVATIONS = {
     'relu': nn.ReLU,
     'lrelu': nn.LeakyReLU
 }
+
 
 def ignore_state_mean(graphs_batch, node_embeddings_batch, cur_state_batch):
     # mean of embeddings over each graph in batch while ignoring the current state
@@ -28,8 +31,8 @@ def cur_state_embedding(graphs_batch, node_embeddings_batch, cur_state_batch):
 
 class RMFeatureExtractorSB(BaseFeaturesExtractor):
     def __init__(self, observation_space: gym.spaces.Dict, ofe_identity=False, ofe_hidden_dims=32, ofe_out_dim=32,
-                 gnn_hidden_dims=32, gnn_out_dim=32, gnn_agg=cur_state_embedding, embed_cur_state=False,
-                 pretrained_gnn_path=None):
+                 gnn_type: GnnWithEdgeAttr = GATConv, gnn_hidden_dims=32, gnn_out_dim=32,
+                 gnn_agg=cur_state_embedding, embed_cur_state=False, pretrained_gnn_path=None):
         extractors = {}
 
         self._output_size = 0
@@ -57,10 +60,10 @@ class RMFeatureExtractorSB(BaseFeaturesExtractor):
             rm_space = observation_space.spaces[RM_DATA_KEY]
 
             # TODO GNN type as parameter
-            extractors[RM_DATA_KEY] = MultilayerGNN(gnn_class=GATConv,
+            extractors[RM_DATA_KEY] = MultilayerGNN(gnn_class=gnn_type,
                                                     input_dim=rm_space.nf_space.shape[-1],
                                                     output_dim=gnn_out_dim,
-                                                    edge_dim=rm_space.ef_space.shape[-1],
+                                                    e_dim=rm_space.ef_space.shape[-1],
                                                     hidden_dims=gnn_hidden_dims)
 
             # load pre-trained and freeze weights
@@ -163,16 +166,22 @@ class MultilayerGNN(nn.Module):
     GNN_FN_STR_WITH_EDGE_ATTR = f'{GNN_INPUT_STR_WITH_EDGE_ATTR} -> x'
     NODES_ONLY_FN = 'x -> x'
 
-    def __init__(self, gnn_class: Type[MessagePassing], input_dim, output_dim, edge_dim, hidden_dims=16, **gnn_kwargs):
+    def __init__(self, gnn_class: GnnWithEdgeAttr, input_dim, output_dim, e_dim, hidden_dims=16, **gnn_kwargs):
         super().__init__()
 
         # always view hidden dims as a collection
         if isinstance(hidden_dims, int):
             hidden_dims = [hidden_dims]
 
+        # GINE has different input
+        if gnn_class == GINEConv:
+            def gnn_class(in_dim, h_dim, edge_dim, **kwargs):
+                mlp_f = MLP(in_dim, [h_dim] * 2, h_dim)
+                return GINEConv(mlp_f.fc_layers, edge_dim=edge_dim, **kwargs)
+
         layers = []
         for i, hidden_dim in enumerate(hidden_dims):
-            layers.extend([(gnn_class(input_dim, hidden_dim, edge_dim=edge_dim, **gnn_kwargs),
+            layers.extend([(gnn_class(input_dim, hidden_dim, edge_dim=e_dim, **gnn_kwargs),
                             self.GNN_FN_STR_WITH_EDGE_ATTR),
                            (nn.Dropout(), self.NODES_ONLY_FN),
                            nn.ReLU(inplace=True)])
@@ -180,7 +189,7 @@ class MultilayerGNN(nn.Module):
             # current hidden dim is the next input dim
             input_dim = hidden_dim
 
-        layers.append((gnn_class(input_dim, output_dim, edge_dim=edge_dim, **gnn_kwargs),
+        layers.append((gnn_class(input_dim, output_dim, edge_dim=e_dim, **gnn_kwargs),
                        self.GNN_FN_STR_WITH_EDGE_ATTR))
 
         self.gnn_layers = Sequential(self.GNN_INPUT_STR_WITH_EDGE_ATTR, layers)

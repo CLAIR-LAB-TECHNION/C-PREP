@@ -5,6 +5,8 @@ from collections import OrderedDict
 from collections.abc import Iterable as IterableType
 from itertools import product
 
+import torch_geometric.nn
+
 from tqdm.auto import tqdm
 
 from rmrl.experiments.configurations import *
@@ -90,6 +92,7 @@ def __get_model_kwargs(run_args):
         ))
     if Mods.GECO in run_args.mods or Mods.GECOUPT in run_args.mods:
         model_kwargs.update(dict(
+            gnn_type=run_args.gnn_type,
             gnn_hidden_dims=run_args.gnn_hidden_dims,
             gnn_out_dim=run_args.gnn_out_dim,
             gnn_agg=run_args.gnn_agg
@@ -137,7 +140,7 @@ def get_single_run_args_list(args):
         if d['ofe_identity']:
             d.pop('ofe_hidden_dims')
             d.pop('ofe_out_dim')
-        if Mods.GECO not in d['mods'] or Mods.GECOUPT not in d['mods']:
+        if Mods.GECO not in d['mods'] and Mods.GECOUPT not in d['mods']:
             d.pop('gnn_hidden_dims')
             d.pop('gnn_out_dim')
             d.pop('gnn_agg')
@@ -315,6 +318,12 @@ def parse_args():
                              help='observation features extractor will be the identity function. ignores '
                                   '`--ofe_out_dim` and `--ofe_hidden_dims`',
                              action='store_true')
+    model_group.add_argument('--gnn_type',
+                             help='the type of GNN to use',
+                             default=GNN_TYPE,
+                             type=lambda x: getattr(torch_geometric.nn, x),
+                             choices=models.GnnWithEdgeAttr.__args__[0].__args__,
+                             nargs='+')
     model_group.add_argument('--gnn_hidden_dims',
                              help='number of hidden features in the layers of the RM GNN',
                              nargs='*',
