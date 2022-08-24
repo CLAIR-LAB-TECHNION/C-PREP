@@ -461,7 +461,10 @@ def obs_as_tensor(
         if obs.dtype != object:
             return th.as_tensor(obs).to(device)
         else:
-            return obs
+            out = np.empty_like(obs)
+            for i, o in enumerate(obs):
+                out[i] = o.to(device)
+            return out
     elif isinstance(obs, dict):
         return {key: obs_as_tensor(_obs, device) for (key, _obs) in obs.items()}
     else:
