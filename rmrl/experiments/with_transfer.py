@@ -52,6 +52,7 @@ class WithTransferExperiment(Experiment):
                 dframes[n] = pd.DataFrame(ea.Scalars(n), columns=["wall_time", "epoch", n])
                 dframes[n].drop("wall_time", axis=1, inplace=True)
                 dframes[n] = dframes[n].set_index("epoch")
+                dframes[n] = dframes[n].loc[~dframes[n].index.duplicated(keep='first')]
 
             all_dfs[dirname.rsplit('/', 1)[-1]] = pd.concat([v for k, v in dframes.items()], axis=1)
 
