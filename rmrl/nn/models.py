@@ -27,7 +27,7 @@ def cur_state_embedding(graphs_batch, node_embeddings_batch, cur_state_batch):
 
 
 class RMFeatureExtractorSB(BaseFeaturesExtractor):
-    def __init__(self, observation_space: gym.spaces.Dict, ofe_hidden_dims=32, ofe_out_dim=32,
+    def __init__(self, observation_space: gym.spaces.Dict, ofe_identity=False, ofe_hidden_dims=32, ofe_out_dim=32,
                  gnn_hidden_dims=32, gnn_out_dim=32, gnn_agg=cur_state_embedding, embed_cur_state=False,
                  pretrained_gnn_path=None):
         extractors = {}
@@ -37,10 +37,14 @@ class RMFeatureExtractorSB(BaseFeaturesExtractor):
 
         # observations feature extractor
         if ORIG_OBS_KEY in observation_space.spaces:
-            extractors[ORIG_OBS_KEY] = MLP(in_features=observation_space.spaces[ORIG_OBS_KEY].shape[0],
-                                           hidden_dims=ofe_hidden_dims,
-                                           out_features=ofe_out_dim)
-            self._output_size += ofe_out_dim
+            if ofe_identity:
+                extractors[ORIG_OBS_KEY] = nn.Identity()
+                self._output_size += observation_space.spaces[ORIG_OBS_KEY].shape[0]
+            else:
+                extractors[ORIG_OBS_KEY] = MLP(in_features=observation_space.spaces[ORIG_OBS_KEY].shape[0],
+                                               hidden_dims=ofe_hidden_dims,
+                                               out_features=ofe_out_dim)
+                self._output_size += ofe_out_dim
 
         # cur state
         if embed_cur_state and CUR_STATE_PROPS_KEY in observation_space.spaces:

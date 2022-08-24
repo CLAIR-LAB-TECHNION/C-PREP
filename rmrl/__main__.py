@@ -77,10 +77,23 @@ def __get_rm_kwargs(run_args):
 
 
 def __get_model_kwargs(run_args):
-    model_kwargs = dict(
-        ofe_hidden_dims=run_args.ofe_hidden_dims,
-        ofe_out_dim=run_args.ofe_out_dim,
-    )
+    model_kwargs = {}
+
+    if not run_args.ofe_identity:
+        model_kwargs.update(dict(
+            ofe_hidden_dims=run_args.ofe_hidden_dims,
+            ofe_out_dim=run_args.ofe_out_dim,
+        ))
+    else:
+        model_kwargs.update(dict(
+            ofe_identity=True,
+        ))
+    if Mods.GECO in run_args.mods or Mods.GECOUPT in run_args.mods:
+        model_kwargs.update(dict(
+            gnn_hidden_dims=run_args.gnn_hidden_dims,
+            gnn_out_dim=run_args.gnn_out_dim,
+            gnn_agg=run_args.gnn_agg
+        ))
 
     return model_kwargs
 
@@ -120,6 +133,16 @@ def get_single_run_args_list(args):
         d = dict(zip(iterable_args_dict.keys(), subset_v))
         d.update(single_value_args_dict)
 
+        # model-specific args
+        if d['ofe_identity']:
+            d.pop('ofe_hidden_dims')
+            d.pop('ofe_out_dim')
+        if Mods.GECO not in d['mods'] or Mods.GECOUPT not in d['mods']:
+            d.pop('gnn_hidden_dims')
+            d.pop('gnn_out_dim')
+            d.pop('gnn_agg')
+
+        # algorithm-specific args
         alg = d['alg']
         if alg not in OFF_POLICY_ALGOS:
             d.pop('off_policy_learning_starts')
@@ -288,6 +311,10 @@ def parse_args():
                              type=int,
                              default=OUT_DIMS,
                              nargs='+')
+    model_group.add_argument('--ofe_identity',
+                             help='observation features extractor will be the identity function. ignores '
+                                  '`--ofe_out_dim` and `--ofe_hidden_dims`',
+                             action='store_true')
     model_group.add_argument('--gnn_hidden_dims',
                              help='number of hidden features in the layers of the RM GNN',
                              nargs='*',
