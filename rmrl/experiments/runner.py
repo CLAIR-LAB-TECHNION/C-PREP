@@ -3,6 +3,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from multiprocessing import Lock
 from typing import List
+import traceback
 
 from tqdm.auto import tqdm
 
@@ -98,7 +99,9 @@ class ExperimentsRunner:
 
             open(exp.exp_dump_dir / DONE_FILE, 'w').close()
         except:
-            open(exp.exp_dump_dir / FAIL_FILE, 'w').close()
+            tb = traceback.format_exc()
+            with open(exp.exp_dump_dir / FAIL_FILE, 'w') as f:
+                f.write(tb)
             raise
 
     @property
