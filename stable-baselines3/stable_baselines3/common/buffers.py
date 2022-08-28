@@ -133,9 +133,12 @@ class BaseBuffer(ABC):
         """
         if array.dtype == object:
             out = np.empty_like(array)
-            for i in range(array.shape[0]):
-                for j in range(array.shape[1]):
-                    out[i, j] = array[i, j].to(self.device)
+            for i, data in enumerate(array):
+                if not isinstance(data, np.ndarray):
+                    out[i] = data.to(self.device)
+                else:
+                    for j, data in enumerate(array[i]):
+                        out[i, j] = data.to(self.device)
             return out
 
         if copy:
