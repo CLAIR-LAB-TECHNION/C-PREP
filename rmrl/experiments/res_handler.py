@@ -406,8 +406,10 @@ class ResultsHandler:
                     pb.update()
                 elif 'FAIL' in files:
                     failed_paths.append(root)
+                    pb.update()
                 elif MODELS_DIR in dirs or LOGS_DIR in dirs:
                     inc_paths.append(root)
+                    pb.update()
 
         return done_paths, failed_paths, inc_paths
 
