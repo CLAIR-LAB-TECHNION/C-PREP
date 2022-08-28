@@ -412,7 +412,6 @@ def parse_args():
             raise argparse.ArgumentError(None, 'cannot use `--num_seeds` argument with more than one base `--seed`')
     del args.num_seeds  # in any case remove num seeds from arguments
 
-
     return args
 
 
