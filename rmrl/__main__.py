@@ -141,6 +141,7 @@ def get_single_run_args_list(args):
             d.pop('ofe_hidden_dims')
             d.pop('ofe_out_dim')
         if Mods.GECO not in d['mods'] and Mods.GECOUPT not in d['mods']:
+            d.pop('gnn_type')
             d.pop('gnn_hidden_dims')
             d.pop('gnn_out_dim')
             d.pop('gnn_agg')
