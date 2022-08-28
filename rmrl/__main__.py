@@ -121,6 +121,8 @@ def __get_alg_kwargs(run_args):
         alg_kwargs['n_steps'] = run_args.on_policy_n_steps
     if 'dqn_exploration_fraction' in run_args:
         alg_kwargs['exploration_fraction'] = run_args.dqn_exploration_fraction
+    if 'dqn_target_update_interval' in run_args:
+        alg_kwargs['target_update_interval'] = run_args.dqn_target_update_interval
 
     return alg_kwargs
 
@@ -157,6 +159,7 @@ def get_single_run_args_list(args):
             d.pop('on_policy_n_steps')
         if alg != Algos.DQN:
             d.pop('dqn_exploration_fraction')
+            d.pop('dqn_target_update_interval')
 
         hashable_d = tuple((k, tuple(v)) if isinstance(v, Iterable) else (k, v) for k, v in d.items())
         if hashable_d not in single_run_args_dict_items_set:
@@ -276,6 +279,11 @@ def parse_args():
                                 type=float,
                                 nargs='+',
                                 default=DQN_EXPLORATION_FRACTIONS)
+    learning_group.add_argument('--dqn_target_update_interval',
+                                help='for DQN only! number of steps between target network parameter updates',
+                                type=lambda x: int(float(x)),
+                                nargs='+',
+                                default=DQN_TARGET_UPDATE_INTERVAL)
 
     # RM params
     # TODO make more general
