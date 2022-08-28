@@ -398,13 +398,16 @@ class ResultsHandler:
         done_paths = []
         failed_paths = []
         inc_paths = []
-        for root, dirs, files in os.walk(self.exp_dump_dir):
-            if 'DONE' in files and 'FAIL' not in files:
-                done_paths.append(root)
-            elif 'FAIL' in files:
-                failed_paths.append(root)
-            elif MODELS_DIR in dirs or LOGS_DIR in dirs:
-                inc_paths.append(root)
+
+        with tqdm(desc='collecting dumps') as pb:
+            for root, dirs, files in os.walk(self.exp_dump_dir):
+                if 'DONE' in files and 'FAIL' not in files:
+                    done_paths.append(root)
+                    pb.update()
+                elif 'FAIL' in files:
+                    failed_paths.append(root)
+                elif MODELS_DIR in dirs or LOGS_DIR in dirs:
+                    inc_paths.append(root)
 
         return done_paths, failed_paths, inc_paths
 
