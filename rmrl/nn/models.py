@@ -20,7 +20,7 @@ ACTIVATIONS = {
 
 def ignore_state_mean(graphs_batch, node_embeddings_batch, cur_state_batch):
     # mean of embeddings over each graph in batch while ignoring the current state
-    return torch_scatter.scatter_mean(node_embeddings_batch, graphs_batch.batch, dim=-3)
+    return torch_scatter.scatter_mean(node_embeddings_batch, graphs_batch.batch, dim=0)
 
 
 def cur_state_embedding(graphs_batch, node_embeddings_batch, cur_state_batch):
