@@ -3,11 +3,11 @@ import pprint
 from enum import Enum
 from pathlib import Path
 from typing import Iterable
-from torch_geometric.nn import GATConv
+from torch_geometric.nn import GATConv, GINEConv
 
 from rmrl.envs.grid.reward_machines.single_taxi import TaxiEnvRM
 from rmrl.envs.grid.single_taxi import fixed_entities_env, changing_map_env
-from rmrl.nn.models import cur_state_embedding
+from rmrl.nn.models import cur_state_embedding, ignore_state_mean
 from rmrl.reward_machines.potential_functions import ValueIteration
 
 # data constants and options
