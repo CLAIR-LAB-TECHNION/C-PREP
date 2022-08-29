@@ -347,7 +347,7 @@ class ResultsHandler:
     def __print_exp_dict(self, d, cfg_idx_to_path, cfg_constraints=None):
         d = dict(filter(lambda kv: all(self.__check_cfg_constraints_for_exp(exp, cfg_constraints) for exp in kv[1]),
                         d.items()))
-        print(f'num experiments: {len(d)}')
+        print(f'num experiments: {len(d)}\n')
         for i, exp_list in d.items():
             print(f'{i}: {cfg_idx_to_path[i]}')
             print()
