@@ -365,7 +365,7 @@ class ResultsHandler:
 
     @classmethod
     def __check_single_cfg_constraint_for_cfg(cls, cfg, constraint):
-        if callable(constraint):
+        if callable(constraint) and not isinstance(constraint, type):
             return constraint(cfg)
         elif not isinstance(cfg, dict) and not isinstance(constraint, dict):
 
