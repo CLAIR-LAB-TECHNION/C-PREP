@@ -332,24 +332,26 @@ class ResultsHandler:
             raise ValueError(f'bad agg type "{exp_agg_type}". can be None, "seed", "fold", or "fold_and_seed"')
 
     def print_all_experiments(self, cfg_constraints=None):
-        self.__print_exp_dict(self.exp_obj_dict, self.exp_path_dict, cfg_constraints)
+        self.__print_exp_dict(self.exp_obj_dict, self.exp_path_dict, self.path_to_idx, cfg_constraints)
 
     def print_seed_agg_experiments(self, cfg_constraints=None):
-        self.__print_exp_dict(self.exp_obj_dict_seed_agg, self.exp_path_dict_seed_agg, cfg_constraints)
+        self.__print_exp_dict(self.exp_obj_dict_seed_agg, self.exp_path_dict_seed_agg, self.path_to_idx_seed_agg,
+                              cfg_constraints)
 
     def print_fold_agg_experiments(self, cfg_constraints=None):
-        self.__print_exp_dict(self.exp_obj_dict_fold_agg, self.exp_path_dict_fold_agg, cfg_constraints)
+        self.__print_exp_dict(self.exp_obj_dict_fold_agg, self.exp_path_dict_fold_agg, self.path_to_idx_fold_agg,
+                              cfg_constraints)
 
     def print_fold_and_seed_agg_experiments(self, cfg_constraints=None):
         self.__print_exp_dict(self.exp_obj_dict_fold_and_seed_agg, self.exp_path_dict_fold_and_seed_agg,
-                              cfg_constraints)
+                              self.path_to_idx_fold_and_seed_agg, cfg_constraints)
 
-    def __print_exp_dict(self, d, cfg_idx_to_path, cfg_constraints=None):
+    def __print_exp_dict(self, d, cfg_idx_to_path, path_to_idx, cfg_constraints=None):
         d = dict(filter(lambda kv: all(self.__check_cfg_constraints_for_exp(exp, cfg_constraints) for exp in kv[1]),
                         d.items()))
         print(f'num experiments: {len(d)}\n')
         for i, exp_list in d.items():
-            print(f'{i}: {cfg_idx_to_path[i]}')
+            print(f'{i} ({len(path_to_idx[cfg_idx_to_path[i]])} runs): {cfg_idx_to_path[i]}')
             print()
 
     @classmethod
