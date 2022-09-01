@@ -68,7 +68,7 @@ class ExperimentsRunner:
 
     @staticmethod
     def _run_exp(exp):
-        print(f'running experiment with CFG: {repr(exp.cfg)}')
+        print(f'running experiment with CFG: {exp.name}')
 
         done_file = exp.exp_dump_dir / DONE_FILE
         fail_file = exp.exp_dump_dir / FAIL_FILE

@@ -30,8 +30,8 @@ class Experiment(ABC):
         self.exp_name = f'{self.__class__.__name__}/{repr(cfg)}'
 
         # extract special kwargs
-        self.rs_gamma = cfg.rm_kwargs.get('rs_gamma', DEFAULT_RS_GAMMA)
-        self.pot_fn = cfg.rm_kwargs.get('pot_fn', DEFAULT_POT_FN)
+        self.rs_gamma = cfg.rm_kwargs.pop('rs_gamma', DEFAULT_RS_GAMMA)
+        self.pot_fn = cfg.rm_kwargs.pop('pot_fn', DEFAULT_POT_FN)
 
         # get algorithm class
         self.alg_class = getattr(sb3, cfg.alg.value)
