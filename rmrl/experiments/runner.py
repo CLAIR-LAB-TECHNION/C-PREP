@@ -68,7 +68,7 @@ class ExperimentsRunner:
 
     @staticmethod
     def _run_exp(exp):
-        print(f'running experiment with CFG: {exp.name}')
+        print(f'running experiment with CFG: {exp.exp_name}')
 
         done_file = exp.exp_dump_dir / DONE_FILE
         fail_file = exp.exp_dump_dir / FAIL_FILE
@@ -76,15 +76,17 @@ class ExperimentsRunner:
         if done_file.is_file() and not exp.force_retrain:
             print('experiment already done')
             return
-        else:
-            print('redoing experiment')
-            if done_file.is_file():
-                done_file.unlink()
-                print('overwriting done experiment')
-            if fail_file.is_file():
-                fail_file.unlink()
-                print('experiment failed in the passed. retraining all agents')
+        elif done_file.is_file():  # forced retrainig
+            done_file.unlink()
+            print('overwriting done experiment')
+        elif fail_file.is_file():
+            fail_file.unlink()
+            print('experiment failed in the passed. retraining all agents')
             exp.force_retrain = True
+        elif exp.force_retrain:
+            print('redoing experiment')
+        else:
+            print('finishing incomplete experiment')
 
         try:
             c_src, c_tgt = exp.load_or_sample_contexts()
@@ -97,10 +99,10 @@ class ExperimentsRunner:
             else:
                 raise NotImplementedError(f'unsupported experiment label {exp.label.value}')
 
-            open(exp.exp_dump_dir / DONE_FILE, 'w').close()
+            open(done_file, 'w').close()
         except:
             tb = traceback.format_exc()
-            with open(exp.exp_dump_dir / FAIL_FILE, 'w') as f:
+            with open(fail_file, 'w') as f:
                 f.write(tb)
             raise
 

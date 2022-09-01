@@ -143,8 +143,6 @@ class Experiment(ABC):
 
     def get_agent_for_env(self, env, eval_env):
         try:
-            if self.force_retrain:  # don't look for existing model if forcing retrain
-                raise FileNotFoundError
             agent = self.load_agent_for_env(env)
         except FileNotFoundError:
             agent = self.train_agent_for_env(env, eval_env)
@@ -153,6 +151,11 @@ class Experiment(ABC):
 
     def load_agent_for_env(self, env):
         task_name = self.get_env_task_name(env)
+        if not (self.models_dir / task_name / 'COMPLETE').is_file():  # find training complete file
+            raise FileNotFoundError
+        elif self.force_retrain:  # don't look for existing model if forcing retrain
+            (self.models_dir / task_name / 'COMPLETE').unlink()
+            raise FileNotFoundError
         return self.load_agent_for_task(task_name, init_env=env)
 
     def load_agent_for_task(self, task_name, init_env=None):
@@ -209,12 +212,16 @@ class Experiment(ABC):
 
         # train agent
         print(f'training agent for task {task_name}')
-        return agent.learn(
+        agent = agent.learn(
             total_timesteps=self.cfg.max_timesteps,
             callback=callbacks,
             log_interval=self.log_interval,
             tb_log_name=task_name,
         )
+
+        open(self.models_dir / task_name / 'COMPLETE', 'w').close()
+
+        return agent
 
     @property
     def exp_dump_dir(self):
