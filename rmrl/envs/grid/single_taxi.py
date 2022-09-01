@@ -67,11 +67,7 @@ class FixedLocsWrapper(MultiTaskWrapper):
         # self.__set_locations()
 
     def reset(self, **kwargs):
-        # want to set the task only for the wrappers, which will take effect on reset
-        # no need to set the locations as well (as done in `set_state`)
-        if self.change_task_on_reset:
-            new_task = self.sample_task(1)[0]
-            self.__set_wrappers(new_task)  # only set wrappers
+        super().reset(**kwargs)
 
         # use wrapped env for reset to set the entities in the right place
         # wrapper returns a dictionary for one taxi
