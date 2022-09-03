@@ -415,6 +415,7 @@ class ResultsHandler:
                     inc_paths.append(root)
                     pb.update()
 
+        done_paths = sorted(done_paths, key=lambda x: x.split(CFG_VALS_SEP))
         return done_paths, failed_paths, inc_paths
 
     def make_exp_for_path(self, path):
