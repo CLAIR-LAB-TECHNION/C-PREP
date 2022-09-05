@@ -10,7 +10,7 @@ NODE_NAME=$3
 NUM_CORES=$4
 NUM_GPUS=$5
 MAIL_USER="guy.azran@campus.technion.ac.il"
-MAIL_TYPE=ALL # Valid values are NONE, BEGIN, END, FAIL, REQUEUE, ALL
+MAIL_TYPE=FAIL # Valid values are NONE, BEGIN, END, FAIL, REQUEUE, ALL
 
 # move num gpus argument
 shift 5
