@@ -68,12 +68,15 @@ def get_all_configurations(single_run_args_list):
 
 
 def __get_rm_kwargs(run_args):
-    rm_kwargs = dict(
-        rs_gamma=run_args.rs_gamma,
-        goal_state_reward=run_args.goal_state_reward,
-        grid_resolution=run_args.grid_resolution,
-        fuel_resolution=run_args.fuel_resolution,
-    )
+    if run_args.mods:
+        rm_kwargs = dict(
+            rs_gamma=run_args.rs_gamma,
+            goal_state_reward=run_args.goal_state_reward,
+            grid_resolution=run_args.grid_resolution,
+            fuel_resolution=run_args.fuel_resolution,
+        )
+    else:
+        rm_kwargs = {}
 
     return rm_kwargs
 
