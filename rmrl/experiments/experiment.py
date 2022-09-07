@@ -15,6 +15,9 @@ from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv
 from .configurations import *
 
+BEST_MODEL_NAME = 'best_model'
+FINAL_MODEL_NAME = 'final_model'
+
 
 class Experiment(ABC):
     def __init__(self, cfg: ExperimentConfiguration, log_interval=1, chkp_freq=None, dump_dir=None, verbose=0,
@@ -151,15 +154,18 @@ class Experiment(ABC):
 
     def load_agent_for_env(self, env):
         task_name = self.get_env_task_name(env)
-        if not (self.models_dir / task_name / 'COMPLETE').is_file():  # find training complete file
+
+        final_model_file = self.models_dir / task_name / (FINAL_MODEL_NAME + '.zip')
+        if not final_model_file.is_file():  # find training complete file
             raise FileNotFoundError
         elif self.force_retrain:  # don't look for existing model if forcing retrain
-            (self.models_dir / task_name / 'COMPLETE').unlink()
+            final_model_file.unlink()
             raise FileNotFoundError
+
         return self.load_agent_for_task(task_name, init_env=env)
 
     def load_agent_for_task(self, task_name, init_env=None):
-        loaded_agent = self.alg_class.load(self.models_dir / task_name / 'best_model', init_env)
+        loaded_agent = self.alg_class.load(self.models_dir / task_name / BEST_MODEL_NAME, init_env)
         print(f'loaded agent for task {task_name}')
         return loaded_agent
 
@@ -219,9 +225,8 @@ class Experiment(ABC):
             tb_log_name=task_name,
         )
 
-        agent.save(self.models_dir / task_name / 'final_model')
-
-        open(self.models_dir / task_name / 'COMPLETE', 'w').close()
+        # save final agent model
+        agent.save(self.models_dir / task_name / FINAL_MODEL_NAME)
 
         return agent
 
