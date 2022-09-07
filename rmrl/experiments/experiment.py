@@ -152,15 +152,16 @@ class Experiment(ABC):
 
         return agent
 
-    def load_agent_for_env(self, env):
+    def load_agent_for_env(self, env, force_load=False):
         task_name = self.get_env_task_name(env)
 
-        final_model_file = self.models_dir / task_name / (FINAL_MODEL_NAME + '.zip')
-        if not final_model_file.is_file():  # find training complete file
-            raise FileNotFoundError
-        elif self.force_retrain:  # don't look for existing model if forcing retrain
-            final_model_file.unlink()
-            raise FileNotFoundError
+        if not force_load:
+            final_model_file = self.models_dir / task_name / (FINAL_MODEL_NAME + '.zip')
+            if not final_model_file.is_file():  # find training complete file
+                raise FileNotFoundError
+            elif self.force_retrain:  # don't look for existing model if forcing retrain
+                final_model_file.unlink()
+                raise FileNotFoundError
 
         return self.load_agent_for_task(task_name, init_env=env)
 

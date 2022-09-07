@@ -17,9 +17,9 @@ class WithTransferExperiment(Experiment):
         src_agent = self.get_agent_for_env(src_env, src_eval_env)
         tgt_agent = self.get_agent_for_env(tgt_env, tgt_eval_env)
 
-        self.transfer_agent(src_agent, src_env, tgt_env, tgt_eval_env)
+        self.transfer_agent(src_env, tgt_env, tgt_eval_env)
 
-    def transfer_agent(self, src_agent, src_env, tgt_env, tgt_eval_env):
+    def transfer_agent(self, src_env, tgt_env, tgt_eval_env):
         # get task name
         src_task_name = self.get_env_task_name(src_env)
         tgt_task_name = self.get_env_task_name(tgt_env)
@@ -28,10 +28,14 @@ class WithTransferExperiment(Experiment):
         try:
             tsf_agent = self.load_agent_for_task(tsf_task_name, tgt_env)
         except FileNotFoundError:
-            # create agent for target env with src agent parameters
+            # create agent new for target env
             tsf_agent = self.new_agent_for_env(tgt_env)
+
+            # update parameters from src agent
+            src_agent = self.load_agent_for_env(src_env, force_load=True)  # reload best model
             tsf_agent.set_parameters(src_agent.get_parameters())
 
+            # train agent
             tsf_agent = self.train_agent(tsf_agent, tgt_eval_env, tsf_task_name)
 
         return tsf_agent
