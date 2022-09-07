@@ -219,6 +219,8 @@ class Experiment(ABC):
             tb_log_name=task_name,
         )
 
+        agent.save(self.models_dir / task_name / 'final_model')
+
         open(self.models_dir / task_name / 'COMPLETE', 'w').close()
 
         return agent
