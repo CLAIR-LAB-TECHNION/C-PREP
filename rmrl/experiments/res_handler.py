@@ -10,6 +10,7 @@ from .configurations import *
 from .cv_transfer import CVTransferExperiment
 from .experiment import Experiment
 from .with_transfer import TRANSFER_FROM_MIDFIX
+from .with_transfer import WithTransferExperiment
 
 EVALUATIONS_FILE = 'evaluations.npz'
 
@@ -140,24 +141,57 @@ class ResultsHandler:
         path_to_idx = self.__filter_out_unconstrained(path_to_idx, cfg_constraints)
 
         all_res = self.get_path_results(path_to_idx, cfg_idx_to_path, record_returns)
-        self.__plot_compare_evals(
-            src_evals={k: v[SRC_KEY] for k, v in all_res.items()},
-            tgt_evals={k: v[TGT_KEY] for k, v in all_res.items()},
-            tsf_evals={k: v[TSF_KEY] for k, v in all_res.items()},
-            l_bound=l_bound,
-            u_bound=u_bound,
-            show_src_scratch=show_src_scratch,
-            show_tgt_scratch=show_tgt_scratch,
-            show_tgt_transfer=show_tgt_transfer,
-            src_xlim=src_xlim,
-            tgt_xlim=tgt_xlim,
-            plt_kwargs=plot_kwargs_per_idx or {},
-            record_returns=record_returns,
-            record_median=record_median,
-            with_deviation=with_deviation
-        )
+
+        if issubclass(self.exp_type, WithTransferExperiment):
+            self.__plot_compare_evals(
+                src_evals={k: v[SRC_KEY] for k, v in all_res.items()},
+                tgt_evals={k: v[TGT_KEY] for k, v in all_res.items()},
+                tsf_evals={k: v[TSF_KEY] for k, v in all_res.items()},
+                l_bound=l_bound,
+                u_bound=u_bound,
+                show_src_scratch=show_src_scratch,
+                show_tgt_scratch=show_tgt_scratch,
+                show_tgt_transfer=show_tgt_transfer,
+                src_xlim=src_xlim,
+                tgt_xlim=tgt_xlim,
+                plt_kwargs=plot_kwargs_per_idx or {},
+                record_returns=record_returns,
+                record_median=record_median,
+                with_deviation=with_deviation
+            )
+        else:
+            self.__plot_src_evals(
+                src_evals={k: v[SRC_KEY] for k, v in all_res.items()},
+                l_bound=l_bound,
+                u_bound=u_bound,
+                src_xlim=src_xlim,
+                plt_kwargs=plot_kwargs_per_idx or {},
+                record_returns=record_returns,
+                record_median=record_median,
+                with_deviation=with_deviation
+            )
 
         plt.show()
+
+    def __plot_src_evals(self, src_evals, l_bound, u_bound, src_xlim, plt_kwargs, record_returns=False,
+                         record_median=False, with_deviation=False, ax=None):
+        if ax is None:
+            _, ax = plt.subplots(1, 1, figsize=(15, 7))
+
+
+        y_label = ('median' if record_median else 'average') + (' return' if record_returns else ' acc reward')
+
+        ax.set_title(f'Policy performance on SRC context')
+        ax.set_xlabel('timesteps')
+        ax.set_ylabel(y_label)
+        if u_bound is not None:
+            ax.axhline(u_bound, ls='--')
+        if l_bound is not None:
+            ax.axhline(l_bound, ls='--')
+
+        self.__plot_evals(src_evals, plt_kwargs, record_median=record_median, with_deviation=with_deviation, ax=ax)
+        ax.set_xlim(src_xlim)
+        ax.legend()
 
     def __plot_compare_evals(self, src_evals, tgt_evals, tsf_evals, l_bound, u_bound, show_src_scratch,
                              show_tgt_scratch,
@@ -253,9 +287,13 @@ class ResultsHandler:
             # aggregate episode data
             res[path_to_cfg_idx[p]] = {
                 SRC_KEY: self.mean_discounted_rewards(per_idx_results, SRC_KEY, val_key),
-                TGT_KEY: self.mean_discounted_rewards(per_idx_results, TGT_KEY, val_key),
-                TSF_KEY: self.mean_discounted_rewards(per_idx_results, TSF_KEY, val_key),
             }
+
+            if issubclass(self.exp_type, WithTransferExperiment):
+                res[path_to_cfg_idx[p]].update({
+                    TGT_KEY: self.mean_discounted_rewards(per_idx_results, TGT_KEY, val_key),
+                    TSF_KEY: self.mean_discounted_rewards(per_idx_results, TSF_KEY, val_key),
+                })
 
         return res
 
@@ -280,35 +318,43 @@ class ResultsHandler:
             RESULTS_KEY: np.mean(padded_returns, axis=-1).T  # transpose to make it [timestep, cfg]
         }
 
-    @staticmethod
-    def discounted_return_results(npz_res, gamma):
-        return np.array([[np.dot(ep, [gamma ** i
-                                      for i in range(len(ep))])
-                          for ep in run]
-                         for run in npz_res])
-
     def load_results_for_indices(self, idx):
         results = {}
         for i in idx:
             p = Path(self.exp_path_dict[i]) / LOGS_DIR / EVAL_LOG_DIR
-            tsf_files = list(p.glob(f'*{TRANSFER_FROM_MIDFIX}*'))
 
-            if len(tsf_files) == 0:
-                raise IndexError(f'No transfer results found for experiment {i}')
-            if len(tsf_files) > 1:
-                raise IndexError(f'multiple transfer results found for experiment {i}')
+            if issubclass(self.exp_type, WithTransferExperiment):
+                tsf_files = list(p.glob(f'*{TRANSFER_FROM_MIDFIX}*'))
 
-            tsf_filename = tsf_files[0].name  # exactly 1 tsf file
+                if len(tsf_files) == 0:
+                    raise IndexError(f'No transfer results found for experiment {i}')
+                if len(tsf_files) > 1:
+                    raise IndexError(f'multiple transfer results found for experiment {i}')
 
-            match = re.match(fr'(.+){TRANSFER_FROM_MIDFIX}(.+)', str(tsf_filename))
-            src_context_name = match.group(2)
-            tgt_context_name = match.group(1)
+                tsf_filename = tsf_files[0].name  # exactly 1 tsf file
 
-            results[i] = {
-                SRC_KEY: self.load_exp_eval_in_path(p / src_context_name),
-                TGT_KEY: self.load_exp_eval_in_path(p / tgt_context_name),
-                TSF_KEY: self.load_exp_eval_in_path(p / tsf_filename)
-            }
+                match = re.match(fr'(.+){TRANSFER_FROM_MIDFIX}(.+)', str(tsf_filename))
+                src_context_name = match.group(2)
+                tgt_context_name = match.group(1)
+
+                results[i] = {
+                    SRC_KEY: self.load_exp_eval_in_path(p / src_context_name),
+                    TGT_KEY: self.load_exp_eval_in_path(p / tgt_context_name),
+                    TSF_KEY: self.load_exp_eval_in_path(p / tsf_filename)
+                }
+
+
+            else:
+                ctx_list = list(p.iterdir())
+                if len(ctx_list) == 0:
+                    raise IndexError(f'No results found for experiment {i}')
+                elif len(ctx_list) > 1:
+                    raise IndexError(f'multiple results found for experiment {i}')
+
+                src_context_name = ctx_list[0].name
+                results[i] = {
+                    SRC_KEY: self.load_exp_eval_in_path(p / src_context_name),
+                }
 
         return results
 
