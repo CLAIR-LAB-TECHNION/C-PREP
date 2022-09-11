@@ -239,9 +239,9 @@ class ResultsHandler:
             plt_kwargs = [plt_kwargs.copy() for _ in range(len(evals))]
 
         assert len(evals) == len(plt_kwargs)
-        for (k, npz), kwargs in zip(evals.items(), plt_kwargs):
+        for i, ((k, npz), kwargs) in enumerate(zip(evals.items(), plt_kwargs)):
             if 'color' not in kwargs:
-                kwargs['color'] = COLORS[k % len(COLORS)]
+                kwargs['color'] = COLORS[i % len(COLORS)]
             if is_transfer:
                 if 'ls' not in kwargs and 'linestyle' not in kwargs:
                     kwargs['ls'] = '-.'
