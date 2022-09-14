@@ -8,6 +8,7 @@ from .experiment import Experiment
 
 TRANSFER_FROM_MIDFIX = '_transfer_from_'
 
+
 class WithTransferExperiment(Experiment):
     def _run(self, envs, eval_envs):
         src_env, tgt_env = envs
@@ -32,7 +33,9 @@ class WithTransferExperiment(Experiment):
             tsf_agent = self.new_agent_for_env(tgt_env)
 
             # update parameters from src agent
-            src_agent = self.load_agent_for_env(src_env, force_load=True)  # reload best model
+            src_agent = self.load_agent_for_env(src_env,
+                                                force_load=True,  # ignore forced retraining
+                                                model_name=self.cfg.exp_kwargs['transfer_model'])  # load desired model
             tsf_agent.set_parameters(src_agent.get_parameters())
 
             # train agent

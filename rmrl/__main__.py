@@ -49,13 +49,14 @@ def main():
 def get_all_configurations(single_run_args_list):
     unique_cfgs_map = {}
     for run_args in single_run_args_list:
+        exp_kwargs = __get_exp_kwargs(run_args)
         rm_kwargs = __get_rm_kwargs(run_args)
         model_kwargs = __get_model_kwargs(run_args)
         alg_kwargs = __get_alg_kwargs(run_args)
 
         cfg = ExperimentConfiguration(env=run_args.env, cspace=run_args.context, alg=run_args.alg, mods=run_args.mods,
-                                      rm_kwargs=rm_kwargs, model_kwargs=model_kwargs, alg_kwargs=alg_kwargs,
-                                      num_src_samples=run_args.num_src_samples,
+                                      exp_kwargs=exp_kwargs, rm_kwargs=rm_kwargs, model_kwargs=model_kwargs,
+                                      alg_kwargs=alg_kwargs, num_src_samples=run_args.num_src_samples,
                                       num_tgt_samples=run_args.num_tgt_samples, max_timesteps=run_args.timesteps,
                                       eval_freq=run_args.eval_freq, n_eval_episodes=run_args.n_eval_episodes,
                                       max_no_improvement_evals=run_args.max_no_improvement_evals,
@@ -65,6 +66,17 @@ def get_all_configurations(single_run_args_list):
             unique_cfgs_map[repr(cfg)] = cfg
 
     return list(unique_cfgs_map.values())
+
+
+def __get_exp_kwargs(run_args):
+    if run_args.experiment == SupportedExperiments.WITH_TRANSFER:
+        exp_kwargs = dict(
+            transfer_model=run_args.transfer_model
+        )
+    else:
+        exp_kwargs = {}
+
+    return exp_kwargs
 
 
 def __get_rm_kwargs(run_args):
@@ -143,6 +155,10 @@ def get_single_run_args_list(args):
         d = dict(zip(iterable_args_dict.keys(), subset_v))
         d.update(single_value_args_dict)
 
+        # exp-specific args
+        if d['experiment'] != SupportedExperiments.WITH_TRANSFER:
+            d.pop('transfer_model')
+
         # model-specific args
         if d['ofe_identity']:
             d.pop('ofe_hidden_dims')
@@ -168,7 +184,9 @@ def get_single_run_args_list(args):
         if alg != Algos.PPO:
             d.pop('ppo_n_epochs')
 
-        hashable_d = tuple((k, tuple(v)) if isinstance(v, Iterable) else (k, v) for k, v in d.items())
+        hashable_d = tuple((k, tuple(v))
+                           if isinstance(v, IterableType) and not isinstance(v, str)
+                           else (k, v) for k, v in d.items())
         if hashable_d not in single_run_args_dict_items_set:
             single_run_args_dict_items_set.add(hashable_d)
 
@@ -218,6 +236,14 @@ def parse_args():
                            help='random seed for experiment',
                            type=int,
                            nargs='+')
+
+    # experiment specific args
+    tsf_group = parser.add_argument_group('transfer experiment values')
+    tsf_group.add_argument('--transfer_model',
+                           help='for WithTransferExperiment only! which model to transfer',
+                           choices=[FINAL_MODEL_NAME, BEST_MODEL_NAME],
+                           nargs='+',
+                           default=[BEST_MODEL_NAME])
 
     # policy config args
     policy_group = parser.add_argument_group('policy configurations')

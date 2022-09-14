@@ -15,9 +15,6 @@ from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv
 from .configurations import *
 
-BEST_MODEL_NAME = 'best_model'
-FINAL_MODEL_NAME = 'final_model'
-
 
 class Experiment(ABC):
     def __init__(self, cfg: ExperimentConfiguration, log_interval=1, chkp_freq=None, dump_dir=None, verbose=0,
@@ -144,15 +141,15 @@ class Experiment(ABC):
             **self.cfg.alg_kwargs
         )
 
-    def get_agent_for_env(self, env, eval_env):
+    def get_agent_for_env(self, env, eval_env, force_load=False, model_name=BEST_MODEL_NAME):
         try:
-            agent = self.load_agent_for_env(env)
+            agent = self.load_agent_for_env(env, force_load=force_load, model_name=model_name)
         except FileNotFoundError:
             agent = self.train_agent_for_env(env, eval_env)
 
         return agent
 
-    def load_agent_for_env(self, env, force_load=False):
+    def load_agent_for_env(self, env, force_load=False, model_name=BEST_MODEL_NAME):
         task_name = self.get_env_task_name(env)
 
         if not force_load:
@@ -163,10 +160,10 @@ class Experiment(ABC):
                 final_model_file.unlink()
                 raise FileNotFoundError
 
-        return self.load_agent_for_task(task_name, init_env=env)
+        return self.load_agent_for_task(task_name, init_env=env, model_name=model_name)
 
-    def load_agent_for_task(self, task_name, init_env=None):
-        loaded_agent = self.alg_class.load(self.models_dir / task_name / BEST_MODEL_NAME, init_env)
+    def load_agent_for_task(self, task_name, init_env=None, model_name=BEST_MODEL_NAME):
+        loaded_agent = self.alg_class.load(self.models_dir / task_name / model_name, init_env)
         print(f'loaded agent for task {task_name}')
         return loaded_agent
 
@@ -213,7 +210,7 @@ class Experiment(ABC):
         if self.chkp_freq is not None:
             checkpoint_callback = CheckpointCallback(save_freq=self.chkp_freq,
                                                      save_path=self.models_dir / task_name / 'checkpoints',
-                                                     name_prefix='chkp',
+                                                     name_prefix=CHKP_MODEL_NAME_PREFIX,
                                                      verbose=self.verbose + 1)  # they check verbose > 1 here
             callbacks.append(checkpoint_callback)
 

@@ -67,6 +67,11 @@ ENV_KWARGS_KEY = 'env_kwargs'
 RM_KWARGS_KEY = 'rm_kwargs'
 CONTEXT_SPACES_KEY = 'context_spaces'
 
+# saved models
+BEST_MODEL_NAME = 'best_model'
+FINAL_MODEL_NAME = 'final_model'
+CHKP_MODEL_NAME_PREFIX = 'chkp'
+
 
 class SupportedExperiments(Enum):
     NO_TRANSFER = 'NoTransferExperiment'
@@ -164,13 +169,14 @@ CFG_VALS_SEP = os.path.sep
 
 class ExperimentConfiguration:
     def __init__(self, env: SupportedEnvironments, cspace: ContextSpaces, alg: Algos, mods: Iterable[Mods],
-                 rm_kwargs: dict, model_kwargs: dict, alg_kwargs: dict, num_src_samples: int, num_tgt_samples: int,
-                 max_timesteps: int, eval_freq: int, n_eval_episodes: int, max_no_improvement_evals: int,
-                 min_timesteps: int, seed: int):
+                 exp_kwargs: dict, rm_kwargs: dict, model_kwargs: dict, alg_kwargs: dict, num_src_samples: int,
+                 num_tgt_samples: int, max_timesteps: int, eval_freq: int, n_eval_episodes: int,
+                 max_no_improvement_evals: int, min_timesteps: int, seed: int):
         self.env = env
         self.cspace = cspace
         self.alg = alg
         self.mods = list(mods)
+        self.exp_kwargs = exp_kwargs
         self.rm_kwargs = rm_kwargs
         self.model_kwargs = model_kwargs
         self.alg_kwargs = alg_kwargs
@@ -275,4 +281,4 @@ class ExperimentConfiguration:
             except ValueError:
                 pass
 
-        raise ValueError(f'could not evaluate {repr_val}')
+        return repr_val  # return as string
