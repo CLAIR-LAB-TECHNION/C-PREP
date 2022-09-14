@@ -5,12 +5,16 @@ from itertools import chain, combinations
 import networkx as nx
 
 from .reward_machine import RewardMachine
+from ..utils.misc import repr_all_public
 
 
 class PotentialFunction(ABC):
     @abstractmethod
     def __call__(self, rm: RewardMachine, gamma: float) -> Dict[int, float]:
         pass
+
+    def __repr__(self):
+        return repr_all_public(self)
 
 
 class ValueIteration(PotentialFunction):

@@ -40,3 +40,10 @@ def debatch_graph_to_specific_node(graph_batch, node_embeddings_batch, specific_
         out.append(embedding.squeeze())
 
     return torch.stack(out)
+
+
+def repr_all_public(obj: object):
+    vars_join = ', '.join(f'{k}={v}'
+                          for k, v in vars(obj).items()
+                          if not k.startswith(f'_{obj.__class__.__name__}'))
+    return f'{obj.__class__.__name__}({vars_join})'

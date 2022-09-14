@@ -9,6 +9,7 @@ from rmrl.envs.grid.reward_machines.single_taxi import TaxiEnvRM
 from rmrl.envs.grid.single_taxi import fixed_entities_env, changing_map_env
 from rmrl.nn.models import cur_state_embedding, ignore_state_mean
 from rmrl.reward_machines.potential_functions import ValueIteration
+from rmrl.utils.lr_schedulers import *
 
 # data constants and options
 NUM_SRC_SAMPLES = [10]
@@ -213,7 +214,7 @@ class ExperimentConfiguration:
             if hasattr(value, '__name__'):
                 return rv + value.__name__
             else:
-                return rv + value.__class__.__name__
+                return rv + repr(value)
         elif isinstance(value, dict):
             return rv + '(' + MULTI_VAL_SEP.join(f'({self.__repr_value(k, v)})' for k, v in value.items()) + ')'
         elif isinstance(value, list) or isinstance(value, tuple) or isinstance(value, set):

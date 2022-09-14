@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Dict
 
-from stable_baselines3.common.type_aliases import Schedule
+from rmrl.utils.misc import repr_all_public
 
 
 class LearningRateSchedule(ABC):
@@ -10,10 +10,7 @@ class LearningRateSchedule(ABC):
         pass
 
     def __repr__(self):
-        vars_join = ', '.join(f'{k}={v}'
-                              for k, v in vars(self).items()
-                              if not k.startswith(f'_{self.__class__.__name__}'))
-        return f'{self.__class__.__name__}({vars_join})'
+        return repr_all_public(self)
 
     def __eq__(self, other):
         return(isinstance(other, self.__class__) and
