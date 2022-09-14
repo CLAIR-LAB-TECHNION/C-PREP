@@ -31,6 +31,7 @@ FUEL_RESOLUTIONS = [None]
 NUM_SEEDS = 30
 SEED = [42]
 ON_POLICY_N_STEPS = [1024]
+PPO_N_EPOCHS = [10]
 OFF_POLICY_LEARNING_STARTS = [0]  # no waiting for training by default
 OFF_POLICY_TRAIN_FREQ = [4]  # align with DQN default
 OFF_POLICY_GRADIENT_STEPS = [1]  # align with DQN default

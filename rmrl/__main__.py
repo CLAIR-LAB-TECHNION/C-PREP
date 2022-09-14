@@ -112,6 +112,10 @@ def __get_alg_kwargs(run_args):
     )
 
     # alg-specific kwargs
+    if 'on_policy_n_steps' in run_args:
+        alg_kwargs['n_steps'] = run_args.on_policy_n_steps
+    if 'ppo_n_epochs' in run_args:
+        alg_kwargs['n_epochs'] = run_args.ppo_n_epochs
     if 'off_policy_learning_starts' in run_args:
         alg_kwargs['learning_starts'] = run_args.off_policy_learning_starts
     if 'off_policy_train_freq' in run_args:
@@ -120,8 +124,6 @@ def __get_alg_kwargs(run_args):
         alg_kwargs['train_freq'] = (run_args.off_policy_train_freq, 'episode')
     if 'off_policy_gradient_steps' in run_args:
         alg_kwargs['gradient_steps'] = run_args.off_policy_gradient_steps
-    if 'on_policy_n_steps' in run_args:
-        alg_kwargs['n_steps'] = run_args.on_policy_n_steps
     if 'dqn_exploration_fraction' in run_args:
         alg_kwargs['exploration_fraction'] = run_args.dqn_exploration_fraction
     if 'dqn_target_update_interval' in run_args:
@@ -163,6 +165,8 @@ def get_single_run_args_list(args):
         if alg != Algos.DQN:
             d.pop('dqn_exploration_fraction')
             d.pop('dqn_target_update_interval')
+        if alg != Algos.PPO:
+            d.pop('ppo_n_epochs')
 
         hashable_d = tuple((k, tuple(v)) if isinstance(v, Iterable) else (k, v) for k, v in d.items())
         if hashable_d not in single_run_args_dict_items_set:
@@ -256,6 +260,11 @@ def parse_args():
     # algo specific
     learning_group.add_argument('--on_policy_n_steps',
                                 help='for on-policy algorithms only! number of steps per experience rollout',
+                                type=lambda x: int(float(x)),
+                                nargs='+',
+                                default=ON_POLICY_N_STEPS)
+    learning_group.add_argument('--ppo_n_epochs',
+                                help='for PPO only! number of training epochs per rollout',
                                 type=lambda x: int(float(x)),
                                 nargs='+',
                                 default=ON_POLICY_N_STEPS)
