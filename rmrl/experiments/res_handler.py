@@ -181,7 +181,7 @@ class ResultsHandler:
 
         y_label = ('median' if record_median else 'average') + (' return' if record_returns else ' acc reward')
 
-        ax.set_title(f'Policy performance on SRC context')
+        ax.set_title(f'Policy performance on source context')
         ax.set_xlabel('timesteps')
         ax.set_ylabel(y_label)
         if u_bound is not None:
@@ -192,6 +192,7 @@ class ResultsHandler:
         self.__plot_evals(src_evals, plt_kwargs, record_median=record_median, with_deviation=with_deviation, ax=ax)
         ax.set_xlim(src_xlim)
         ax.legend()
+        ax.grid()
 
     def __plot_compare_evals(self, src_evals, tgt_evals, tsf_evals, l_bound, u_bound, show_src_scratch,
                              show_tgt_scratch,
@@ -204,7 +205,7 @@ class ResultsHandler:
 
         y_label = ('median' if record_median else 'average') + (' return' if record_returns else ' acc reward')
 
-        ax1.set_title(f'Policy performance on SRC context')
+        ax1.set_title(f'Policy performance on source context')
         ax1.set_xlabel('timesteps')
         ax1.set_ylabel(y_label)
         if u_bound is not None:
@@ -216,8 +217,14 @@ class ResultsHandler:
             self.__plot_evals(src_evals, plt_kwargs, record_median=record_median, with_deviation=with_deviation, ax=ax1)
             ax1.set_xlim(src_xlim)
             ax1.legend()
+            ax1.grid()
 
-        ax2.set_title(f'Policy performance on TGT context')
+        if show_tgt_scratch and show_tgt_transfer:
+            ax2.set_title(f'Policy performance on target context with and without transfer from source')
+        elif show_tgt_scratch:
+            ax2.set_title(f'Policy performance on target context')
+        elif show_tgt_transfer:
+            ax2.set_title(f'Policy performance on target context with transfer from source')
         ax2.set_xlabel('timesteps')
         ax2.set_ylabel(y_label)
         if u_bound is not None:
@@ -227,12 +234,13 @@ class ResultsHandler:
         if show_tgt_scratch:
             self.__plot_evals(tgt_evals, plt_kwargs, record_median=record_median, with_deviation=with_deviation, ax=ax2)
         if show_tgt_transfer:
-            self.__plot_evals(tsf_evals, plt_kwargs, is_transfer=True, record_median=record_median,
+            self.__plot_evals(tsf_evals, plt_kwargs, is_transfer=show_tgt_scratch, record_median=record_median,
                               with_deviation=with_deviation, ax=ax2)
 
         if show_tgt_scratch or show_tgt_transfer:
             ax2.set_xlim(tgt_xlim)
             ax2.legend()
+            ax2.grid()
 
     def __plot_evals(self, evals, plt_kwargs, is_transfer=False, record_median=False, with_deviation=False, ax=None):
         if isinstance(plt_kwargs, dict):
