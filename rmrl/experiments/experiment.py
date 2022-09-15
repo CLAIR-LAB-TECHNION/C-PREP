@@ -164,7 +164,7 @@ class Experiment(ABC):
 
     def load_agent_for_task(self, task_name, init_env=None, model_name=BEST_MODEL_NAME):
         loaded_agent = self.alg_class.load(self.models_dir / task_name / model_name, init_env)
-        print(f'loaded agent for task {task_name}')
+        print(f'loaded {model_name} agent for task {task_name}')
         return loaded_agent
 
     def get_env_task(self, env):
@@ -221,6 +221,7 @@ class Experiment(ABC):
             callback=callbacks,
             log_interval=self.log_interval,
             tb_log_name=task_name,
+            reset_num_timesteps=False,  # always continue training (can reset manually)
         )
 
         # save final agent model

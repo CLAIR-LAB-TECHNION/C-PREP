@@ -38,6 +38,9 @@ class WithTransferExperiment(Experiment):
                                                 model_name=self.cfg.exp_kwargs['transfer_model'])  # load desired model
             tsf_agent.set_parameters(src_agent.get_parameters())
 
+            if self.cfg.exp_kwargs['keep_timesteps']:
+                tsf_agent.num_timesteps = src_agent.num_timesteps
+
             # train agent
             tsf_agent = self.train_agent(tsf_agent, tgt_eval_env, tsf_task_name)
 

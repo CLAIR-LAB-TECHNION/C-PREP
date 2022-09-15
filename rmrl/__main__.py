@@ -71,7 +71,8 @@ def get_all_configurations(single_run_args_list):
 def __get_exp_kwargs(run_args):
     if run_args.experiment == SupportedExperiments.WITH_TRANSFER:
         exp_kwargs = dict(
-            transfer_model=run_args.transfer_model
+            transfer_model=run_args.transfer_model,
+            keep_timesteps=run_args.keep_timesteps
         )
     else:
         exp_kwargs = {}
@@ -158,6 +159,7 @@ def get_single_run_args_list(args):
         # exp-specific args
         if d['experiment'] != SupportedExperiments.WITH_TRANSFER:
             d.pop('transfer_model')
+            d.pop('keep_timesteps')
 
         # model-specific args
         if d['ofe_identity']:
@@ -244,6 +246,10 @@ def parse_args():
                            choices=[FINAL_MODEL_NAME, BEST_MODEL_NAME],
                            nargs='+',
                            default=[BEST_MODEL_NAME])
+    tsf_group.add_argument('--keep_timesteps',
+                           help='for WithTransferExperiment only! if True, training starts from timestep at the end'
+                                'of the transferred model training',
+                           action='store_true')
 
     # policy config args
     policy_group = parser.add_argument_group('policy configurations')

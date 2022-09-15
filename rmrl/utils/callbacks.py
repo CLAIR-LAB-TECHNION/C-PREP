@@ -53,11 +53,10 @@ class RMEnvRewardCallback(BaseCallback):
 
 class ProgressBarCallback(BaseCallback):
     def _init_callback(self) -> None:
-        self.pbar = tqdm(total=self.model._total_timesteps, desc='training')
+        self.pbar = tqdm(total=self.model._total_timesteps - self.model._num_timesteps_at_start, desc='training')
 
     def _on_step(self) -> bool:
-        self.pbar.update(self.model.n_envs)
-
+        self.pbar.update(self.model.num_timesteps - self.model._num_timesteps_at_start - self.pbar.n)
         return True
 
     def _on_training_end(self) -> None:
@@ -85,6 +84,7 @@ class CustomEvalCallback(EvalCallback):
             self._reset_discounts()
 
     def _on_training_start(self) -> None:
+        self.num_timesteps = self.model.num_timesteps
         self._on_step()  # do step on training start for zero-shot testing
 
     def _on_step(self) -> bool:
@@ -119,7 +119,7 @@ class CustomEvalCallback(EvalCallback):
             )
 
             if self.log_path is not None:
-                self.evaluations_timesteps.append(self.num_timesteps)
+                self.evaluations_timesteps.append(self.num_timesteps - self.model._num_timesteps_at_start)
                 self.evaluations_results.append(episode_rewards)
                 self.evaluations_length.append(episode_lengths)
 
