@@ -37,12 +37,23 @@ class RMEnvWrapper(gym.Wrapper):
 
         self.__prev_obs = None
 
+        # fixed rms for efficiency
+        self.fixed_rms = {}
+        self.fixed_rms_data = {}
+
     def reset(self, **kwargs):
         obs = super().reset(**kwargs)
 
         if self.env.change_task_on_reset or self.__first_reset:
-            self.rm = self.rm_fn(self.env)
-            self.rm_data = self.rm.to_pyg_data()
+            self.__first_reset = False
+
+            task = self.env.task
+            if task not in self.fixed_rms:
+                self.fixed_rms[self.env.task] = self.rm_fn(self.env)
+                self.fixed_rms_data[self.env.task] = self.fixed_rms[self.env.task].to_pyg_data()
+
+            self.rm = self.fixed_rms[self.env.task]
+            self.rm_data = self.fixed_rms_data[self.env.task]
 
         # save initial abstract state and obs as previous
         self.rm_cur_state = self.rm.L(obs)
