@@ -127,6 +127,8 @@ def __get_alg_kwargs(run_args):
     # alg-specific kwargs
     if 'on_policy_n_steps' in run_args:
         alg_kwargs['n_steps'] = run_args.on_policy_n_steps
+    if 'on_policy_ent_coef' in run_args:
+        alg_kwargs['ent_coef'] = run_args.on_policy_ent_coef
     if 'ppo_n_epochs' in run_args:
         alg_kwargs['n_epochs'] = run_args.ppo_n_epochs
     if 'off_policy_learning_starts' in run_args:
@@ -180,6 +182,7 @@ def get_single_run_args_list(args):
             d.pop('off_policy_gradient_steps')
         elif alg not in ON_POLICY_ALGOS:
             d.pop('on_policy_n_steps')
+            d.pop('on_policy_ent_coef')
         if alg != Algos.DQN:
             d.pop('dqn_exploration_fraction')
             d.pop('dqn_target_update_interval')
@@ -295,6 +298,11 @@ def parse_args():
                                 type=lambda x: int(float(x)),
                                 nargs='+',
                                 default=ON_POLICY_N_STEPS)
+    learning_group.add_argument('--on_policy_ent_coef',
+                                help='for on-policy algorithms only! entropy loss coefficient',
+                                type=lambda x: float(x),
+                                nargs='+',
+                                default=ON_POLICY_ENT_COEF)
     learning_group.add_argument('--ppo_n_epochs',
                                 help='for PPO only! number of training epochs per rollout',
                                 type=lambda x: int(float(x)),
@@ -437,7 +445,7 @@ def parse_args():
 
     # handle hidden dim values with 'append' action issue using default value
     if args.mods is None:
-        args.mods = list(powerset(Mods))
+        args.mods = MODS
     if args.grid_resolution is None:
         args.grid_resolution = GRID_RESOLUTIONS
     if args.ofe_hidden_dims is None:

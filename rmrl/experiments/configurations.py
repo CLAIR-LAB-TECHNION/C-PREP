@@ -16,6 +16,8 @@ NUM_SRC_SAMPLES = [10]
 NUM_TGT_SAMPLES = [1]
 OVERSAMPLE_FACTOR = 5
 
+MODS = [[]]
+
 LEARNING_RATES = [1e-4]  # [1 / (10 ** i) for i in range(1, 6)]
 BATCH_SIZES = [32]  # [2 ** i for i in range(3, 10)]
 GAMMA = [0.99]
@@ -32,6 +34,7 @@ FUEL_RESOLUTIONS = [None]
 NUM_SEEDS = 30
 SEED = [42]
 ON_POLICY_N_STEPS = [1024]
+ON_POLICY_ENT_COEF = 0.01
 PPO_N_EPOCHS = [10]
 OFF_POLICY_LEARNING_STARTS = [0]  # no waiting for training by default
 OFF_POLICY_TRAIN_FREQ = [4]  # align with DQN default
