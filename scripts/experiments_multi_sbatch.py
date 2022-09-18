@@ -1,11 +1,11 @@
 import subprocess
+import sys
 import threading
 from enum import Enum
 
 from tqdm.auto import tqdm
 
 from rmrl.__main__ import parse_args, get_single_run_args_list
-import sys
 
 
 def main():
@@ -32,7 +32,10 @@ def main():
     job_threads = []
     for i, run_args in enumerate(single_run_args_list, 1):
         # prepare args for job
-        popen_args = f'scripts/slurm_job_run.sh {job_prefix}{i} {node_name} {num_cpus} {num_gpus} python -m rmrl'.split()
+        popen_args = (f'scripts/slurm_job_batch.sh '
+                      f'{job_prefix}{i} {node_name} {num_cpus} {num_gpus} --wait'
+                      f'python -m rmrl').split()
+
         for arg_name, arg_val in vars(run_args).items():
             if arg_val is None or arg_val is False:
                 continue  # omit arg and use default
