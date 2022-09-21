@@ -66,10 +66,15 @@ class ProgressBarCallback(BaseCallback):
 class CustomEvalCallback(EvalCallback):
     def _init_callback(self):
         super()._init_callback()
+
+        # needed for calculating and storing returns
         self._returns_buffer = []
         self._gamma = self.model.gamma  # exists in on-policy and off-policy algorithms
         self._reset_discounts()
         self.evaluations_returns = []
+
+        # set seed for eval env
+        self.eval_env.seed(self.model.seed)
 
     def _reset_discounts(self):
         self._discount = 1
