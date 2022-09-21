@@ -131,6 +131,11 @@ class Experiment(ABC):
                                            **self.cfg.model_kwargs)
         )
 
+        # special parameter for DQN
+        if 'exploration_timesteps' in self.cfg.alg_kwargs:
+            self.cfg.alg_kwargs['exploration_fraction'] = \
+                self.cfg.alg_kwargs.pop('exploration_timesteps') / self.cfg.max_timesteps
+
         return self.alg_class(
             env=env,
             policy='MultiInputPolicy',

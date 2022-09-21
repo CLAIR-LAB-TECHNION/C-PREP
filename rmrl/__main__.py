@@ -140,8 +140,8 @@ def __get_alg_kwargs(run_args):
         alg_kwargs['train_freq'] = (run_args.off_policy_train_freq, 'episode')
     if 'off_policy_gradient_steps' in run_args:
         alg_kwargs['gradient_steps'] = run_args.off_policy_gradient_steps
-    if 'dqn_exploration_fraction' in run_args:
-        alg_kwargs['exploration_fraction'] = run_args.dqn_exploration_fraction
+    if 'dqn_exploration_timesteps' in run_args:
+        alg_kwargs['exploration_timesteps'] = run_args.dqn_exploration_timesteps
     if 'dqn_target_update_interval' in run_args:
         alg_kwargs['target_update_interval'] = run_args.dqn_target_update_interval
 
@@ -185,7 +185,7 @@ def get_single_run_args_list(args):
             d.pop('on_policy_n_steps')
             d.pop('on_policy_ent_coef')
         if alg != Algos.DQN:
-            d.pop('dqn_exploration_fraction')
+            d.pop('dqn_exploration_timesteps')
             d.pop('dqn_target_update_interval')
         if alg != Algos.PPO:
             d.pop('ppo_n_epochs')
@@ -327,11 +327,11 @@ def parse_args():
                                 type=lambda x: int(float(x)),
                                 nargs='+',
                                 default=OFF_POLICY_GRADIENT_STEPS)
-    learning_group.add_argument('--dqn_exploration_fraction',
+    learning_group.add_argument('--dqn_exploration_timesteps',
                                 help='for DQN only! fraction of training using declining epsilon greedy',
-                                type=float,
+                                type=lambda x: int(float(x)),
                                 nargs='+',
-                                default=DQN_EXPLORATION_FRACTIONS)
+                                default=DQN_EXPLORATION_TIMESTEPS)
     learning_group.add_argument('--dqn_target_update_interval',
                                 help='for DQN only! number of steps between target network parameter updates',
                                 type=lambda x: int(float(x)),

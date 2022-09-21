@@ -3,7 +3,7 @@ import glob
 import pandas as pd
 from tensorboard.backend.event_processing import event_accumulator
 
-from .configurations import SupportedExperiments
+from .configurations import Algos
 from .experiment import Experiment
 
 TRANSFER_FROM_MIDFIX = '_transfer_from_'
@@ -40,6 +40,15 @@ class WithTransferExperiment(Experiment):
 
             if self.cfg.exp_kwargs['keep_timesteps']:
                 tsf_agent.num_timesteps = src_agent.num_timesteps
+
+                if self.cfg.alg == Algos.DQN:
+                    # to allow exploration fraction to match the given exploration timesteps:
+                    # - calc exploration_timesteps
+                    # - divide by new max timesteps
+                    tsf_agent.exploration_fraction = (
+                        (tsf_agent.exploration_fraction * self.cfg.max_timesteps) /
+                        (src_agent.num_timesteps + self.cfg.max_timesteps)
+                    )
 
             # train agent
             tsf_agent = self.train_agent(tsf_agent, tgt_eval_env, tsf_task_name)

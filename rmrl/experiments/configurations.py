@@ -22,7 +22,7 @@ LEARNING_RATES = [1e-4]  # [1 / (10 ** i) for i in range(1, 6)]
 BATCH_SIZES = [32]  # [2 ** i for i in range(3, 10)]
 GAMMA = [0.99]
 TOTAL_TIMESTEPS = 5e5
-DQN_EXPLORATION_FRACTIONS = [0.3]  # np.linspace(0, 1, 10).tolist()
+DQN_EXPLORATION_TIMESTEPS = [5e4]  # np.linspace(0, 1, 10).tolist()
 DQN_TARGET_UPDATE_INTERVAL = [500]
 OUT_DIMS = [32]  # [16, 32, 64, 128, 256]
 HIDDEN_DIMS = [[32, 32]]  # list(set(tuple(sorted(hd)) for hd in powerset(OUT_DIMS, max_subset_len=2)))
