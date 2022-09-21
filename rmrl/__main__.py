@@ -120,11 +120,12 @@ def __get_model_kwargs(run_args):
 def __get_alg_kwargs(run_args):
     alg_kwargs = dict(
         learning_rate=run_args.learning_rate,
-        batch_size=run_args.batch_size,
         gamma=run_args.gamma
     )
 
     # alg-specific kwargs
+    if run_args.alg != Algos.A2C:
+        alg_kwargs['batch_size'] = run_args.batch_size,
     if 'on_policy_n_steps' in run_args:
         alg_kwargs['n_steps'] = run_args.on_policy_n_steps
     if 'on_policy_ent_coef' in run_args:
