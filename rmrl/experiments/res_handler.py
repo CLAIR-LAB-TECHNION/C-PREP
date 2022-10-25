@@ -137,6 +137,8 @@ class ResultsHandler:
                 path_to_idx.pop(cfg_idx_to_path[i])
 
                 # filter experiments according to constraints
+        else:
+            experiments_idx = list(cfg_idx_to_path.keys())
 
         path_to_idx = self.__filter_out_unconstrained(path_to_idx, cfg_constraints)
 
@@ -144,9 +146,9 @@ class ResultsHandler:
 
         if issubclass(self.exp_type, WithTransferExperiment):
             self.__plot_compare_evals(
-                src_evals={k: v[SRC_KEY] for k, v in all_res.items()},
-                tgt_evals={k: v[TGT_KEY] for k, v in all_res.items()},
-                tsf_evals={k: v[TSF_KEY] for k, v in all_res.items()},
+                src_evals={k: all_res[k][SRC_KEY] for k in experiments_idx},
+                tgt_evals={k: all_res[k][TGT_KEY] for k in experiments_idx},
+                tsf_evals={k: all_res[k][TSF_KEY] for k in experiments_idx},
                 l_bound=l_bound,
                 u_bound=u_bound,
                 show_src_scratch=show_src_scratch,
