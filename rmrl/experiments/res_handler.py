@@ -135,20 +135,19 @@ class ResultsHandler:
             toss_idx = set(cfg_idx_to_path.keys()) - set(experiments_idx)
             for i in toss_idx:
                 path_to_idx.pop(cfg_idx_to_path[i])
-
-                # filter experiments according to constraints
         else:
             experiments_idx = list(cfg_idx_to_path.keys())
 
+        # filter experiments according to constraints
         path_to_idx = self.__filter_out_unconstrained(path_to_idx, cfg_constraints)
 
         all_res = self.get_path_results(path_to_idx, cfg_idx_to_path, record_returns)
 
         if issubclass(self.exp_type, WithTransferExperiment):
             self.__plot_compare_evals(
-                src_evals={k: all_res[k][SRC_KEY] for k in experiments_idx},
-                tgt_evals={k: all_res[k][TGT_KEY] for k in experiments_idx},
-                tsf_evals={k: all_res[k][TSF_KEY] for k in experiments_idx},
+                src_evals={k: all_res[k][SRC_KEY] for k in experiments_idx if k in all_res},
+                tgt_evals={k: all_res[k][TGT_KEY] for k in experiments_idx if k in all_res},
+                tsf_evals={k: all_res[k][TSF_KEY] for k in experiments_idx if k in all_res},
                 l_bound=l_bound,
                 u_bound=u_bound,
                 show_src_scratch=show_src_scratch,
