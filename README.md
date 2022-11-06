@@ -1,4 +1,4 @@
-# RMs for RL
+# RM-GECO
 
 This repo contains the official implementation for the paper "[Enhancing Transfer of Reinforcement Learning Agents with Abstract Contextual Embeddings](https://openreview.net/forum?id=b57S-VN84b0)", accepted at the NeurIPS'22 nCSI workshop.
 
@@ -30,9 +30,12 @@ pip install -e .
 
 In order to run experiments and replicate our results, you may run the following command:
 ```shell
-python rmrl/__main__.py
+python -m rmrl [args]
 ```
-In the `__main__.py`, the arguments to setup the agent, the environment, and the experiment settings are initialized. In order to change them, take a look at [this part](https://github.com/sarah-keren/RM-RL/blob/ncsi/rmrl/__main__.py#L202-L476) of code. 
+In the `__main__.py`, the arguments to setup the agent, the environment, and the experiment settings are initialized. In order to change them, take a look at [this part](https://github.com/sarah-keren/RM-RL/blob/ncsi/rmrl/__main__.py#L202-L476) of code, or run the following:
+```shell
+python -m rmrl --help
+```
 
 This script first trains the agent for `timesteps`, in the meantime stores checkpoints of the agent every `chkp_freq` steps, and finally run experiments on a variety of tasks and settings iteratively.
 
