@@ -5,11 +5,11 @@ This repo contains the official implementation for the paper "[Enhancing Transfe
 Please use the below citation if you find this work useful in your research:
 ```
 @inproceedings{azran2022enhancing,
-title={Enhancing Transfer of Reinforcement Learning Agents with Abstract Contextual Embeddings},
-author={Guy Azran and Mohamad Hosein Danesh and Stefano V Albrecht and Sarah Keren},
-booktitle={NeurIPS 2022 Workshop on Neuro Causal and Symbolic AI (nCSI)},
-year={2022},
-url={https://openreview.net/forum?id=b57S-VN84b0}
+    title={Enhancing Transfer of Reinforcement Learning Agents with Abstract Contextual Embeddings},
+    author={Guy Azran and Mohamad Hosein Danesh and Stefano V Albrecht and Sarah Keren},
+    booktitle={NeurIPS 2022 Workshop on Neuro Causal and Symbolic AI (nCSI)},
+    year={2022},
+    url={https://openreview.net/forum?id=b57S-VN84b0}
 }
 ```
 
