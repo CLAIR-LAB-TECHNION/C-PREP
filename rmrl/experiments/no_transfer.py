@@ -1,5 +1,4 @@
 from .experiment import Experiment
-from .configurations import SupportedExperiments
 
 
 class NoTransferExperiment(Experiment):

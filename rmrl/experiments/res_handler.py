@@ -179,7 +179,6 @@ class ResultsHandler:
         if ax is None:
             _, ax = plt.subplots(1, 1, figsize=(15, 7))
 
-
         y_label = ('median' if record_median else 'average') + (' return' if record_returns else ' acc reward')
 
         ax.set_title(f'Policy performance on source context')
@@ -371,7 +370,6 @@ class ResultsHandler:
         return np.load(p / EVALUATIONS_FILE, allow_pickle=True)
 
     def plot_experiments_training(self):
-        # TODO
         pass
 
     def print_experiments(self, exp_agg_type=None, cfg_constraints=None):

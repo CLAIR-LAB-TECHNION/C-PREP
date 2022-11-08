@@ -1,8 +1,8 @@
 from functools import reduce
 
 from multi_taxi import single_taxi_v0, wrappers
-from multi_taxi.world.entities import PASSENGER_NOT_IN_TAXI
 from multi_taxi.world.domain_map import DomainMap
+from multi_taxi.world.entities import PASSENGER_NOT_IN_TAXI
 
 from rmrl.context.multitask_env import MultiTaskWrapper
 from rmrl.utils.misc import split_pairs

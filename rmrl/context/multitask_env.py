@@ -50,5 +50,3 @@ class MultiTaskWrapper(gym.Wrapper, ABC):
     @abstractmethod
     def _sample_task(self, n):
         pass
-
-

@@ -1,8 +1,7 @@
 import numpy as np
+from multi_taxi.utils.types import SymbolicObservation as sym_obs
 
 from ....reward_machines.reward_machine import *
-from multi_taxi.world.domain_map import DomainMap
-from multi_taxi.utils.types import SymbolicObservation as sym_obs
 
 
 class TaxiEnvRM(RewardMachine):
@@ -16,7 +15,7 @@ class TaxiEnvRM(RewardMachine):
 
         # set default resolution info
         self.grid_resolution = grid_resolution or (self.dm.map_height, self.dm.map_width)
-        self.fuel_resolution = fuel_resolution or 1  # TODO handle fuel
+        self.fuel_resolution = fuel_resolution or 1
 
         # check resolution info
         sector_res_h, sector_res_w = self.grid_resolution
@@ -39,7 +38,6 @@ class TaxiEnvRM(RewardMachine):
         self.taxi_loc_idx = [obs_meanings.index(sym_obs.LOCATION_ROW.value),
                              obs_meanings.index(sym_obs.LOCATION_COL.value)]
 
-        # TODO enable multiple passengers
         self.pass_loc_idx = [obs_meanings.index(sym_obs.PASSENGER_LOCATION_ROW.value.format(index=0)),
                              obs_meanings.index(sym_obs.PASSENGER_LOCATION_COL.value.format(index=0))]
         self.picked_up_idx = obs_meanings.index(sym_obs.PASSENGER_PICKED_UP.value.format(index=0))
@@ -61,7 +59,6 @@ class TaxiEnvRM(RewardMachine):
         single_props = [tuple(v) for v in np.eye(num_props)]  # make tuple for hashing
 
         # passenger location
-        # TODO multiple passenger locations
         passenger_loc = self.env.unwrapped.state().passengers[0].location
         passenger_sec = self.loc_to_sec[passenger_loc]
         on_passenger_prop = tuple(np.array(single_props[self.__get_sector_prop_idx(passenger_sec)]) +
@@ -98,14 +95,13 @@ class TaxiEnvRM(RewardMachine):
         return delta
 
     def L(self, s):
-        props = np.zeros(self.num_propositions,)
+        props = np.zeros(self.num_propositions, )
 
         # start with current sector
         taxi_loc = tuple(s[self.taxi_loc_idx])
         taxi_sector = self.loc_to_sec[taxi_loc]
         props[self.__get_sector_prop_idx(taxi_sector)] = 1
 
-        # TODO handle multiple passengers
         # continue to check if on passenger or picked up passenger
         if np.all(s[self.taxi_loc_idx] == s[self.pass_loc_idx]):
             props[self.__get_on_pass_prop_idx(0)] = 1
@@ -152,7 +148,6 @@ class TaxiEnvRM(RewardMachine):
 
     def __adjacent_secs(self, sec1, sec2):
         return any(self.__adjacent_loc_to_sec(l1, sec2) for l1 in self.sec_to_locs[sec1])
-
 
 # class SingleFixedPassengerHighResRM(RewardMachine):
 #     def _init(self, taxi_loc_idx: list, pass_loc_idx: list, pickup_ind_idx: int, resolution: tuple, dm: DomainMap,

@@ -3,13 +3,13 @@ import pprint
 from enum import Enum
 from pathlib import Path
 from typing import Iterable
-from torch_geometric.nn import GATConv, GINEConv
+
+from torch_geometric.nn import GATConv
 
 from rmrl.envs.grid.reward_machines.single_taxi import TaxiEnvRM
 from rmrl.envs.grid.single_taxi import fixed_entities_env, changing_map_env
-from rmrl.nn.models import cur_state_embedding, ignore_state_mean
+from rmrl.nn.models import cur_state_embedding
 from rmrl.reward_machines.potential_functions import ValueIteration
-from rmrl.utils.lr_schedulers import *
 
 # data constants and options
 NUM_SRC_SAMPLES = [10]
@@ -143,15 +143,11 @@ class Mods(Enum):
     RS = 'RS'
     GECO = 'GECO'
     GECOUPT = 'GECOUPT'
-    # VIN = 'VIN'  # NOT IMPLEMENTED
 
 
 class Algos(Enum):
     DQN = 'DQN'
-    A2C = 'A2C'
-    # DDPG = 'DDPG'
     PPO = 'PPO'
-    # SAC = 'SAC'
 
 
 OFF_POLICY_ALGOS = [Algos.DQN]

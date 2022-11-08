@@ -6,13 +6,11 @@ from collections.abc import Iterable as IterableType
 from itertools import product
 
 import torch_geometric.nn
-
 from tqdm.auto import tqdm
 
 from rmrl.experiments.configurations import *
 from rmrl.experiments.runner import ExperimentsRunner
 from rmrl.nn import models
-from rmrl.utils.misc import powerset
 
 EXP_CHOICES = [exp_label.value for exp_label in SupportedExperiments]
 ENV_CHOICES = [env_label.value for env_label in SupportedEnvironments]
@@ -124,8 +122,7 @@ def __get_alg_kwargs(run_args):
     )
 
     # alg-specific kwargs
-    if run_args.alg != Algos.A2C:
-        alg_kwargs['batch_size'] = run_args.batch_size,
+    alg_kwargs['batch_size'] = run_args.batch_size
     if 'on_policy_n_steps' in run_args:
         alg_kwargs['n_steps'] = run_args.on_policy_n_steps
     if 'on_policy_ent_coef' in run_args:
@@ -268,7 +265,6 @@ def parse_args():
                               action='append',
                               choices=Mods,
                               type=Mods,
-                              # default=list(powerset(Mods)),
                               nargs='*')
 
     # learning args
@@ -339,7 +335,6 @@ def parse_args():
                                 default=DQN_TARGET_UPDATE_INTERVAL)
 
     # RM params
-    # TODO make more general
     rm_group = parser.add_argument_group('RM configurations')
     rm_group.add_argument('--goal_state_reward',
                           help='RM reward when reaching the goal state',
@@ -350,7 +345,6 @@ def parse_args():
                           help='number of cells per grid sector',
                           nargs=2,
                           type=int,
-                          # default=GRID_RESOLUTIONS,
                           action='append')
     rm_group.add_argument('--fuel_resolution',
                           help='number of fuel waypoints',

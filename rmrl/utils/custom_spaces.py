@@ -1,8 +1,8 @@
 from itertools import product
 
 import gym
-import torch
 import numpy as np
+import torch
 import torch_geometric as tg
 
 
@@ -48,7 +48,7 @@ class PygData(gym.spaces.Space):
             edge_attr = None
         else:
             edge_attr = np.array([self.ef_space.sample() for _ in range(num_edges)])
-            edge_attr = torch.tensor(edge_attr) # transform to tensor type
+            edge_attr = torch.tensor(edge_attr)  # transform to tensor type
 
         # sample edges
         possible_edges = np.array(list(product(range(num_nodes), range(num_nodes))))

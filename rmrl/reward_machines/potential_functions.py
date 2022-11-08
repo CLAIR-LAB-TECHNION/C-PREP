@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Dict
 from itertools import chain, combinations
+from typing import Dict
 
 import networkx as nx
 

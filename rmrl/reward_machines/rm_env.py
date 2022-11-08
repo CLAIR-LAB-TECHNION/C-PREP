@@ -3,9 +3,8 @@ from typing import Callable
 import gym
 import numpy as np
 
-from rmrl.reward_machines.reward_machine import RewardMachine
 from rmrl.context.multitask_env import MultiTaskWrapper
-
+from rmrl.reward_machines.reward_machine import RewardMachine
 from stable_baselines3.common.custom_spaces import PygData
 
 ORIG_OBS_KEY = 'obs'

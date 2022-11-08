@@ -46,8 +46,8 @@ class WithTransferExperiment(Experiment):
                     # - calc exploration_timesteps
                     # - divide by new max timesteps
                     tsf_agent.exploration_fraction = (
-                        (tsf_agent.exploration_fraction * self.cfg.max_timesteps) /
-                        (src_agent.num_timesteps + self.cfg.max_timesteps)
+                            (tsf_agent.exploration_fraction * self.cfg.max_timesteps) /
+                            (src_agent.num_timesteps + self.cfg.max_timesteps)
                     )
 
             # train agent

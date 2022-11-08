@@ -13,8 +13,8 @@ class LearningRateSchedule(ABC):
         return repr_all_public(self)
 
     def __eq__(self, other):
-        return(isinstance(other, self.__class__) and
-               vars(self) == vars(other))
+        return (isinstance(other, self.__class__) and
+                vars(self) == vars(other))
 
     def __hash__(self):
         return hash(tuple(vars(self).items()))

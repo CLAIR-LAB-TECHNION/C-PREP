@@ -1,9 +1,9 @@
 import math
 import time
+import traceback
 from concurrent.futures import ThreadPoolExecutor
 from multiprocessing import Lock
 from typing import List
-import traceback
 
 from tqdm.auto import tqdm
 
@@ -14,7 +14,6 @@ from .with_transfer import WithTransferExperiment
 
 DONE_FILE = 'DONE'
 FAIL_FILE = 'FAIL'
-
 
 TIMESTAMP_FORMAT = '%Y-%m-%d-%H_%M_%S.%f'
 
