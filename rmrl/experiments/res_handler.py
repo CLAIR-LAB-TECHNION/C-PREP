@@ -112,7 +112,8 @@ class ResultsHandler:
                               show_src_scratch=True,
                               show_tgt_scratch=True,
                               show_tgt_transfer=True,
-                              save_path=None):
+                              save_path=None,
+                              **save_kwargs):
 
         # get correct object dict
         if exp_agg_type is None:
@@ -172,7 +173,10 @@ class ResultsHandler:
                 with_deviation=with_deviation
             )
 
-        plt.show()
+        if save_path is not None:
+            plt.savefig(save_path, **save_kwargs)
+        else:
+            plt.show()
 
     def __plot_src_evals(self, src_evals, l_bound, u_bound, src_xlim, plt_kwargs, record_returns=False,
                          record_median=False, with_deviation=False, ax=None):
@@ -306,9 +310,9 @@ class ResultsHandler:
 
         return res
 
-    def mean_discounted_rewards(self, npz_res_dict, ctx_key, val_key):
+    def mean_discounted_rewards(self, npz_res_dict, stage_key, val_key):
         returns = [
-            npz_res_dict[i][ctx_key][val_key]
+            npz_res_dict[i][stage_key][val_key]
             for i in npz_res_dict
         ]
 
@@ -323,8 +327,8 @@ class ResultsHandler:
         ])
 
         return {
-            TIMESTEPS_KEY: max([npz_res_dict[i][ctx_key][TIMESTEPS_KEY] for i in npz_res_dict], key=lambda v: len(v)),
-            RESULTS_KEY: np.mean(padded_returns, axis=-1).T  # transpose to make it [timestep, cfg]
+            TIMESTEPS_KEY: max([npz_res_dict[i][stage_key][TIMESTEPS_KEY] for i in npz_res_dict], key=lambda v: len(v)),
+            RESULTS_KEY: np.nanmean(padded_returns, axis=-1).T  # transpose to make it [timestep, cfg]
         }
 
     def load_results_for_indices(self, idx):
