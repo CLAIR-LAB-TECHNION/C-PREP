@@ -41,7 +41,11 @@ class Experiment(ABC):
         self.env_fn = fns_dict[ENV_KEY]
         self.rm_fn = fns_dict[RM_KEY]
 
+        # get env specific arguments
         self.env_kwargs = RMENV_DICT[self.cfg.env][ENV_KWARGS_KEY]
+
+        # create dump dir
+        self.dump_dir.mkdir(exist_ok=True)
 
     def run(self, *contexts):
         train_envs = []
