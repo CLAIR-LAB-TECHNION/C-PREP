@@ -158,7 +158,7 @@ class Experiment(ABC):
         task_name = self.get_env_task_name(env)
 
         if not force_load:
-            final_model_file = self.models_dir / task_name / (FINAL_MODEL_NAME + '.zip')
+            final_model_file = self.models_dir / task_name / (model_name + '.zip')
             if not final_model_file.is_file():  # find training complete file
                 raise FileNotFoundError
             elif self.force_retrain:  # don't look for existing model if forcing retrain
