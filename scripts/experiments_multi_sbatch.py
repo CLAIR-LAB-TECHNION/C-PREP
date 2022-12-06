@@ -33,7 +33,7 @@ def main():
     for i, run_args in enumerate(single_run_args_list, 1):
         # prepare args for job
         popen_args = (f'scripts/slurm_job_batch.sh '
-                      f'{job_prefix}{i} {node_name} {num_cpus} {num_gpus} --wait'
+                      f'{job_prefix}{i} {node_name} {num_cpus} {num_gpus} '
                       f'python -m rmrl').split()
 
         for arg_name, arg_val in vars(run_args).items():
