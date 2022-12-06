@@ -11,6 +11,8 @@ from rmrl.nn.models import cur_state_embedding, ignore_state_mean
 from rmrl.reward_machines.potential_functions import ValueIteration
 from rmrl.utils.lr_schedulers import *
 
+from multi_taxi import Event
+
 # data constants and options
 NUM_SRC_SAMPLES = [10]
 NUM_TGT_SAMPLES = [1]
@@ -83,7 +85,8 @@ class SupportedExperiments(Enum):
 
 
 class SupportedEnvironments(Enum):
-    SMALL = 'small'
+    SMALL_GN = 'small_gn'
+    SMALL_PD = 'small_pd'
     GRID_NAVIGATION = 'grid_nav'
 
 
@@ -93,11 +96,11 @@ class ContextSpaces(Enum):
 
 
 RMENV_DICT = {
-    SupportedEnvironments.SMALL: {
+    SupportedEnvironments.SMALL_GN: {
         ENV_KWARGS_KEY: {
             'num_passengers': 1,
             'pickup_only': True,
-            'max_steps': 100,
+            'max_steps': 25,
             'domain_map': [
                 "+-------+",
                 "| : | : |",
@@ -105,7 +108,44 @@ RMENV_DICT = {
                 "| : | | |",
                 "| | | : |",
                 "+-------+"
-            ]
+            ],
+            'reward_table': {
+                Event.STEP: 0,
+                Event.PICKUP: 0,
+                Event.OBJECTIVE: 1
+            },
+        },
+        CONTEXT_SPACES_KEY: {
+            ContextSpaces.FIXED_ENTITIES: {
+                ENV_KEY: fixed_entities_env,
+                RM_KEY: TaxiEnvRM,
+            },
+            ContextSpaces.CHANGING_MAP: {
+                ENV_KEY: changing_map_env,
+                RM_KEY: TaxiEnvRM,
+            }
+        }
+    },
+    SupportedEnvironments.SMALL_PD: {
+        ENV_KWARGS_KEY: {
+            'num_passengers': 1,
+            'no_intermediate_dropoff': True,
+            'max_steps': 50,
+            'domain_map': [
+                "+-------+",
+                "| : | : |",
+                "| : : : |",
+                "| : | | |",
+                "| | | : |",
+                "+-------+"
+            ],
+            'reward_table': {
+                Event.STEP: 0,
+                Event.PICKUP: 0,
+                Event.FINAL_DROPOFF: 0,
+                Event.INTERMEDIATE_DROPOFF: 0,
+                Event.OBJECTIVE: 1
+            },
         },
         CONTEXT_SPACES_KEY: {
             ContextSpaces.FIXED_ENTITIES: {

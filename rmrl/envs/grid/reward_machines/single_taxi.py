@@ -1,3 +1,5 @@
+from itertools import product
+
 import numpy as np
 
 from ....reward_machines.reward_machine import *
@@ -10,6 +12,7 @@ class TaxiEnvRM(RewardMachine):
         # get env info
         self.dm = self.env.unwrapped.domain_map
         self.num_passengers = self.env.unwrapped.num_passengers
+        self.pickup_only = self.env.unwrapped.pickup_only  # check "pickup only" setting where there is no dropoff
 
         # goal state info
         self.goal_state_reward = goal_state_reward
@@ -34,94 +37,112 @@ class TaxiEnvRM(RewardMachine):
         self.sec_to_locs = {i: [] for i in range(self.num_sectors)}
         [self.sec_to_locs[self.loc_to_sec[loc]].append(loc) for loc in self.loc_to_sec]
 
-        # important observation info
-        obs_meanings = self.env.unwrapped.get_observation_meanings()
-        self.taxi_loc_idx = [obs_meanings.index(sym_obs.LOCATION_ROW.value),
-                             obs_meanings.index(sym_obs.LOCATION_COL.value)]
-
-        # TODO enable multiple passengers
-        self.pass_loc_idx = [obs_meanings.index(sym_obs.PASSENGER_LOCATION_ROW.value.format(index=0)),
-                             obs_meanings.index(sym_obs.PASSENGER_LOCATION_COL.value.format(index=0))]
-        self.picked_up_idx = obs_meanings.index(sym_obs.PASSENGER_PICKED_UP.value.format(index=0))
-
-        # self.pass_loc_idx = []
-        # try:
-        #     for i in count():
-        #         pass_row_obs = sym_obs.PASSENGER_LOCATION_ROW.value.format(index=i)
-        #         pass_col_obs = sym_obs.PASSENGER_LOCATION_COL.value.format(index=i)
-        #         self.pass_loc_idx.append((obs_meanings.index(pass_row_obs),
-        #                                   obs_meanings.index(pass_col_obs)))
-        # except ValueError:
-        #     pass
-
     def _delta(self) -> TransitionMap:
+        # output transitions dict
         delta = {}
 
-        num_props = self.num_sectors + self.num_passengers * 2
-        single_props = [tuple(v) for v in np.eye(num_props)]  # make tuple for hashing
+        # the number of passenger info propositions
+        # - one for each passenger picked up. true iff corresponding passenger was picked up
+        # - one for each passenger dropped off. true iff corresponding passenger has arrived at the destination. only
+        num_passenger_statuses = self.num_passengers + self.num_passengers * (not self.pickup_only)
 
-        # passenger location
-        # TODO multiple passenger locations
-        passenger_loc = self.env.unwrapped.state().passengers[0].location
-        passenger_sec = self.loc_to_sec[passenger_loc]
-        on_passenger_prop = tuple(np.array(single_props[self.__get_sector_prop_idx(passenger_sec)]) +
-                                  np.array(single_props[self.__get_on_pass_prop_idx(0)]))
-        pickup_prop = tuple(np.array(single_props[self.__get_sector_prop_idx(passenger_sec)]) +
-                            np.array(single_props[self.__get_on_pass_prop_idx(0)]) +
-                            np.array(single_props[self.__get_pickup_prop_idx(0)]))
+        # the number of propositions is the number of sectors and statuses combined
+        num_props = self.num_sectors + num_passenger_statuses
 
-        # sectors
-        # iterate all sectors
-        for sec in range(self.num_sectors):
-            sec_prop = single_props[self.__get_sector_prop_idx(sec)]
+        # a container for single proposition vectors
+        single_props = np.eye(num_props)
 
-            # self edge in all sectors (e.g., bad pickup)
-            delta.setdefault(sec_prop, {})[sec_prop] = 0
+        # iterate all possible passenger statuses
+        for status in product([0, 1], repeat=num_passenger_statuses):
+            if all(status):  # this is a goal status
+                continue
 
-            # check adjacency to other sectors
-            for other_sec in range(self.num_sectors):
-                if self.__adjacent_secs(sec, other_sec):
-                    other_sec_prop = single_props[self.__get_sector_prop_idx(other_sec)]
-                    delta.setdefault(sec_prop, {})[other_sec_prop] = 0
+            # pad status with zeros in the sector propositions
+            status_prop = np.concatenate([np.zeros(self.num_sectors), status])
 
-            # check adjacency to passenger
-            if self.__adjacent_sec_to_loc(sec, passenger_loc):
-                delta.setdefault(sec_prop, {})[on_passenger_prop] = 0
-                delta.setdefault(on_passenger_prop, {})[sec_prop] = 0
+            # iterate all sectors at current status
+            for sec in range(self.num_sectors):
+                # get proposition vector for sector at current passenger status
+                sec_prop = single_props[self.__get_sector_prop_idx(sec)] + status_prop
 
-        # stuck on passenger
-        delta.setdefault(on_passenger_prop, {})[on_passenger_prop] = 0
+                # self edge in all sectors (e.g., bad pickup / dropoff)
+                delta.setdefault(tuple(sec_prop), {})[tuple(sec_prop)] = 0
 
-        # final pickup
-        delta.setdefault(on_passenger_prop, {})[pickup_prop] = self.goal_state_reward
+                # add edges to adjacent sectors with same status
+                for other_sec in range(self.num_sectors):
+                    if self.__adjacent_secs(sec, other_sec):
+                        # proposition at current status of adjacent sector
+                        other_sec_prop = single_props[self.__get_sector_prop_idx(other_sec)] + status_prop
+
+                        # add edge
+                        delta.setdefault(tuple(sec_prop), {})[tuple(other_sec_prop)] = 0
+
+                # add edge to possible status changes for passengers
+                for i in range(self.num_passengers):
+                    p = self.env.unwrapped.state().passengers[i]
+                    passenger_pickup_status = sec_prop[self.__get_pickup_prop_idx(i)]
+
+                    # add pickup status change only if not picked up
+                    if passenger_pickup_status == 0:
+                        passenger_loc = p.location
+                        passenger_sec = self.loc_to_sec[passenger_loc]
+
+                        # if the passenger is in the taxi section, it can be picked up
+                        if passenger_sec == sec:
+                            passenger_picked_up_prop = single_props[self.__get_pickup_prop_idx(i)]
+                            pickup_sec_prop = sec_prop + passenger_picked_up_prop
+
+                            # add pickup edge with reward according to goal status
+                            is_goal_status = np.all(pickup_sec_prop[self.num_sectors:])
+                            delta.setdefault(tuple(sec_prop), {})[tuple(pickup_sec_prop)] = (self.goal_state_reward
+                                                                                             if is_goal_status
+                                                                                             else 0)
+
+                    # add dropoff status change only if picked up and not dropped off
+                    elif not self.pickup_only and sec_prop[self.__get_dropoff_prop_idx(i)] == 0:
+                        dst_loc = p.destination
+                        dst_sec = self.loc_to_sec[dst_loc]
+
+                        # if the destination is in the taxi section, it can be dropped off
+                        if dst_sec == sec:
+                            passenger_dropped_off_prop = single_props[self.__get_dropoff_prop_idx(i)]
+                            dropoff_sec_prop = sec_prop + passenger_dropped_off_prop
+
+                            # add dropoff edge with reward according to goal status
+                            is_goal_status = np.all(dropoff_sec_prop[self.num_sectors:])
+                            delta.setdefault(tuple(sec_prop), {})[tuple(dropoff_sec_prop)] = (self.goal_state_reward
+                                                                                              if is_goal_status
+                                                                                              else 0)
 
         return delta
 
     def L(self, s):
+        # using domain knowledge on state
+        s = self.env.state()
+
         props = np.zeros(self.num_propositions,)
 
-        # start with current sector
-        taxi_loc = tuple(s[self.taxi_loc_idx])
+        # current taxi sector
+        taxi_loc = s.taxis[0].location  # assuming single agent
         taxi_sector = self.loc_to_sec[taxi_loc]
         props[self.__get_sector_prop_idx(taxi_sector)] = 1
 
-        # TODO handle multiple passengers
-        # continue to check if on passenger or picked up passenger
-        if np.all(s[self.taxi_loc_idx] == s[self.pass_loc_idx]):
-            props[self.__get_on_pass_prop_idx(0)] = 1
-
-        if s[self.picked_up_idx]:
-            props[self.__get_pickup_prop_idx(0)] = 1
+        # check if taxi picked up passenger
+        for p in s.passengers:
+            if p.in_taxi or p.arrived:
+                props[self.__get_pickup_prop_idx(p.id)] = 1
+            if not self.pickup_only and p.arrived:
+                props[self.__get_dropoff_prop_idx(p.id)] = 1
 
         return tuple(props)
 
     def __get_sector_prop_idx(self, sector_num):
         return sector_num
 
-    def __get_on_pass_prop_idx(self, pass_num):
-        return self.num_sectors + pass_num * 2
-
     def __get_pickup_prop_idx(self, pass_num):
+        return self.num_sectors + pass_num * (1 if self.pickup_only else 2)
+
+    def __get_dropoff_prop_idx(self, pass_num):
         return self.num_sectors + pass_num * 2 + 1
 
     def __adjacent_locs(self, l1, l2):
