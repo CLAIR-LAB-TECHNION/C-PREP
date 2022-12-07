@@ -165,7 +165,8 @@ class FixedLocsAddition(MultiTaskWrapper):
         self.fixed_locs_env.task = locs_task
 
     def _get_hcv_rep(self, task):
-        return self.env._get_hcv_rep(task)
+        _, orig_task = task
+        return self.env._get_hcv_rep(orig_task)
 
     def reset(self, **kwargs):
         super().reset(**kwargs)
