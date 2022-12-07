@@ -30,7 +30,6 @@ class Experiment(ABC):
         self.exp_name = f'{self.__class__.__name__}/{repr(cfg)}'
 
         # extract special kwargs
-        self.rs_gamma = cfg.rm_kwargs.pop('rs_gamma', DEFAULT_RS_GAMMA)
         self.pot_fn = cfg.rm_kwargs.pop('pot_fn', DEFAULT_POT_FN)
 
         # get algorithm class
@@ -109,8 +108,8 @@ class Experiment(ABC):
         def rm_fn_with_rs(task_env):
             # create RM and reshape rewards
             rm = self.rm_fn(task_env, **self.cfg.rm_kwargs)
-            pots = self.pot_fn(rm, self.rs_gamma)
-            rm.reshape_rewards(pots, self.rs_gamma)
+            pots = self.pot_fn(rm, self.cfg.rm_kwargs['rs_gamma'])
+            rm.reshape_rewards(pots, self.cfg.rm_kwargs['rs_gamma'])
             return rm
 
         # init env with RM support
