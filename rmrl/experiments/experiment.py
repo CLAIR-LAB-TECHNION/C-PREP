@@ -116,7 +116,10 @@ class Experiment(ABC):
         rm_env = RMEnvWrapper(env=env,
                               rm_fn=rm_fn_with_rs,
                               rm_observations=Mods.GECO in self.cfg or Mods.GECOUPT in self.cfg,
-                              use_rm_reward=Mods.RS in self.cfg)  # use orig rewards for eval
+                              use_rm_reward=Mods.RS in self.cfg,
+                              next_desired_state_props=Mods.NDS in self.cfg,
+                              ohe_ctx=Mods.OHE in self.cfg,
+                              hcv_ctx=Mods.HCV in self.cfg)
 
         rm_env.reset()
 

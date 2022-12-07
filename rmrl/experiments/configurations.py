@@ -179,11 +179,16 @@ RMENV_DICT = {
 
 
 class Mods(Enum):
+    # context representations
+    OHE = 'OHE'
+    HCV = 'HCV'
+
+    # RM modifications
     AS = 'AS'
+    NDS = 'NDS'
     RS = 'RS'
     GECO = 'GECO'
     GECOUPT = 'GECOUPT'
-    # VIN = 'VIN'  # NOT IMPLEMENTED
 
 
 class Algos(Enum):

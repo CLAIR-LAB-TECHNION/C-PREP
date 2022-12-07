@@ -5,7 +5,8 @@ from torch import nn
 from torch_geometric.data import Data, Batch
 from torch_geometric.nn import GINEConv, GATConv, GATv2Conv, TransformerConv, Sequential
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
-from rmrl.reward_machines.rm_env import ORIG_OBS_KEY, CUR_STATE_PROPS_KEY, RM_DATA_KEY
+from rmrl.reward_machines.rm_env import (ORIG_OBS_KEY, CUR_STATE_PROPS_KEY, RM_DATA_KEY, NEXT_DESIRED_STATE_PROPS_KEY,
+                                         OHE_CTX_KEY, HCV_CTX_KEY)
 from rmrl.utils.misc import debatch_graph_to_specific_node
 
 from typing import Type, Dict, Union
@@ -54,12 +55,26 @@ class RMFeatureExtractorSB(BaseFeaturesExtractor):
             extractors[CUR_STATE_PROPS_KEY] = nn.Identity()
             self._output_size += observation_space.spaces[CUR_STATE_PROPS_KEY].shape[0]
 
+        # next desired state
+        if NEXT_DESIRED_STATE_PROPS_KEY in observation_space.spaces:
+            extractors[NEXT_DESIRED_STATE_PROPS_KEY] = nn.Identity()
+            self._output_size += observation_space.spaces[NEXT_DESIRED_STATE_PROPS_KEY].shape[0]
+
+        # OHE context representation
+        if OHE_CTX_KEY in observation_space.spaces:
+            extractors[OHE_CTX_KEY] = nn.Identity()
+            self._output_size += observation_space.spaces[OHE_CTX_KEY].shape[0]
+
+        # HCV context representation
+        if HCV_CTX_KEY in observation_space.spaces:
+            extractors[HCV_CTX_KEY] = nn.Identity()
+            self._output_size += observation_space.spaces[HCV_CTX_KEY].shape[0]
+
         # group reward machine information
         if RM_DATA_KEY in observation_space.spaces:
             assert CUR_STATE_PROPS_KEY in observation_space.spaces, 'must receive cur state'
             rm_space = observation_space.spaces[RM_DATA_KEY]
 
-            # TODO GNN type as parameter
             extractors[RM_DATA_KEY] = MultilayerGNN(gnn_class=gnn_type,
                                                     input_dim=rm_space.nf_space.shape[-1],
                                                     output_dim=gnn_out_dim,

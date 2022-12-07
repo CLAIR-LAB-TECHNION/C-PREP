@@ -14,7 +14,7 @@ TransitionMap = Dict[PropsVector, Dict[PropsVector, float]]
 
 
 class RewardMachine(ABC):
-    def __init__(self, env, rs_gamma, *args, **kwargs):
+    def __init__(self, env, *args, rs_gamma=None, **kwargs):
         self.env = env
         self.rs_gamma = rs_gamma
 

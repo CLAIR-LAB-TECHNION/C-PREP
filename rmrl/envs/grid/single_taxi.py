@@ -1,4 +1,8 @@
 from functools import reduce
+import re
+
+import gym
+import numpy as np
 
 from multi_taxi import single_taxi_v0, wrappers
 from multi_taxi.world.entities import PASSENGER_NOT_IN_TAXI
@@ -11,6 +15,7 @@ from rmrl.utils.misc import split_pairs
 def fixed_entities_env(initial_task=None, change_task_on_reset=False, **env_kwargs):
     env = single_taxi_v0.gym_env(**env_kwargs)
     env = FixedLocsWrapper(env, initial_task=initial_task, change_task_on_reset=change_task_on_reset)
+    env = NoPassLocDstWrapper(env)
 
     return env
 
@@ -22,12 +27,38 @@ def changing_map_env(initial_task=None, change_task_on_reset=False, **env_kwargs
     return env
 
 
+class NoPassLocDstWrapper(gym.Wrapper):
+    def __init__(self, env):
+        super().__init__(env)
+
+        meanings = self.env.unwrapped.get_observation_meanings()
+        remove_idxs = set()
+        for i in range(len(meanings)):
+            if re.match(r'passenger_.*_(location|destination)_.*', meanings[i]):
+                remove_idxs.add(i)
+        all_idxs = set(range(len(self.env.observation_space)))
+        self.keep_idxs = sorted(all_idxs - remove_idxs)
+
+    def reset(self, **kwargs):
+        obs = super().reset()
+        return obs[self.keep_idxs]
+
+    def step(self, action):
+        obs, reward, done, info = super().step(action)
+        return obs[self.keep_idxs], reward, done, info
+
+    @property
+    def observation_space(self):
+        space = self.env.observation_space
+        nvec = space.nvec
+        return gym.spaces.MultiDiscrete(nvec[self.keep_idxs])
+
+
 class FixedLocsWrapper(MultiTaskWrapper):
     def __init__(self, env, initial_task=None, change_task_on_reset=True):
         # set constant locations and destinations wrappers
         # this will allow us to control taxi locations and passenger locations and destinations on the fly.
         # self.fixed_env = wrappers.FixedTaxiStartLocationsWrapper(env)
-        # self.fixed_env = wrappers.FixedPassengerStartLocationsWrapper(self.fixed_env)
         self.fixed_env = wrappers.FixedPassengerStartLocationsWrapper(env)
         self.fixed_env = wrappers.FixedPassengerDestinationsWrapper(self.fixed_env)
 
@@ -65,6 +96,10 @@ class FixedLocsWrapper(MultiTaskWrapper):
         # set locations in environment
         # we do this to enable changing the environment in the middle of an episode
         # self.__set_locations()
+
+    def _get_hcv_rep(self, task):
+        passenger_loc, passenger_dst = task
+        return np.array(passenger_loc + passenger_dst)
 
     def reset(self, **kwargs):
         super().reset(**kwargs)
@@ -129,6 +164,9 @@ class FixedLocsAddition(MultiTaskWrapper):
         self.env.task = orig_task
         self.fixed_locs_env.task = locs_task
 
+    def _get_hcv_rep(self, task):
+        return self.env._get_hcv_rep(task)
+
     def reset(self, **kwargs):
         super().reset(**kwargs)
         return self.fixed_locs_env.reset(**kwargs)
@@ -186,3 +224,23 @@ class ChangeMapWrapper(MultiTaskWrapper):
             map_arr[i][j] = '|'
 
         self.unwrapped.domain_map = DomainMap([''.join(row) for row in map_arr])
+
+    def _get_hcv_rep(self, task):
+        dm = self.env.unwrapped.domain_map
+
+        # a matrix to indicate wall positions near cells. -1 on width because there is one less wall than cells
+        wall_indicator_mat = np.zeros((dm.map_height, dm.map_width - 1))
+
+        # iterate wall positions on map and match to hcv index
+        for map_row, map_col in task:
+            # map idx row gets -1 for top boundary
+            mat_row = map_row - 1
+
+            # map idx col gets -1 for left boundary and divide by 2 to consider cells
+            mat_col = (map_col - 1) // 2
+
+            # update indicator matrix
+            wall_indicator_mat[mat_row, mat_col] = 1
+
+        # return flat vector
+        return wall_indicator_mat.flatten()

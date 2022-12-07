@@ -9,6 +9,8 @@ class MultiTaskWrapper(gym.Wrapper, ABC):
         super().__init__(env)
         self._task_np_random = np.random.default_rng()
         self.fixed_contexts = None
+        self.fixed_contexts_ohe_rep = None
+        self.fixed_contexts_hcv_rep = None
 
         self.task = initial_task if initial_task is not None else self.sample_task(1)[0]
         self.change_task_on_reset = change_task_on_reset
@@ -35,6 +37,15 @@ class MultiTaskWrapper(gym.Wrapper, ABC):
 
     def set_fixed_contexts(self, contexts):
         self.fixed_contexts = contexts
+
+        ohe_vecs = np.eye(len(self.fixed_contexts))
+        self.fixed_contexts_ohe_rep = {t: v for t, v in zip(self.fixed_contexts, ohe_vecs)}
+
+        hcv_vecs = list(map(self._get_hcv_rep, self.fixed_contexts))
+        self.fixed_contexts_hcv_rep = {t: v for t, v in zip(self.fixed_contexts, hcv_vecs)}
+
+    def _get_hcv_rep(self, task):
+        pass
 
     @abstractmethod
     def _set_task(self, task):
