@@ -24,6 +24,8 @@ LEARNING_RATES = [1e-4]  # [1 / (10 ** i) for i in range(1, 6)]
 BATCH_SIZES = [32]  # [2 ** i for i in range(3, 10)]
 GAMMA = [0.99]
 TOTAL_TIMESTEPS = 5e5
+TARGET_TIMESTEPS = None
+TARGET_EVAL_FREQ = None
 DQN_EXPLORATION_TIMESTEPS = [5e4]  # np.linspace(0, 1, 10).tolist()
 DQN_TARGET_UPDATE_INTERVAL = [500]
 OUT_DIMS = [32]  # [16, 32, 64, 128, 256]
@@ -86,7 +88,7 @@ class SupportedExperiments(Enum):
 
 class SupportedEnvironments(Enum):
     SMALL_GN = 'small_gn'
-    gn = 'gn'
+    GN = 'gn'
     APPLE_PICKING_2 = 'ap_2'
     APPLE_PICKING_3 = 'ap_3'
     APPLE_PICKING_4 = 'ap_4'
@@ -137,7 +139,7 @@ RMENV_DICT = {
             }
         }
     },
-    SupportedEnvironments.gn: {
+    SupportedEnvironments.GN: {
         ENV_KWARGS_KEY: {
             'num_passengers': 1,
             'pickup_only': True,

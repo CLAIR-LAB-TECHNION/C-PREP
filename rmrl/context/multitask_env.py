@@ -5,12 +5,14 @@ import numpy as np
 
 
 class MultiTaskWrapper(gym.Wrapper, ABC):
-    def __init__(self, env, initial_task=None, change_task_on_reset=True):
+    def __init__(self, env, initial_task=None, change_task_on_reset=True, ohe_classes=None, ohe_start=None):
         super().__init__(env)
         self._task_np_random = np.random.default_rng()
         self.fixed_contexts = None
         self.fixed_contexts_ohe_rep = None
         self.fixed_contexts_hcv_rep = None
+        self.ohe_classes = ohe_classes
+        self.ohe_start = ohe_start
 
         self.task = initial_task if initial_task is not None else self.sample_task(1)[0]
         self.change_task_on_reset = change_task_on_reset
@@ -38,8 +40,18 @@ class MultiTaskWrapper(gym.Wrapper, ABC):
     def set_fixed_contexts(self, contexts):
         self.fixed_contexts = contexts
 
-        ohe_vecs = np.eye(len(self.fixed_contexts))
-        self.fixed_contexts_ohe_rep = {t: v for t, v in zip(self.fixed_contexts, ohe_vecs)}
+        if self.ohe_classes is None:
+            # number of ohe classes not given. use given fixed contexts
+            self.ohe_classes = len(self.fixed_contexts)
+
+        ohe_vecs = np.eye(self.ohe_classes)
+        if self.ohe_start is not None:
+            # ohe value starts at the given starting point
+            ohe_vecs = ohe_vecs[self.ohe_start:]
+
+        # calculate ohe vectors
+        # expected number of contexts to be less that the number of encodings left after `ohe_start`
+        self.fixed_contexts_ohe_rep = {t: ohe_vecs[i] for i, t in enumerate(self.fixed_contexts)}
 
         hcv_vecs = list(map(self._get_hcv_rep, self.fixed_contexts))
         self.fixed_contexts_hcv_rep = {t: v for t, v in zip(self.fixed_contexts, hcv_vecs)}

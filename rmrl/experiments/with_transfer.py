@@ -14,8 +14,16 @@ class WithTransferExperiment(Experiment):
         src_env, tgt_env = envs
         src_eval_env, tgt_eval_env = eval_envs
 
+        # set tgt ohe settings
+        tgt_env.env.env.ohe_start = self.cfg.num_src_samples
+        tgt_env.env.env.set_fixed_contexts(tgt_env.env.env.fixed_contexts)
+        tgt_eval_env.env.env.ohe_start = self.cfg.num_src_samples
+        tgt_eval_env.env.env.set_fixed_contexts(tgt_eval_env.env.env.fixed_contexts)
+
         # train agent on source and target contexts from scratch (or load if exists)
         src_agent = self.get_agent_for_env(src_env, src_eval_env)
+
+        self._is_tgt = True
         tgt_agent = self.get_agent_for_env(tgt_env, tgt_eval_env)
 
         self.transfer_agent(src_env, tgt_env, tgt_eval_env)

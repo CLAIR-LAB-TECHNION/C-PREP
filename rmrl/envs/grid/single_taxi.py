@@ -12,18 +12,21 @@ from rmrl.context.multitask_env import MultiTaskWrapper
 from rmrl.utils.misc import split_pairs
 
 
-def fixed_entities_env(initial_task=None, change_task_on_reset=False, **env_kwargs):
+def fixed_entities_env(initial_task=None, change_task_on_reset=False, ohe_classes=None, ohe_start=None, **env_kwargs):
     env = single_taxi_v0.gym_env(**env_kwargs)
-    env = FixedLocsWrapper(env, initial_task=initial_task, change_task_on_reset=change_task_on_reset)
+    env = FixedLocsWrapper(env, initial_task=initial_task, change_task_on_reset=change_task_on_reset,
+                           ohe_classes=ohe_classes, ohe_start=ohe_start)
     env = NoPassLocDstWrapper(env)
 
     return env
 
 
-def changing_map_env(initial_task=None, change_task_on_reset=False, **env_kwargs):
+def changing_map_env(initial_task=None, change_task_on_reset=False, ohe_classes=None, ohe_start=None, **env_kwargs):
     env = single_taxi_v0.gym_env(**env_kwargs)
-    env = ChangeMapWrapper(env, initial_task=initial_task, change_task_on_reset=change_task_on_reset)
-    env = FixedLocsAddition(env, initial_task=initial_task, change_task_on_reset=change_task_on_reset)
+    env = ChangeMapWrapper(env, initial_task=initial_task, change_task_on_reset=change_task_on_reset,
+                           ohe_classes=ohe_classes, ohe_start=ohe_start)
+    env = FixedLocsAddition(env, initial_task=initial_task, change_task_on_reset=change_task_on_reset,
+                            ohe_classes=ohe_classes, ohe_start=ohe_start)
     return env
 
 
@@ -55,14 +58,14 @@ class NoPassLocDstWrapper(gym.Wrapper):
 
 
 class FixedLocsWrapper(MultiTaskWrapper):
-    def __init__(self, env, initial_task=None, change_task_on_reset=True):
+    def __init__(self, env, initial_task=None, change_task_on_reset=True, ohe_classes=None, ohe_start=None):
         # set constant locations and destinations wrappers
         # this will allow us to control taxi locations and passenger locations and destinations on the fly.
         # self.fixed_env = wrappers.FixedTaxiStartLocationsWrapper(env)
         self.fixed_env = wrappers.FixedPassengerStartLocationsWrapper(env)
         self.fixed_env = wrappers.FixedPassengerDestinationsWrapper(self.fixed_env)
 
-        super().__init__(env, initial_task, change_task_on_reset)
+        super().__init__(env, initial_task, change_task_on_reset, ohe_classes, ohe_start)
 
     def _sample_task(self, n):
         fixed_locs = []
@@ -147,12 +150,13 @@ class FixedLocsWrapper(MultiTaskWrapper):
 
 
 class FixedLocsAddition(MultiTaskWrapper):
-    def __init__(self, env: MultiTaskWrapper, initial_task=None, change_task_on_reset=True):
+    def __init__(self, env: MultiTaskWrapper, initial_task=None, change_task_on_reset=True, ohe_classes=None,
+                 ohe_start=None):
         # force no changing task on reset for original and location fixer
         env.change_task_on_reset = False
         self.fixed_locs_env = FixedLocsWrapper(env, initial_task, change_task_on_reset=False)
 
-        super().__init__(env, initial_task, change_task_on_reset)
+        super().__init__(env, initial_task, change_task_on_reset, ohe_classes, ohe_start)
 
     def _sample_task(self, n):
         orig_task = self.env.sample_task(n)
@@ -174,14 +178,14 @@ class FixedLocsAddition(MultiTaskWrapper):
 
 
 class ChangeMapWrapper(MultiTaskWrapper):
-    def __init__(self, env, initial_task=None, change_task_on_reset=True):
+    def __init__(self, env, initial_task=None, change_task_on_reset=True, ohe_classes=None, ohe_start=None):
         self.empty_map = self.__make_empty_map(env.unwrapped.domain_map.domain_map)
         self.wall_locs = [(i, j)
                           for i in range(len(self.empty_map))
                           for j in range(len(self.empty_map[0]))
                           if self.empty_map[i][j] == ':']
 
-        super().__init__(env, initial_task, change_task_on_reset)
+        super().__init__(env, initial_task, change_task_on_reset, ohe_classes, ohe_start)
 
     @staticmethod
     def __make_empty_map(domain_map):

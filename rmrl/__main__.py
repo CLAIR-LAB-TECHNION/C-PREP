@@ -72,7 +72,9 @@ def __get_exp_kwargs(run_args):
     if run_args.experiment == SupportedExperiments.WITH_TRANSFER:
         exp_kwargs = dict(
             transfer_model=run_args.transfer_model,
-            keep_timesteps=run_args.keep_timesteps
+            keep_timesteps=run_args.keep_timesteps,
+            target_timesteps=run_args.target_timesteps,
+            target_eval_freq=run_args.target_eval_freq
         )
     else:
         exp_kwargs = {}
@@ -254,6 +256,16 @@ def parse_args():
                            help='for WithTransferExperiment only! if True, training starts from timestep at the end'
                                 'of the transferred model training',
                            action='store_true')
+    tsf_group.add_argument('--target_timesteps',
+                           help='for WithTransferExperiment only! max number of timesteps for the trained agent in the '
+                                'target context',
+                           type=lambda x: int(float(x)),
+                           default=TARGET_TIMESTEPS)
+    tsf_group.add_argument('--target_eval_freq',
+                           help='for WithTransferExperiment only! number of timesteps per evaluation in the target '
+                                'context',
+                           type=lambda x: int(float(x)),
+                           default=TARGET_EVAL_FREQ)
 
     # policy config args
     policy_group = parser.add_argument_group('policy configurations')
@@ -472,6 +484,12 @@ def parse_args():
         else:
             raise argparse.ArgumentError(None, 'cannot use `--num_seeds` argument with more than one base `--seed`')
     del args.num_seeds  # in any case remove num seeds from arguments
+
+    # target only defaults
+    if args.target_timesteps is None:
+        args.target_timesteps = args.timesteps
+    if args.target_eval_freq is None:
+        args.target_eval_freq = args.eval_freq
 
     return args
 

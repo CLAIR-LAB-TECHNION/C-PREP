@@ -26,6 +26,10 @@ class Experiment(ABC):
         self.verbose = verbose
         self.force_retrain = force_retrain
 
+        # #TODO temp
+        # if not isinstance(self.cfg.alg_kwargs['learning_rate'], LearningRateSchedule):
+        #     self.cfg.alg_kwargs['learning_rate'] = StepSchedule(self.cfg.alg_kwargs['learning_rate'], {0.8: 1e-5})
+
         # save cfg as experiment name
         self.exp_name = f'{self.__class__.__name__}/{repr(cfg)}'
 
@@ -45,6 +49,9 @@ class Experiment(ABC):
 
         # create dump dir
         self.dump_dir.mkdir(exist_ok=True)
+
+        # easy switch to tell when this is the agent for the target contexts
+        self._is_tgt = False
 
     def run(self, *contexts):
         train_envs = []
@@ -98,7 +105,8 @@ class Experiment(ABC):
         return rm_env
 
     def get_single_env_for_context_set(self, context_set):
-        env = self.env_fn(**self.env_kwargs, change_task_on_reset=True)
+        env = self.env_fn(**self.env_kwargs, change_task_on_reset=True,
+                          ohe_classes=self.cfg.num_src_samples + self.cfg.num_tgt_samples)
         env.set_fixed_contexts(context_set)
         env.reset()
 
@@ -204,13 +212,17 @@ class Experiment(ABC):
         else:
             early_stop_callback = StopTrainingOnNoModelImprovement(
                 max_no_improvement_evals=self.cfg.max_no_improvement_evals,
-                min_evals=self.cfg.min_timesteps // self.cfg.eval_freq,
+                min_evals=self.cfg.min_timesteps // (self.cfg.exp_kwargs['target_eval_freq']
+                                                     if self._is_tgt
+                                                     else self.cfg.eval_freq),
                 verbose=self.verbose
             )
         eval_callback = CustomEvalCallback(eval_env=eval_env,
                                            callback_after_eval=early_stop_callback,
                                            n_eval_episodes=self.cfg.n_eval_episodes,
-                                           eval_freq=self.cfg.eval_freq,
+                                           eval_freq=(self.cfg.exp_kwargs['target_eval_freq']
+                                                      if self._is_tgt
+                                                      else self.cfg.eval_freq),
                                            log_path=self.eval_log_dir / task_name,
                                            best_model_save_path=self.models_dir / task_name,
                                            verbose=self.verbose)
@@ -228,7 +240,7 @@ class Experiment(ABC):
         # train agent
         print(f'training agent for task {task_name}')
         agent = agent.learn(
-            total_timesteps=self.cfg.max_timesteps,
+            total_timesteps=self.cfg.exp_kwargs['target_timesteps'] if self._is_tgt else self.cfg.max_timesteps,
             callback=callbacks,
             log_interval=self.log_interval,
             tb_log_name=task_name,
