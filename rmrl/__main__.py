@@ -77,7 +77,9 @@ def __get_exp_kwargs(run_args):
             target_eval_freq=run_args.target_eval_freq
         )
     else:
-        exp_kwargs = {}
+        exp_kwargs = dict(
+            use_tgt_for_test=run_args.use_tgt_for_test
+        )
 
     return exp_kwargs
 
@@ -246,6 +248,13 @@ def parse_args():
                            nargs='+')
 
     # experiment specific args
+    # no transfer exp
+    notsf_group = parser.add_argument_group('no transfer experiment values')
+    notsf_group.add_argument('--use_tgt_for_test',
+                             help='for NoTransferExperiment only! uses target contexts for eval during training',
+                             action='store_true')
+
+    # with transfer exp
     tsf_group = parser.add_argument_group('transfer experiment values')
     tsf_group.add_argument('--transfer_model',
                            help='for WithTransferExperiment only! which model to transfer',

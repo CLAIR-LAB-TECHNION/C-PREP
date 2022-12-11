@@ -53,6 +53,9 @@ class Experiment(ABC):
         # easy switch to tell when this is the agent for the target contexts
         self._is_tgt = False
 
+        # tells us if there is tgt for test to use
+        self._tgt_for_test = None
+
     def run(self, *contexts):
         train_envs = []
         eval_envs = []
@@ -236,6 +239,15 @@ class Experiment(ABC):
                                                      name_prefix=CHKP_MODEL_NAME_PREFIX,
                                                      verbose=self.verbose + 1)  # they check verbose > 1 here
             callbacks.append(checkpoint_callback)
+
+        if self._tgt_for_test is not None:
+            test_callback = CustomEvalCallback(eval_env=self._tgt_for_test,
+                                               n_eval_episodes=self.cfg.n_eval_episodes,
+                                               eval_freq=self.cfg.eval_freq,
+                                               log_path=self.eval_log_dir / 'test',
+                                               best_model_save_path=self.models_dir / 'test',
+                                               verbose=self.verbose)
+            callbacks.append(test_callback)
 
         # train agent
         print(f'training agent for task {task_name}')
