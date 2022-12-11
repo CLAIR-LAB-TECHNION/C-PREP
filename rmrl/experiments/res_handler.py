@@ -1,4 +1,6 @@
+import glob
 import re
+import shutil
 from typing import Type
 
 import matplotlib as mpl
@@ -97,23 +99,7 @@ class ResultsHandler:
                 tgt_context, tgt_train_env, tgt_eval_env, tgt_agent,
                 tsf_agent)
 
-    def plot_experiments_eval(self,
-                              experiments_idx=None,
-                              plot_kwargs_per_idx=None,
-                              cfg_constraints=None,
-                              exp_agg_type=None,  # None, "seed", "fold", or "fold_and_seed"
-                              record_median=False,
-                              record_returns=False,
-                              with_deviation=False,
-                              src_xlim=None,
-                              tgt_xlim=None,
-                              l_bound=None,
-                              u_bound=None,
-                              show_src_scratch=True,
-                              show_tgt_scratch=True,
-                              show_tgt_transfer=True,
-                              save_path=None,
-                              **save_kwargs):
+    def get_cfg_idx_to_path_to_seed_idx_maps(self, experiments_idx=None, cfg_constraints=None, exp_agg_type=None):
 
         # get correct object dict
         if exp_agg_type is None:
@@ -136,13 +122,80 @@ class ResultsHandler:
             toss_idx = set(cfg_idx_to_path.keys()) - set(experiments_idx)
             for i in toss_idx:
                 path_to_idx.pop(cfg_idx_to_path[i])
-        else:
-            experiments_idx = list(cfg_idx_to_path.keys())
 
         # filter experiments according to constraints
         path_to_idx = self.__filter_out_unconstrained(path_to_idx, cfg_constraints)
+        cfg_idx_to_path = {k: v for k, v in cfg_idx_to_path.items() if v in path_to_idx}  # only keep needed
+
+        return path_to_idx, cfg_idx_to_path
+
+    def dump_experiment_logs(self,
+                             experiments_idx=None,
+                             cfg_constraints=None,
+                             exp_agg_type=None,  # None, "seed", "fold", or "fold_and_seed"
+                             evals_only=True,  #TODO support False
+                             varying_attrs=None,
+                             cfg_title=None):
+
+        path_to_idx, _ = self.get_cfg_idx_to_path_to_seed_idx_maps(experiments_idx,
+                                                                   cfg_constraints,
+                                                                   exp_agg_type)
+        for p in path_to_idx:
+            if evals_only:
+                copy_paths = glob.glob(p + '/**/evaluations.npz', recursive=True)
+            else:
+                copy_paths = [p]  #TODO this is not yet supported
+
+            for cp_path in copy_paths:
+                prefix = cfg_title or ''
+                if varying_attrs:
+                    for attr in reversed(varying_attrs):
+                        match = re.match(f'.*\/{attr}-([^\/]+)\/.*', cp_path)
+                        if not match:
+                            match = re.match(f'.*{attr}-([^\/]+)\/.*', cp_path)
+
+                        if not match:
+                            attr_val = 'NONE'
+                        else:
+                            attr_val = match.group(1)
+
+                        prefix = attr + '-' + attr_val + '/' + prefix
+
+                prefix = self.exp_dump_dir / 'eval_dumps' / prefix
+                out_path = cp_path
+                if prefix:
+                    out_path = out_path.replace(p, str(prefix))
+
+                os.makedirs(str(Path(out_path).parent), exist_ok=True)
+                shutil.copy(cp_path, out_path)
+
+
+    def plot_experiments_eval(self,
+                              experiments_idx=None,
+                              plot_kwargs_per_idx=None,
+                              cfg_constraints=None,
+                              exp_agg_type=None,  # None, "seed", "fold", or "fold_and_seed"
+                              record_median=False,
+                              record_returns=False,
+                              with_deviation=False,
+                              src_xlim=None,
+                              tgt_xlim=None,
+                              l_bound=None,
+                              u_bound=None,
+                              show_src_scratch=True,
+                              show_tgt_scratch=True,
+                              show_tgt_transfer=True,
+                              save_path=None,
+                              **save_kwargs):
+
+        path_to_idx, cfg_idx_to_path = self.get_cfg_idx_to_path_to_seed_idx_maps(experiments_idx,
+                                                                                 cfg_constraints,
+                                                                                 exp_agg_type)
 
         all_res = self.get_path_results(path_to_idx, cfg_idx_to_path, record_returns)
+
+        if not experiments_idx:
+            experiments_idx = list(cfg_idx_to_path.keys())
 
         if issubclass(self.exp_type, WithTransferExperiment):
             self.__plot_compare_evals(
