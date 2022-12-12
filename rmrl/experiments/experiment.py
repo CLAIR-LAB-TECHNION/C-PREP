@@ -163,17 +163,15 @@ class Experiment(ABC):
             **self.cfg.alg_kwargs
         )
 
-    def get_agent_for_env(self, env, eval_env, force_load=False, model_name=BEST_MODEL_NAME):
+    def get_agent_for_env(self, env, eval_env, task_name, force_load=False, model_name=BEST_MODEL_NAME):
         try:
-            agent = self.load_agent_for_env(env, force_load=force_load, model_name=model_name)
+            agent = self.load_agent_for_env(env, task_name, force_load=force_load, model_name=model_name)
         except FileNotFoundError:
-            agent = self.train_agent_for_env(env, eval_env)
+            agent = self.train_agent_for_env(env, eval_env, task_name)
 
         return agent
 
-    def load_agent_for_env(self, env, force_load=False, model_name=BEST_MODEL_NAME):
-        task_name = self.get_env_task_name(env)
-
+    def load_agent_for_env(self, env, task_name, force_load=False, model_name=BEST_MODEL_NAME):
         if not force_load:
             final_model_file = self.models_dir / task_name / (model_name + '.zip')
             if not final_model_file.is_file():  # find training complete file
@@ -199,10 +197,8 @@ class Experiment(ABC):
         task = tuple(self.get_env_task(env))
         return sha3_hash(task)
 
-    def train_agent_for_env(self, env, eval_env):
+    def train_agent_for_env(self, env, eval_env, task_name):
         agent = self.new_agent_for_env(env)
-
-        task_name = self.get_env_task_name(env)
         return self.train_agent(agent, eval_env, task_name=task_name)
 
     def train_agent(self, agent, eval_env, task_name):

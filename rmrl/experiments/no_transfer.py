@@ -13,4 +13,4 @@ class NoTransferExperiment(Experiment):
 
         self._tgt_for_test = tgt_eval_env
 
-        self.get_agent_for_env(env, eval_env)
+        self.get_agent_for_env(env, eval_env, 'src')

@@ -23,18 +23,16 @@ class WithTransferExperiment(Experiment):
         self._tgt_for_test = tgt_eval_env
 
         # train agent on source and target contexts from scratch (or load if exists)
-        src_agent = self.get_agent_for_env(src_env, src_eval_env)
+        src_agent = self.get_agent_for_env(src_env, src_eval_env, 'src')
 
         self._is_tgt = True
-        tgt_agent = self.get_agent_for_env(tgt_env, tgt_eval_env)
+        tgt_agent = self.get_agent_for_env(tgt_env, tgt_eval_env, 'tgt')
 
         self.transfer_agent(src_env, tgt_env, tgt_eval_env)
 
     def transfer_agent(self, src_env, tgt_env, tgt_eval_env):
-        # get task name
-        src_task_name = self.get_env_task_name(src_env)
-        tgt_task_name = self.get_env_task_name(tgt_env)
-        tsf_task_name = f'{tgt_task_name}{TRANSFER_FROM_MIDFIX}{src_task_name}'
+        src_task_name = 'src'
+        tsf_task_name = 'tsf'
 
         try:
             tsf_agent = self.load_agent_for_task(tsf_task_name, tgt_env)
@@ -43,7 +41,7 @@ class WithTransferExperiment(Experiment):
             tsf_agent = self.new_agent_for_env(tgt_env)
 
             # update parameters from src agent
-            src_agent = self.load_agent_for_env(src_env,
+            src_agent = self.load_agent_for_env(src_env, src_task_name,
                                                 force_load=True,  # ignore forced retraining
                                                 model_name=self.cfg.exp_kwargs['transfer_model'])  # load desired model
             tsf_agent.set_parameters(src_agent.get_parameters())
