@@ -90,14 +90,19 @@ class ResultsHandler:
         src_train_env = exp.get_single_rm_env_for_context_set(src_context)
         src_eval_env = exp.get_single_rm_env_for_context_set(src_context)
         src_agent = exp.load_agent_for_env(src_train_env, force_load=True)
-        tgt_train_env = exp.get_single_rm_env_for_context_set(tgt_context)
-        tgt_eval_env = exp.get_single_rm_env_for_context_set(tgt_context)
-        tgt_agent = exp.load_agent_for_env(tgt_train_env, force_load=True)
-        tsf_agent = exp.transfer_agent(src_agent, src_train_env, tgt_train_env, tgt_eval_env)
 
-        return (src_context, src_train_env, src_eval_env, src_agent,
-                tgt_context, tgt_train_env, tgt_eval_env, tgt_agent,
-                tsf_agent)
+        if isinstance(exp, WithTransferExperiment):
+            tgt_train_env = exp.get_single_rm_env_for_context_set(tgt_context)
+            tgt_eval_env = exp.get_single_rm_env_for_context_set(tgt_context)
+            tgt_agent = exp.load_agent_for_env(tgt_train_env, force_load=True)
+            tsf_agent = exp.transfer_agent(src_agent, src_train_env, tgt_train_env, tgt_eval_env)
+
+            return (src_context, src_train_env, src_eval_env, src_agent,
+                    tgt_context, tgt_train_env, tgt_eval_env, tgt_agent,
+                    tsf_agent)
+
+        else:
+            return src_context, src_train_env, src_eval_env, src_agent
 
     def get_cfg_idx_to_path_to_seed_idx_maps(self, experiments_idx=None, cfg_constraints=None, exp_agg_type=None):
 
