@@ -69,17 +69,16 @@ def get_all_configurations(single_run_args_list):
 
 
 def __get_exp_kwargs(run_args):
+    exp_kwargs = dict(
+        use_tgt_for_test=run_args.use_tgt_for_test
+    )
     if run_args.experiment == SupportedExperiments.WITH_TRANSFER:
-        exp_kwargs = dict(
+        exp_kwargs.update(dict(
             transfer_model=run_args.transfer_model,
             keep_timesteps=run_args.keep_timesteps,
             target_timesteps=run_args.target_timesteps,
             target_eval_freq=run_args.target_eval_freq
-        )
-    else:
-        exp_kwargs = dict(
-            use_tgt_for_test=run_args.use_tgt_for_test
-        )
+        ))
 
     return exp_kwargs
 
