@@ -87,19 +87,35 @@ class SupportedExperiments(Enum):
 
 
 class SupportedEnvironments(Enum):
-    SMALL_GN = 'small_gn'
-    GN = 'gn'
-    APPLE_PICKING_2 = 'ap_2'
-    APPLE_PICKING_3 = 'ap_3'
-    APPLE_PICKING_4 = 'ap_4'
-    APPLE_PICKING_5 = 'ap_5'
+    GN_4X4_1PAS = 'gn_4x4_1pas'
+    GN_4X4_2PAS = 'gn_4x4_2pas'
+    GN_4X4_3PAS = 'gn_4x4_3pas'
+    
+    GN_6X6_1PAS = 'gn_6x6_1pas'
+    GN_6X6_2PAS = 'gn_6x6_2pas'
+    GN_6X6_3PAS = 'gn_6x6_3pas'
+    GN_6X6_4PAS = 'gn_6x6_4pas'
+    
+    GN_DEFAULT_1PAS = 'gn_default_1pas'
+    GN_DEFAULT_2PAS = 'gn_default_2pas'
+    GN_DEFAULT_3PAS = 'gn_default_3pas'
+    GN_DEFAULT_4PAS = 'gn_default_4pas'
+    GN_DEFAULT_5PAS = 'gn_default_5pas'
 
-    SMALL_PD = 'small_pd'
-    PD_1 = 'pd_1'
-    PD_2 = 'pd_2'
-    PD_3 = 'pd_3'
-    PD_4 = 'pd_4'
-    PD_5 = 'pd_5'
+    PD_4X4_1PAS = 'pd_4x4_1pas'
+    PD_4X4_2PAS = 'pd_4x4_2pas'
+    PD_4X4_3PAS = 'pd_4x4_3pas'
+
+    PD_6X6_1PAS = 'pd_6x6_1pas'
+    PD_6X6_2PAS = 'pd_6x6_2pas'
+    PD_6X6_3PAS = 'pd_6x6_3pas'
+    PD_6X6_4PAS = 'pd_6x6_4pas'
+
+    PD_DEFAULT_1PAS = 'pd_default_1pas'
+    PD_DEFAULT_2PAS = 'pd_default_2pas'
+    PD_DEFAULT_3PAS = 'pd_default_3pas'
+    PD_DEFAULT_4PAS = 'pd_default_4pas'
+    PD_DEFAULT_5PAS = 'pd_default_5pas'
 
 
 class ContextSpaces(Enum):
@@ -108,7 +124,8 @@ class ContextSpaces(Enum):
 
 
 RMENV_DICT = {
-    SupportedEnvironments.SMALL_GN: {
+    # pickup only environments
+    SupportedEnvironments.GN_4X4_1PAS: {
         ENV_KWARGS_KEY: {
             'num_passengers': 1,
             'pickup_only': True,
@@ -139,34 +156,19 @@ RMENV_DICT = {
             }
         }
     },
-    SupportedEnvironments.GN: {
-        ENV_KWARGS_KEY: {
-            'num_passengers': 1,
-            'pickup_only': True,
-            'max_steps': 100,
-            'reward_table': {
-                Event.STEP: 0,
-                Event.PICKUP: 0,
-                Event.DEAD: 0,
-                Event.OBJECTIVE: 1
-            },
-        },
-        CONTEXT_SPACES_KEY: {
-            ContextSpaces.FIXED_ENTITIES: {
-                ENV_KEY: fixed_entities_env,
-                RM_KEY: TaxiEnvRM,
-            },
-            ContextSpaces.CHANGING_MAP: {
-                ENV_KEY: changing_map_env,
-                RM_KEY: TaxiEnvRM,
-            }
-        }
-    },
-    SupportedEnvironments.APPLE_PICKING_2: {
+    SupportedEnvironments.GN_4X4_2PAS: {
         ENV_KWARGS_KEY: {
             'num_passengers': 2,
             'pickup_only': True,
-            'max_steps': 110,
+            'max_steps': 30,
+            'domain_map': [
+                "+-------+",
+                "| : | : |",
+                "| : : : |",
+                "| : | | |",
+                "| | | : |",
+                "+-------+"
+            ],
             'reward_table': {
                 Event.STEP: 0,
                 Event.PICKUP: 0,
@@ -185,11 +187,19 @@ RMENV_DICT = {
             }
         }
     },
-    SupportedEnvironments.APPLE_PICKING_3: {
+    SupportedEnvironments.GN_4X4_3PAS: {
         ENV_KWARGS_KEY: {
             'num_passengers': 3,
             'pickup_only': True,
-            'max_steps': 120,
+            'max_steps': 35,
+            'domain_map': [
+                "+-------+",
+                "| : | : |",
+                "| : : : |",
+                "| : | | |",
+                "| | | : |",
+                "+-------+"
+            ],
             'reward_table': {
                 Event.STEP: 0,
                 Event.PICKUP: 0,
@@ -208,11 +218,120 @@ RMENV_DICT = {
             }
         }
     },
-    SupportedEnvironments.APPLE_PICKING_4: {
+    SupportedEnvironments.GN_6X6_1PAS: {
+        ENV_KWARGS_KEY: {
+            'num_passengers': 1,
+            'pickup_only': True,
+            'max_steps': 35,
+            'domain_map': [
+                "+-----------+",
+                "| | | : | : |",
+                "| | : : : : |",
+                "| | | : | : |",
+                "| : : : | : |",
+                "| : : | : | |",
+                "| | : : : | |",
+                "+-----------+"
+            ],
+            'reward_table': {
+                Event.STEP: 0,
+                Event.PICKUP: 0,
+                Event.DEAD: 0,
+                Event.OBJECTIVE: 1
+            },
+        },
+        CONTEXT_SPACES_KEY: {
+            ContextSpaces.FIXED_ENTITIES: {
+                ENV_KEY: fixed_entities_env,
+                RM_KEY: TaxiEnvRM,
+            },
+            ContextSpaces.CHANGING_MAP: {
+                ENV_KEY: changing_map_env,
+                RM_KEY: TaxiEnvRM,
+            }
+        }
+    },
+    SupportedEnvironments.GN_6X6_2PAS: {
+        ENV_KWARGS_KEY: {
+            'num_passengers': 2,
+            'pickup_only': True,
+            'max_steps': 40,
+            'domain_map': [
+                "+-----------+",
+                "| | | : | : |",
+                "| | : : : : |",
+                "| | | : | : |",
+                "| : : : | : |",
+                "| : : | : | |",
+                "| | : : : | |",
+                "+-----------+"
+            ],
+            'reward_table': {
+                Event.STEP: 0,
+                Event.PICKUP: 0,
+                Event.DEAD: 0,
+                Event.OBJECTIVE: 1
+            },
+        },
+        CONTEXT_SPACES_KEY: {
+            ContextSpaces.FIXED_ENTITIES: {
+                ENV_KEY: fixed_entities_env,
+                RM_KEY: TaxiEnvRM,
+            },
+            ContextSpaces.CHANGING_MAP: {
+                ENV_KEY: changing_map_env,
+                RM_KEY: TaxiEnvRM,
+            }
+        }
+    },
+    SupportedEnvironments.GN_6X6_3PAS: {
+        ENV_KWARGS_KEY: {
+            'num_passengers': 3,
+            'pickup_only': True,
+            'max_steps': 45,
+            'domain_map': [
+                "+-----------+",
+                "| | | : | : |",
+                "| | : : : : |",
+                "| | | : | : |",
+                "| : : : | : |",
+                "| : : | : | |",
+                "| | : : : | |",
+                "+-----------+"
+            ],
+            'reward_table': {
+                Event.STEP: 0,
+                Event.PICKUP: 0,
+                Event.DEAD: 0,
+                Event.OBJECTIVE: 1
+            },
+        },
+        CONTEXT_SPACES_KEY: {
+            ContextSpaces.FIXED_ENTITIES: {
+                ENV_KEY: fixed_entities_env,
+                RM_KEY: TaxiEnvRM,
+            },
+            ContextSpaces.CHANGING_MAP: {
+                ENV_KEY: changing_map_env,
+                RM_KEY: TaxiEnvRM,
+            }
+        }
+    },
+    SupportedEnvironments.GN_6X6_4PAS: {
         ENV_KWARGS_KEY: {
             'num_passengers': 4,
             'pickup_only': True,
-            'max_steps': 130,
+            'max_steps': 50,
+            'domain_map': [
+                "+-----------+",
+                "| | | : | : |",
+                "| | : : : : |",
+                "| | | : | : |",
+                "| : : : | : |",
+                "| : : | : | |",
+                "| | : : : | |",
+                "+-----------+"
+            ],
             'reward_table': {
                 Event.STEP: 0,
                 Event.PICKUP: 0,
@@ -231,11 +350,103 @@ RMENV_DICT = {
             }
         }
     },
-    SupportedEnvironments.APPLE_PICKING_5: {
+    SupportedEnvironments.GN_DEFAULT_1PAS: {
+        ENV_KWARGS_KEY: {
+            'num_passengers': 1,
+            'pickup_only': True,
+            'max_steps': 50,
+            'reward_table': {
+                Event.STEP: 0,
+                Event.PICKUP: 0,
+                Event.DEAD: 0,
+                Event.OBJECTIVE: 1
+            },
+        },
+        CONTEXT_SPACES_KEY: {
+            ContextSpaces.FIXED_ENTITIES: {
+                ENV_KEY: fixed_entities_env,
+                RM_KEY: TaxiEnvRM,
+            },
+            ContextSpaces.CHANGING_MAP: {
+                ENV_KEY: changing_map_env,
+                RM_KEY: TaxiEnvRM,
+            }
+        }
+    },
+    SupportedEnvironments.GN_DEFAULT_2PAS: {
+        ENV_KWARGS_KEY: {
+            'num_passengers': 2,
+            'pickup_only': True,
+            'max_steps': 55,
+            'reward_table': {
+                Event.STEP: 0,
+                Event.PICKUP: 0,
+                Event.DEAD: 0,
+                Event.OBJECTIVE: 1
+            },
+        },
+        CONTEXT_SPACES_KEY: {
+            ContextSpaces.FIXED_ENTITIES: {
+                ENV_KEY: fixed_entities_env,
+                RM_KEY: TaxiEnvRM,
+            },
+            ContextSpaces.CHANGING_MAP: {
+                ENV_KEY: changing_map_env,
+                RM_KEY: TaxiEnvRM,
+            }
+        }
+    },
+    SupportedEnvironments.GN_DEFAULT_3PAS: {
+        ENV_KWARGS_KEY: {
+            'num_passengers': 3,
+            'pickup_only': True,
+            'max_steps': 60,
+            'reward_table': {
+                Event.STEP: 0,
+                Event.PICKUP: 0,
+                Event.DEAD: 0,
+                Event.OBJECTIVE: 1
+            },
+        },
+        CONTEXT_SPACES_KEY: {
+            ContextSpaces.FIXED_ENTITIES: {
+                ENV_KEY: fixed_entities_env,
+                RM_KEY: TaxiEnvRM,
+            },
+            ContextSpaces.CHANGING_MAP: {
+                ENV_KEY: changing_map_env,
+                RM_KEY: TaxiEnvRM,
+            }
+        }
+    },
+    SupportedEnvironments.GN_DEFAULT_4PAS: {
+        ENV_KWARGS_KEY: {
+            'num_passengers': 4,
+            'pickup_only': True,
+            'max_steps': 65,
+            'reward_table': {
+                Event.STEP: 0,
+                Event.PICKUP: 0,
+                Event.DEAD: 0,
+                Event.OBJECTIVE: 1
+            },
+        },
+        CONTEXT_SPACES_KEY: {
+            ContextSpaces.FIXED_ENTITIES: {
+                ENV_KEY: fixed_entities_env,
+                RM_KEY: TaxiEnvRM,
+            },
+            ContextSpaces.CHANGING_MAP: {
+                ENV_KEY: changing_map_env,
+                RM_KEY: TaxiEnvRM,
+            }
+        }
+    },
+    SupportedEnvironments.GN_DEFAULT_5PAS: {
         ENV_KWARGS_KEY: {
             'num_passengers': 5,
             'pickup_only': True,
-            'max_steps': 140,
+            'max_steps': 70,
             'reward_table': {
                 Event.STEP: 0,
                 Event.PICKUP: 0,
@@ -254,11 +465,13 @@ RMENV_DICT = {
             }
         }
     },
-    SupportedEnvironments.SMALL_PD: {
+
+    # pickup and dropoff environments
+    SupportedEnvironments.PD_4X4_1PAS: {
         ENV_KWARGS_KEY: {
             'num_passengers': 1,
             'no_intermediate_dropoff': True,
-            'max_steps': 50,
+            'max_steps': 35,
             'domain_map': [
                 "+-------+",
                 "| : | : |",
@@ -287,9 +500,265 @@ RMENV_DICT = {
             }
         }
     },
-    SupportedEnvironments.PD_1: {
+    SupportedEnvironments.PD_4X4_2PAS: {
+        ENV_KWARGS_KEY: {
+            'num_passengers': 2,
+            'no_intermediate_dropoff': True,
+            'max_steps': 40,
+            'domain_map': [
+                "+-------+",
+                "| : | : |",
+                "| : : : |",
+                "| : | | |",
+                "| | | : |",
+                "+-------+"
+            ],
+            'reward_table': {
+                Event.STEP: 0,
+                Event.PICKUP: 0,
+                Event.FINAL_DROPOFF: 0,
+                Event.INTERMEDIATE_DROPOFF: 0,
+                Event.DEAD: 0,
+                Event.OBJECTIVE: 1
+            },
+        },
+        CONTEXT_SPACES_KEY: {
+            ContextSpaces.FIXED_ENTITIES: {
+                ENV_KEY: fixed_entities_env,
+                RM_KEY: TaxiEnvRM,
+            },
+            ContextSpaces.CHANGING_MAP: {
+                ENV_KEY: changing_map_env,
+                RM_KEY: TaxiEnvRM,
+            }
+        }
+    },
+    SupportedEnvironments.PD_4X4_3PAS: {
+        ENV_KWARGS_KEY: {
+            'num_passengers': 3,
+            'no_intermediate_dropoff': True,
+            'max_steps': 45,
+            'domain_map': [
+                "+-------+",
+                "| : | : |",
+                "| : : : |",
+                "| : | | |",
+                "| | | : |",
+                "+-------+"
+            ],
+            'reward_table': {
+                Event.STEP: 0,
+                Event.PICKUP: 0,
+                Event.FINAL_DROPOFF: 0,
+                Event.INTERMEDIATE_DROPOFF: 0,
+                Event.DEAD: 0,
+                Event.OBJECTIVE: 1
+            },
+        },
+        CONTEXT_SPACES_KEY: {
+            ContextSpaces.FIXED_ENTITIES: {
+                ENV_KEY: fixed_entities_env,
+                RM_KEY: TaxiEnvRM,
+            },
+            ContextSpaces.CHANGING_MAP: {
+                ENV_KEY: changing_map_env,
+                RM_KEY: TaxiEnvRM,
+            }
+        }
+    },
+    SupportedEnvironments.PD_6X6_1PAS: {
         ENV_KWARGS_KEY: {
             'num_passengers': 1,
+            'no_intermediate_dropoff': True,
+            'max_steps': 70,
+            'domain_map': [
+                "+-----------+",
+                "| | | : | : |",
+                "| | : : : : |",
+                "| | | : | : |",
+                "| : : : | : |",
+                "| : : | : | |",
+                "| | : : : | |",
+                "+-----------+"
+            ],
+            'reward_table': {
+                Event.STEP: 0,
+                Event.PICKUP: 0,
+                Event.FINAL_DROPOFF: 0,
+                Event.INTERMEDIATE_DROPOFF: 0,
+                Event.DEAD: 0,
+                Event.OBJECTIVE: 1
+            },
+        },
+        CONTEXT_SPACES_KEY: {
+            ContextSpaces.FIXED_ENTITIES: {
+                ENV_KEY: fixed_entities_env,
+                RM_KEY: TaxiEnvRM,
+            },
+            ContextSpaces.CHANGING_MAP: {
+                ENV_KEY: changing_map_env,
+                RM_KEY: TaxiEnvRM,
+            }
+        }
+    },
+    SupportedEnvironments.PD_6X6_2PAS: {
+        ENV_KWARGS_KEY: {
+            'num_passengers': 2,
+            'no_intermediate_dropoff': True,
+            'max_steps': 75,
+            'domain_map': [
+                "+-----------+",
+                "| | | : | : |",
+                "| | : : : : |",
+                "| | | : | : |",
+                "| : : : | : |",
+                "| : : | : | |",
+                "| | : : : | |",
+                "+-----------+"
+            ],
+            'reward_table': {
+                Event.STEP: 0,
+                Event.PICKUP: 0,
+                Event.FINAL_DROPOFF: 0,
+                Event.INTERMEDIATE_DROPOFF: 0,
+                Event.DEAD: 0,
+                Event.OBJECTIVE: 1
+            },
+        },
+        CONTEXT_SPACES_KEY: {
+            ContextSpaces.FIXED_ENTITIES: {
+                ENV_KEY: fixed_entities_env,
+                RM_KEY: TaxiEnvRM,
+            },
+            ContextSpaces.CHANGING_MAP: {
+                ENV_KEY: changing_map_env,
+                RM_KEY: TaxiEnvRM,
+            }
+        }
+    },
+    SupportedEnvironments.PD_6X6_3PAS: {
+        ENV_KWARGS_KEY: {
+            'num_passengers': 3,
+            'no_intermediate_dropoff': True,
+            'max_steps': 80,
+            'domain_map': [
+                "+-----------+",
+                "| | | : | : |",
+                "| | : : : : |",
+                "| | | : | : |",
+                "| : : : | : |",
+                "| : : | : | |",
+                "| | : : : | |",
+                "+-----------+"
+            ],
+            'reward_table': {
+                Event.STEP: 0,
+                Event.PICKUP: 0,
+                Event.FINAL_DROPOFF: 0,
+                Event.INTERMEDIATE_DROPOFF: 0,
+                Event.DEAD: 0,
+                Event.OBJECTIVE: 1
+            },
+        },
+        CONTEXT_SPACES_KEY: {
+            ContextSpaces.FIXED_ENTITIES: {
+                ENV_KEY: fixed_entities_env,
+                RM_KEY: TaxiEnvRM,
+            },
+            ContextSpaces.CHANGING_MAP: {
+                ENV_KEY: changing_map_env,
+                RM_KEY: TaxiEnvRM,
+            }
+        }
+    },
+    SupportedEnvironments.PD_6X6_4PAS: {
+        ENV_KWARGS_KEY: {
+            'num_passengers': 4,
+            'no_intermediate_dropoff': True,
+            'max_steps': 85,
+            'domain_map': [
+                "+-----------+",
+                "| | | : | : |",
+                "| | : : : : |",
+                "| | | : | : |",
+                "| : : : | : |",
+                "| : : | : | |",
+                "| | : : : | |",
+                "+-----------+"
+            ],
+            'reward_table': {
+                Event.STEP: 0,
+                Event.PICKUP: 0,
+                Event.FINAL_DROPOFF: 0,
+                Event.INTERMEDIATE_DROPOFF: 0,
+                Event.DEAD: 0,
+                Event.OBJECTIVE: 1
+            },
+        },
+        CONTEXT_SPACES_KEY: {
+            ContextSpaces.FIXED_ENTITIES: {
+                ENV_KEY: fixed_entities_env,
+                RM_KEY: TaxiEnvRM,
+            },
+            ContextSpaces.CHANGING_MAP: {
+                ENV_KEY: changing_map_env,
+                RM_KEY: TaxiEnvRM,
+            }
+        }
+    },
+    SupportedEnvironments.PD_DEFAULT_1PAS: {
+        ENV_KWARGS_KEY: {
+            'num_passengers': 1,
+            'no_intermediate_dropoff': True,
+            'max_steps': 170,
+            'reward_table': {
+                Event.STEP: 0,
+                Event.PICKUP: 0,
+                Event.FINAL_DROPOFF: 0,
+                Event.INTERMEDIATE_DROPOFF: 0,
+                Event.DEAD: 0,
+                Event.OBJECTIVE: 1
+            },
+        },
+        CONTEXT_SPACES_KEY: {
+            ContextSpaces.FIXED_ENTITIES: {
+                ENV_KEY: fixed_entities_env,
+                RM_KEY: TaxiEnvRM,
+            },
+            ContextSpaces.CHANGING_MAP: {
+                ENV_KEY: changing_map_env,
+                RM_KEY: TaxiEnvRM,
+            }
+        }
+    },
+    SupportedEnvironments.PD_DEFAULT_2PAS: {
+        ENV_KWARGS_KEY: {
+            'num_passengers': 2,
+            'no_intermediate_dropoff': True,
+            'max_steps': 175,
+            'reward_table': {
+                Event.STEP: 0,
+                Event.PICKUP: 0,
+                Event.FINAL_DROPOFF: 0,
+                Event.INTERMEDIATE_DROPOFF: 0,
+                Event.DEAD: 0,
+                Event.OBJECTIVE: 1
+            },
+        },
+        CONTEXT_SPACES_KEY: {
+            ContextSpaces.FIXED_ENTITIES: {
+                ENV_KEY: fixed_entities_env,
+                RM_KEY: TaxiEnvRM,
+            },
+            ContextSpaces.CHANGING_MAP: {
+                ENV_KEY: changing_map_env,
+                RM_KEY: TaxiEnvRM,
+            }
+        }
+    },
+    SupportedEnvironments.PD_DEFAULT_3PAS: {
+        ENV_KWARGS_KEY: {
+            'num_passengers': 3,
             'no_intermediate_dropoff': True,
             'max_steps': 180,
             'reward_table': {
@@ -312,61 +781,11 @@ RMENV_DICT = {
             }
         }
     },
-    SupportedEnvironments.PD_2: {
-        ENV_KWARGS_KEY: {
-            'num_passengers': 2,
-            'no_intermediate_dropoff': True,
-            'max_steps': 200,
-            'reward_table': {
-                Event.STEP: 0,
-                Event.PICKUP: 0,
-                Event.FINAL_DROPOFF: 0,
-                Event.INTERMEDIATE_DROPOFF: 0,
-                Event.DEAD: 0,
-                Event.OBJECTIVE: 1
-            },
-        },
-        CONTEXT_SPACES_KEY: {
-            ContextSpaces.FIXED_ENTITIES: {
-                ENV_KEY: fixed_entities_env,
-                RM_KEY: TaxiEnvRM,
-            },
-            ContextSpaces.CHANGING_MAP: {
-                ENV_KEY: changing_map_env,
-                RM_KEY: TaxiEnvRM,
-            }
-        }
-    },
-    SupportedEnvironments.PD_3: {
-        ENV_KWARGS_KEY: {
-            'num_passengers': 3,
-            'no_intermediate_dropoff': True,
-            'max_steps': 220,
-            'reward_table': {
-                Event.STEP: 0,
-                Event.PICKUP: 0,
-                Event.FINAL_DROPOFF: 0,
-                Event.INTERMEDIATE_DROPOFF: 0,
-                Event.DEAD: 0,
-                Event.OBJECTIVE: 1
-            },
-        },
-        CONTEXT_SPACES_KEY: {
-            ContextSpaces.FIXED_ENTITIES: {
-                ENV_KEY: fixed_entities_env,
-                RM_KEY: TaxiEnvRM,
-            },
-            ContextSpaces.CHANGING_MAP: {
-                ENV_KEY: changing_map_env,
-                RM_KEY: TaxiEnvRM,
-            }
-        }
-    },
-    SupportedEnvironments.PD_4: {
+    SupportedEnvironments.PD_DEFAULT_4PAS: {
         ENV_KWARGS_KEY: {
             'num_passengers': 4,
             'no_intermediate_dropoff': True,
-            'max_steps': 240,
+            'max_steps': 185,
             'reward_table': {
                 Event.STEP: 0,
                 Event.PICKUP: 0,
@@ -387,11 +806,11 @@ RMENV_DICT = {
             }
         }
     },
-    SupportedEnvironments.PD_5: {
+    SupportedEnvironments.PD_DEFAULT_5PAS: {
         ENV_KWARGS_KEY: {
             'num_passengers': 5,
             'no_intermediate_dropoff': True,
-            'max_steps': 260,
+            'max_steps': 190,
             'reward_table': {
                 Event.STEP: 0,
                 Event.PICKUP: 0,
@@ -464,7 +883,7 @@ class ExperimentConfiguration:
         self.env = env
         self.cspace = cspace
         self.alg = alg
-        self.mods = list(mods)
+        self.mods = sorted(mods, key=lambda m: m.value)  # sorted for identical experiment consistency
         self.exp_kwargs = exp_kwargs
         self.rm_kwargs = rm_kwargs
         self.model_kwargs = model_kwargs
