@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from functools import cached_property
 from typing import Dict, Tuple
 
 import matplotlib.pyplot as plt
@@ -49,24 +50,24 @@ class RewardMachine(ABC):
 
         return G
 
-    @property
+    @cached_property
     def num_propositions(self):
         _, some_node_data = next(iter(self.G.nodes(data=True)))
         return len(some_node_data[PROPS_VECTOR_ATTR])
 
-    @property
+    @cached_property
     def all_states(self):
         return set(self.G.nodes)
 
-    @property
+    @cached_property
     def U(self):
         return set(self.delta.keys())
 
-    @property
+    @cached_property
     def F(self):
         return self.all_states - self.U
 
-    @property
+    @cached_property
     def num_states(self):
         return self.G.number_of_nodes()
 
