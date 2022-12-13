@@ -2,6 +2,7 @@ from typing import Callable
 
 import gym
 import numpy as np
+from tqdm.auto import tqdm
 
 from rmrl.reward_machines.reward_machine import RewardMachine
 from rmrl.context.multitask_env import MultiTaskWrapper
@@ -52,6 +53,36 @@ class RMEnvWrapper(gym.Wrapper):
 
         # for random seeding
         self._np_random = np.random.default_rng()
+
+    def get_fixed_task_rms(self, tasks):
+        out = {}
+
+        multitask_env = self.__get_first_multitask_wrapper()
+
+        # stop change task on reset. keep old setting to keep consistent
+        old_change_task_on_reset = self.env.change_task_on_reset
+        multitask_env.change_task_on_reset = False
+
+        for task in tqdm(tasks, desc='generating rms for context set'):
+            multitask_env.task = task
+            multitask_env.reset()
+            out[task] = self.rm_fn(multitask_env)
+
+        # revert to old task on reset setting
+        multitask_env.change_task_on_reset = old_change_task_on_reset
+
+        return out
+
+    def __get_first_multitask_wrapper(self):
+        env = self.env
+        while not isinstance(env, MultiTaskWrapper):
+            env = env.env
+
+        return env
+
+    def set_fixed_rms(self, fixed_rms, fixed_rms_data):
+        self.fixed_rms = fixed_rms
+        self.fixed_rms_data = fixed_rms_data
 
     def seed(self, seed=None):
         super().seed(seed)

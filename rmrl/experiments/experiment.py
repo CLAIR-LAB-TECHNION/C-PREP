@@ -56,6 +56,10 @@ class Experiment(ABC):
         # tells us if there is tgt for test to use
         self._tgt_for_test = None
 
+        # rms data container to avoid repetition
+        self._fixed_rms = {}
+        self._fixed_rms_data = {}
+
     def run(self, *contexts):
         train_envs = []
         eval_envs = []
@@ -134,9 +138,32 @@ class Experiment(ABC):
                               ohe_ctx=Mods.OHE in self.cfg,
                               hcv_ctx=Mods.HCV in self.cfg)
 
+        # creates, stores, and injects fixed rms into the environment
+        self.cache_rm_env_rms(rm_env)
+
+        # enforce first reset
         rm_env.reset()
 
         return rm_env
+
+    def cache_rm_env_rms(self, rm_env):
+        # find tasks that we haven't seen
+        missing_tasks = set(rm_env.env.fixed_contexts) - set(self._fixed_rms.keys())
+
+        if len(missing_tasks) > 0:  # no missing tasks means everything is already in the cache
+            # generate all rms for tasks and set as fixed in rm env
+            fixed_rms = rm_env.get_fixed_task_rms(missing_tasks)
+            fixed_rms_data = {t: rm.to_pyg_data() for t, rm in fixed_rms.items()}
+
+            # update caches
+            self._fixed_rms.update(fixed_rms)
+            self._fixed_rms_data.update(fixed_rms_data)
+        else:
+            # get fixed rms from cache
+            fixed_rms = {t: self._fixed_rms[t] for t in rm_env.env.fixed_contexts}
+            fixed_rms_data = {t: self._fixed_rms_data[t] for t in rm_env.env.fixed_contexts}
+
+        rm_env.set_fixed_rms(fixed_rms, fixed_rms_data)  # set fixed rms
 
     def new_agent_for_env(self, env):
         num_props = env.rm.num_propositions  # all rms should have the same rm
