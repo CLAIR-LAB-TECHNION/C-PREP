@@ -55,3 +55,4 @@ args=(
 
 
 scripts/run_multi_sbatch_in_background.sh "${args[@]}"
+#python -m rmrl "${args[@]:4}" --count-only
