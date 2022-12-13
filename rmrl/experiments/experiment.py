@@ -173,6 +173,10 @@ class Experiment(ABC):
 
             # save generated rms
             self.save_new_rms(missing_tasks)
+
+            # add previously loaded rms
+            fixed_rms.update(loaded_rms)
+            fixed_rms_data.update(loaded_rms_data)
         else:
             # get fixed rms from cache
             fixed_rms = {t: self._fixed_rms[t] for t in rm_env.env.fixed_contexts}
