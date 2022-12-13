@@ -84,7 +84,7 @@ def __get_exp_kwargs(run_args):
 
 
 def __get_rm_kwargs(run_args):
-    if run_args.mods:
+    if Mods.has_rm_mod(run_args.mods):
         rm_kwargs = dict(
             rs_gamma=run_args.rs_gamma,
             goal_state_reward=run_args.goal_state_reward,

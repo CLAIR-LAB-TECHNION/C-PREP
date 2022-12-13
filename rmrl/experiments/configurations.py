@@ -427,6 +427,10 @@ class Mods(Enum):
     GECO = 'GECO'
     GECOUPT = 'GECOUPT'
 
+    @classmethod
+    def has_rm_mod(cls, mods):
+        return any(m in [cls.AS, cls.NDS, cls.RS, cls.GECO, cls.GECOUPT] for m in mods)
+
 
 class Algos(Enum):
     DQN = 'DQN'

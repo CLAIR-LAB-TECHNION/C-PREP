@@ -119,8 +119,10 @@ class Experiment(ABC):
         def rm_fn_with_rs(task_env):
             # create RM and reshape rewards
             rm = self.rm_fn(task_env, **self.cfg.rm_kwargs)
-            pots = self.pot_fn(rm, self.cfg.rm_kwargs['rs_gamma'])
-            rm.reshape_rewards(pots, self.cfg.rm_kwargs['rs_gamma'])
+
+            if 'rs_gamma' in self.cfg.rm_kwargs:
+                pots = self.pot_fn(rm, self.cfg.rm_kwargs['rs_gamma'])
+                rm.reshape_rewards(pots, self.cfg.rm_kwargs['rs_gamma'])
             return rm
 
         # init env with RM support
