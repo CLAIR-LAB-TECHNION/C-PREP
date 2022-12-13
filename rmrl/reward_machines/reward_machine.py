@@ -100,6 +100,15 @@ class RewardMachine(ABC):
                 if REWARD_ATTR not in self.G[u][v]:
                     self.G[u][v][REWARD_ATTR] = 0
 
+    # method for pickle
+    def __getstate__(self):
+        state = self.__dict__.copy()
+
+        # Remove unpicklable env.
+        state['env'] = None
+
+        return state
+
 
 class RMFromNX(RewardMachine):
 

@@ -66,6 +66,7 @@ LOGS_DIR = 'logs'
 TB_LOG_DIR = 'tensorboard'
 EVAL_LOG_DIR = 'eval'
 SAVED_CONTEXTS_DIR = 'sampled_contexts'
+GENERATED_RMS_DIR = 'generated_rms'
 
 # important dictionary keys for RMENV_Dict
 ENV_KEY = 'env'

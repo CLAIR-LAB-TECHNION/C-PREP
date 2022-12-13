@@ -1,15 +1,17 @@
-import pickle
+import _pickle as pickle
 import time
 import warnings
 from abc import ABC, abstractmethod
 from functools import partial
 from typing import List
 
+from tqdm.auto import tqdm
+
 import stable_baselines3 as sb3
 from rmrl.nn.models import RMFeatureExtractorSB
 from rmrl.reward_machines.rm_env import RMEnvWrapper
 from rmrl.utils.callbacks import RMEnvRewardCallback, ProgressBarCallback, CustomEvalCallback
-from rmrl.utils.misc import uniqify_samples
+from rmrl.utils.misc import uniqify_samples, sha3_hash
 from stable_baselines3.common.callbacks import StopTrainingOnNoModelImprovement, CheckpointCallback
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv
@@ -150,6 +152,16 @@ class Experiment(ABC):
         # find tasks that we haven't seen
         missing_tasks = set(rm_env.env.fixed_contexts) - set(self._fixed_rms.keys())
 
+        # load pre-generated rms
+        loaded_rms, loaded_rms_data = self.load_saved_rms(missing_tasks, rm_env.env)
+
+        # update caches with loaded rms
+        self._fixed_rms.update({t: rm for t, rm in loaded_rms.items()})  # update cache
+        self._fixed_rms_data.update({t: rm for t, rm in loaded_rms_data.items()})
+
+        # remove loaded task rms from missing tasks
+        missing_tasks = set(missing_tasks) - set(loaded_rms)
+
         if len(missing_tasks) > 0:  # no missing tasks means everything is already in the cache
             # generate all rms for tasks and set as fixed in rm env
             fixed_rms = rm_env.get_fixed_task_rms(missing_tasks)
@@ -158,12 +170,34 @@ class Experiment(ABC):
             # update caches
             self._fixed_rms.update(fixed_rms)
             self._fixed_rms_data.update(fixed_rms_data)
+
+            # save generated rms
+            self.save_new_rms(missing_tasks)
         else:
             # get fixed rms from cache
             fixed_rms = {t: self._fixed_rms[t] for t in rm_env.env.fixed_contexts}
             fixed_rms_data = {t: self._fixed_rms_data[t] for t in rm_env.env.fixed_contexts}
 
         rm_env.set_fixed_rms(fixed_rms, fixed_rms_data)  # set fixed rms
+
+    def load_saved_rms(self, tasks, env):
+        rms, rms_data = {}, {}
+        for task in tasks:
+            task_path = self.generated_rms_dir / sha3_hash(task)
+            if task_path.exists():
+                with open(task_path, 'rb') as f:
+                    rms[task], rms_data[task] = pickle.load(f)
+                    rms[task].env = env  # env is not pickled. must be received after loading
+        return rms, rms_data
+
+    def save_new_rms(self, new_tasks):
+        if not self.generated_rms_dir.exists():  # create containing dir if required
+            self.generated_rms_dir.mkdir(parents=True, exist_ok=True)
+
+        # save task rms and rm_data
+        for task in tqdm(new_tasks, desc='saving new rms'):
+            with open(self.generated_rms_dir / sha3_hash(task), 'wb') as f:
+                pickle.dump((self._fixed_rms[task], self._fixed_rms_data[task]), f)
 
     def new_agent_for_env(self, env):
         num_props = env.rm.num_propositions  # all rms should have the same rm
@@ -308,6 +342,10 @@ class Experiment(ABC):
     @property
     def saved_contexts_dir(self):
         return self.dump_dir / SAVED_CONTEXTS_DIR / self.cfg.env_name / self.cfg.cspace_name
+
+    @property
+    def generated_rms_dir(self):
+        return self.dump_dir / GENERATED_RMS_DIR / self.cfg.env_name / self.cfg.cspace_name
 
     @classmethod
     def load_all_experiments_in_path(cls, path=None):
