@@ -16,7 +16,7 @@ def fixed_entities_env(initial_task=None, change_task_on_reset=False, ohe_classe
     env = single_taxi_v0.gym_env(**env_kwargs)
     env = FixedLocsWrapper(env, initial_task=initial_task, change_task_on_reset=change_task_on_reset,
                            ohe_classes=ohe_classes, ohe_start=ohe_start)
-    env = NoPassLocDstWrapper(env)
+    env = NoPassLocDstWrapper(env)  # positions are part of the context space
 
     return env
 
@@ -27,6 +27,7 @@ def changing_map_env(initial_task=None, change_task_on_reset=False, ohe_classes=
                            ohe_classes=ohe_classes, ohe_start=ohe_start)
     env = FixedLocsAddition(env, initial_task=initial_task, change_task_on_reset=change_task_on_reset,
                             ohe_classes=ohe_classes, ohe_start=ohe_start)
+    env = NoPassLocDstWrapper(env)  # positions are locked. no need for them in our observation
     return env
 
 
