@@ -188,7 +188,9 @@ class Experiment(ABC):
         rms, rms_data = {}, {}
         for task in tasks:
             task_path = self.generated_rms_dir / sha3_hash(task)
-            if task_path.exists():
+
+            # check if file exists and if it has content
+            if task_path.exists() and task_path.stat().st_size > 0:
                 with open(task_path, 'rb') as f:
                     rms[task], rms_data[task] = pickle.load(f)
                     rms[task].env = env  # env is not pickled. must be received after loading
