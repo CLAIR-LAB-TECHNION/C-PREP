@@ -438,12 +438,12 @@ def parse_args():
                            default=N_EVAL_EPISODES)
     log_group.add_argument('--eval_freq',
                            help='number of timesteps per evaluation',
-                           type=int,
+                           type=lambda x: int(float(x)),
                            default=EVAL_FREQ)
     log_group.add_argument('--max_no_improvement_evals',
                            help='training will stop if no improvement is seen for this many evaluations. does not stop '
                                 'if `min_timesteps` has not yet been reached. by default there is no early stopping.',
-                           type=int)
+                           type=lambda x: int(float(x)))
     log_group.add_argument('--min_timesteps',
                            help='minimal number of evaluations that must occur, regardless of the '
                                 '--max_no_improvement_evals argument. ignored by default',
