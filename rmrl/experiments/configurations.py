@@ -27,7 +27,7 @@ TOTAL_TIMESTEPS = 5e5
 TARGET_TIMESTEPS = None
 TARGET_EVAL_FREQ = None
 DQN_EXPLORATION_TIMESTEPS = [5e4]  # np.linspace(0, 1, 10).tolist()
-DQN_TARGET_UPDATE_INTERVAL = [500]
+DQN_TARGET_UPDATE_INTERVAL = [10_000]  # align with sb3 default
 OUT_DIMS = [32]  # [16, 32, 64, 128, 256]
 HIDDEN_DIMS = [[32, 32]]  # list(set(tuple(sorted(hd)) for hd in powerset(OUT_DIMS, max_subset_len=2)))
 GNN_TYPE = [GATConv]
