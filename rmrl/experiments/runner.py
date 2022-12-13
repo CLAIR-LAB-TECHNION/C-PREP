@@ -2,6 +2,7 @@ import math
 import time
 from concurrent.futures import ThreadPoolExecutor
 from multiprocessing import Lock
+import sys
 from typing import List
 import traceback
 
@@ -101,10 +102,19 @@ class ExperimentsRunner:
 
             open(done_file, 'w').close()
         except:
+            # experiment has failed
+            # - create path to failure file if not yet created
+            # - log traceback to failure file
+            # - output traceback to user in stderr
+            # - continue to next experiment
+            if not exp.exp_dump_dir.exists():
+                exp.exp_dump_dir.mkdir(parents=True, exist_ok=True)
+
             tb = traceback.format_exc()
             with open(fail_file, 'w') as f:
                 f.write(tb)
-            raise
+
+            print(tb, file=sys.stderr)
 
     @property
     def num_runs(self):
