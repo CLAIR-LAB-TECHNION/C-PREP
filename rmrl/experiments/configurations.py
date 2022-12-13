@@ -42,7 +42,7 @@ ON_POLICY_ENT_COEF = 0.01
 PPO_N_EPOCHS = [10]
 OFF_POLICY_LEARNING_STARTS = [0]  # no waiting for training by default
 OFF_POLICY_TRAIN_FREQ = [4]  # align with DQN default
-OFF_POLICY_GRADIENT_STEPS = [1]  # align with DQN default
+OFF_POLICY_GRADIENT_STEPS = [4]  # default is 1 grad step per env step
 
 LOG_INTERVAL = 1
 N_EVAL_EPISODES = 100
