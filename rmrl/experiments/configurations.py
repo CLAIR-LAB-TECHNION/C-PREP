@@ -919,21 +919,21 @@ class ExperimentConfiguration:
         return pprint.pformat(vars(self), indent=2)
 
     def __repr__(self):
-        return CFG_VALS_SEP.join(self.__repr_value(n, v) for n, v in vars(self).items())
+        return CFG_VALS_SEP.join(self.repr_value(n, v) for n, v in vars(self).items())
 
-    def __repr_value(self, name, value):
+    def repr_value(self, name, value):
         rv = f'{name}{NAME_VALUE_SEP}'
         if isinstance(value, Enum):
-            return self.__repr_value(name, value.value)
+            return self.repr_value(name, value.value)
         elif callable(value):
             if hasattr(value, '__name__'):
                 return rv + value.__name__
             else:
                 return rv + repr(value)
         elif isinstance(value, dict):
-            return rv + '(' + MULTI_VAL_SEP.join(f'({self.__repr_value(k, v)})' for k, v in value.items()) + ')'
+            return rv + '(' + MULTI_VAL_SEP.join(f'({self.repr_value(k, v)})' for k, v in value.items()) + ')'
         elif isinstance(value, list) or isinstance(value, tuple) or isinstance(value, set):
-            return rv + '(' + MULTI_VAL_SEP.join(self.__repr_value(str(i), v).split("-", 1)[-1]
+            return rv + '(' + MULTI_VAL_SEP.join(self.repr_value(str(i), v).split("-", 1)[-1]
                                                  for i, v in enumerate(value)) + ')'
         else:
             return rv + str(value)

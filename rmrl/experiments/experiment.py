@@ -345,7 +345,8 @@ class Experiment(ABC):
 
     @property
     def generated_rms_dir(self):
-        return self.dump_dir / GENERATED_RMS_DIR / self.cfg.env_name / self.cfg.cspace_name
+        return (self.dump_dir / GENERATED_RMS_DIR / self.cfg.env_name / self.cfg.cspace_name /
+                self.cfg.repr_value('rm_kwargs', self.cfg.rm_kwargs))
 
     @classmethod
     def load_all_experiments_in_path(cls, path=None):
