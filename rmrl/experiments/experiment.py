@@ -261,7 +261,7 @@ class Experiment(ABC):
                                                      verbose=self.verbose + 1)  # they check verbose > 1 here
             callbacks.append(checkpoint_callback)
 
-        if self._tgt_for_test is not None:
+        if not self._is_tgt and self._tgt_for_test is not None:
             test_callback = CustomEvalCallback(eval_env=self._tgt_for_test,
                                                n_eval_episodes=self.cfg.n_eval_episodes,
                                                eval_freq=self.cfg.eval_freq,
