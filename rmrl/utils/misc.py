@@ -21,6 +21,20 @@ def split_pairs(lst):
     ]
 
 
+def uniqify_samples(samples):
+    """
+    make a unique valued list in a repeatable way.
+    taken from:
+    https://stackoverflow.com/questions/480214/how-do-i-remove-duplicates-from-a-list-while-preserving-order
+    :param samples:
+    :return:
+    """
+    value_set = set()
+    return [s for s in samples             # sample is kept iff:
+            if not (s in value_set or      # sample value was has not yet been seen.
+                    value_set.add(s))]     # if sample wasn't seen, value is added (returns None <==> False)
+
+
 def sha3_hash(item):
     return hashlib.sha3_256(str(item).encode()).hexdigest()
 

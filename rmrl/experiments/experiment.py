@@ -9,7 +9,7 @@ import stable_baselines3 as sb3
 from rmrl.nn.models import RMFeatureExtractorSB
 from rmrl.reward_machines.rm_env import RMEnvWrapper
 from rmrl.utils.callbacks import RMEnvRewardCallback, ProgressBarCallback, CustomEvalCallback
-from rmrl.utils.misc import sha3_hash
+from rmrl.utils.misc import uniqify_samples
 from stable_baselines3.common.callbacks import StopTrainingOnNoModelImprovement, CheckpointCallback
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv
@@ -193,10 +193,6 @@ class Experiment(ABC):
         else:
             return env.fixed_contexts
 
-    def get_env_task_name(self, env):
-        task = tuple(self.get_env_task(env))
-        return sha3_hash(task)
-
     def train_agent_for_env(self, env, eval_env, task_name):
         agent = self.new_agent_for_env(env)
         return self.train_agent(agent, eval_env, task_name=task_name)
@@ -319,13 +315,14 @@ class Experiment(ABC):
             # sample contexts
             num_samples = num_src_samples + num_tgt_samples
             contexts = env.sample_task(num_samples * OVERSAMPLE_FACTOR)  # oversample
-            contexts = list(set(contexts))  # remove duplicates
+            contexts = uniqify_samples(contexts)  # remove duplicates while preserving order
             contexts = contexts[:num_samples]  # reduce to desired number of
 
             # check enough contexts
             if len(contexts) < num_samples:
-                warnings.warn(f'wanted {num_samples} contexts for env {self.cfg.env_name} in context. '
-                              f'sampled {len(contexts)}')
+                raise ValueError(f'wanted {num_samples} contexts for env {self.cfg.env_name} in context space '
+                                 f'{self.cfg.cspace_name} ({num_src_samples} src and {num_tgt_samples} target). '
+                                 f'sampled only {len(contexts)} unique contexts')
 
             src_contexts, tgt_contexts = contexts[:num_src_samples], contexts[num_src_samples:]
 
