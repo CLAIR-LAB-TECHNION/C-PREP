@@ -1,5 +1,6 @@
 import pickle
 import time
+import traceback
 import warnings
 from abc import ABC, abstractmethod
 from functools import partial
@@ -190,10 +191,14 @@ class Experiment(ABC):
             task_path = self.generated_rms_dir / sha3_hash(task)
 
             # check if file exists and if it has content
-            if task_path.exists() and task_path.stat().st_size > 0:
-                with open(task_path, 'rb') as f:
-                    rms[task], rms_data[task] = pickle.load(f)
-                    rms[task].env = env  # env is not pickled. must be received after loading
+            if task_path.exists():
+                try:
+                    with open(task_path, 'rb') as f:
+                        rms[task], rms_data[task] = pickle.load(f)
+                        rms[task].env = env  # env is not pickled. must be received after loading
+                except (pickle.UnpicklingError, EOFError, AttributeError, ImportError, IndexError):
+                    tb = traceback.format_exc()
+                    warnings.warn(f'could not load rm in path {task_path}.\n{tb}')
         return rms, rms_data
 
     def save_new_rms(self, new_tasks):
