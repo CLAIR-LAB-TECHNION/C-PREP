@@ -11,16 +11,14 @@ from tqdm.auto import tqdm
 from .configurations import *
 from .cv_transfer import CVTransferExperiment
 from .experiment import Experiment
-from .with_transfer import TRANSFER_FROM_MIDFIX
 from .with_transfer import WithTransferExperiment
 
 EVALUATIONS_FILE = 'evaluations.npz'
 
-TSF_KEY = 'tsf'
-
-TGT_KEY = 'tgt'
-
 SRC_KEY = 'src'
+TST_KEY = 'test'
+TGT_KEY = 'tgt'
+TSF_KEY = 'tsf'
 
 TIMESTEPS_KEY = 'timesteps'
 RESULTS_KEY = 'results'
@@ -138,7 +136,7 @@ class ResultsHandler:
                              experiments_idx=None,
                              cfg_constraints=None,
                              exp_agg_type=None,  # None, "seed", "fold", or "fold_and_seed"
-                             evals_only=True,  #TODO support False
+                             evals_only=True,  # TODO support False
                              varying_attrs=None,
                              cfg_title=None):
 
@@ -149,7 +147,7 @@ class ResultsHandler:
             if evals_only:
                 copy_paths = glob.glob(p + '/**/evaluations.npz', recursive=True)
             else:
-                copy_paths = [p]  #TODO this is not yet supported
+                copy_paths = [p]  # TODO this is not yet supported
 
             for cp_path in copy_paths:
                 prefix = cfg_title or ''
@@ -174,7 +172,6 @@ class ResultsHandler:
                 os.makedirs(str(Path(out_path).parent), exist_ok=True)
                 shutil.copy(cp_path, out_path)
 
-
     def plot_experiments_eval(self,
                               experiments_idx=None,
                               plot_kwargs_per_idx=None,
@@ -188,6 +185,7 @@ class ResultsHandler:
                               l_bound=None,
                               u_bound=None,
                               show_src_scratch=True,
+                              show_src_test=True,
                               show_tgt_scratch=True,
                               show_tgt_transfer=True,
                               save_path=None,
@@ -205,11 +203,13 @@ class ResultsHandler:
         if issubclass(self.exp_type, WithTransferExperiment):
             self.__plot_compare_evals(
                 src_evals={k: all_res[k][SRC_KEY] for k in experiments_idx if k in all_res},
+                tst_evals={k: all_res[k].get(TST_KEY) for k in experiments_idx if k in all_res},
                 tgt_evals={k: all_res[k][TGT_KEY] for k in experiments_idx if k in all_res},
                 tsf_evals={k: all_res[k][TSF_KEY] for k in experiments_idx if k in all_res},
                 l_bound=l_bound,
                 u_bound=u_bound,
                 show_src_scratch=show_src_scratch,
+                show_src_test=show_src_test,
                 show_tgt_scratch=show_tgt_scratch,
                 show_tgt_transfer=show_tgt_transfer,
                 src_xlim=src_xlim,
@@ -241,7 +241,6 @@ class ResultsHandler:
         if ax is None:
             _, ax = plt.subplots(1, 1, figsize=(15, 7))
 
-
         y_label = ('median' if record_median else 'average') + (' return' if record_returns else ' acc reward')
 
         ax.set_title(f'Policy performance on source context')
@@ -257,10 +256,9 @@ class ResultsHandler:
         ax.legend()
         ax.grid()
 
-    def __plot_compare_evals(self, src_evals, tgt_evals, tsf_evals, l_bound, u_bound, show_src_scratch,
-                             show_tgt_scratch,
-                             show_tgt_transfer, src_xlim, tgt_xlim, plt_kwargs, record_returns=False,
-                             record_median=False, with_deviation=False, axes=None):
+    def __plot_compare_evals(self, src_evals, tst_evals, tgt_evals, tsf_evals, l_bound, u_bound, show_src_scratch,
+                             show_src_test, show_tgt_scratch, show_tgt_transfer, src_xlim, tgt_xlim, plt_kwargs,
+                             record_returns=False, record_median=False, with_deviation=False, axes=None):
         if axes is None:
             _, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 7))
         else:
@@ -278,6 +276,11 @@ class ResultsHandler:
 
         if show_src_scratch:
             self.__plot_evals(src_evals, plt_kwargs, record_median=record_median, with_deviation=with_deviation, ax=ax1)
+        if show_src_test and tst_evals is not None:
+            self.__plot_evals(tst_evals, plt_kwargs, is_test=show_src_scratch, record_median=record_median,
+                              with_deviation=with_deviation, ax=ax1)
+
+        if show_src_scratch or show_src_test:
             ax1.set_xlim(src_xlim)
             ax1.legend()
             ax1.grid()
@@ -305,7 +308,8 @@ class ResultsHandler:
             ax2.legend()
             ax2.grid()
 
-    def __plot_evals(self, evals, plt_kwargs, is_transfer=False, record_median=False, with_deviation=False, ax=None):
+    def __plot_evals(self, evals, plt_kwargs, is_transfer=False, is_test=False, record_median=False,
+                     with_deviation=False, ax=None):
         if isinstance(plt_kwargs, dict):
             plt_kwargs = [plt_kwargs.copy() for _ in range(len(evals))]
 
@@ -316,10 +320,14 @@ class ResultsHandler:
             if is_transfer:
                 if 'ls' not in kwargs and 'linestyle' not in kwargs:
                     kwargs['ls'] = '-.'
-            self.__plot_single_eval(npz, k, is_transfer=is_transfer, record_median=record_median,
+            if is_test:
+                if 'ls' not in kwargs and 'linestyle' not in kwargs:
+                    kwargs['ls'] = '-.'
+            self.__plot_single_eval(npz, k, is_transfer=is_transfer, is_test=is_test, record_median=record_median,
                                     with_deviation=with_deviation, ax=ax, **kwargs)
 
-    def __plot_single_eval(self, res_dict, eval_key=None, is_transfer=False, record_median=False, with_deviation=False,
+    def __plot_single_eval(self, res_dict, eval_key=None, is_transfer=False, is_test=False, record_median=False,
+                           with_deviation=False,
                            ax=None, **plt_kwargs):
         if ax is None:
             _, ax = plt.subplots(1, 1, figsize=(10, 7))
@@ -336,6 +344,8 @@ class ResultsHandler:
             plt_kwargs['label'] = str(eval_key)
         if is_transfer:
             plt_kwargs['label'] += ' tsf'
+        elif is_test:
+            plt_kwargs['label'] += ' tst'
         ax.plot(x, to_plot, **plt_kwargs)
 
         if with_deviation:
@@ -366,6 +376,9 @@ class ResultsHandler:
                     TSF_KEY: self.mean_discounted_rewards(per_idx_results, TSF_KEY, val_key),
                 })
 
+            if self.exp_obj_dict[path_to_cfg_idx[p]][0].cfg.exp_kwargs['use_tgt_for_test']:
+                res[path_to_cfg_idx[p]][TST_KEY] = self.mean_discounted_rewards(per_idx_results, TST_KEY, val_key)
+
         return res
 
     def mean_discounted_rewards(self, npz_res_dict, stage_key, val_key):
@@ -393,39 +406,26 @@ class ResultsHandler:
         results = {}
         for i in idx:
             p = Path(self.exp_path_dict[i]) / LOGS_DIR / EVAL_LOG_DIR
+            src_path = p / 'src'
+            tst_path = p / 'test'
+            tgt_path = p / 'tgt'
+            tsf_path = p / 'tsf'
 
             if issubclass(self.exp_type, WithTransferExperiment):
-                tsf_files = list(p.glob(f'*{TRANSFER_FROM_MIDFIX}*'))
-
-                if len(tsf_files) == 0:
-                    raise IndexError(f'No transfer results found for experiment {i}')
-                if len(tsf_files) > 1:
-                    raise IndexError(f'multiple transfer results found for experiment {i}')
-
-                tsf_filename = tsf_files[0].name  # exactly 1 tsf file
-
-                match = re.match(fr'(.+){TRANSFER_FROM_MIDFIX}(.+)', str(tsf_filename))
-                src_context_name = match.group(2)
-                tgt_context_name = match.group(1)
-
                 results[i] = {
-                    SRC_KEY: self.load_exp_eval_in_path(p / src_context_name),
-                    TGT_KEY: self.load_exp_eval_in_path(p / tgt_context_name),
-                    TSF_KEY: self.load_exp_eval_in_path(p / tsf_filename)
+                    SRC_KEY: self.load_exp_eval_in_path(src_path),
+                    TGT_KEY: self.load_exp_eval_in_path(tgt_path),
+                    TSF_KEY: self.load_exp_eval_in_path(tsf_path)
                 }
-
 
             else:
-                ctx_list = list(p.iterdir())
-                if len(ctx_list) == 0:
-                    raise IndexError(f'No results found for experiment {i}')
-                elif len(ctx_list) > 1:
-                    raise IndexError(f'multiple results found for experiment {i}')
-
-                src_context_name = ctx_list[0].name
                 results[i] = {
-                    SRC_KEY: self.load_exp_eval_in_path(p / src_context_name),
+                    SRC_KEY: self.load_exp_eval_in_path(p / src_path),
                 }
+
+            # load test set if expected
+            if self.exp_obj_dict[i][0].cfg.exp_kwargs['use_tgt_for_test']:
+                results[i][TST_KEY] = self.load_exp_eval_in_path(tst_path)
 
         return results
 
