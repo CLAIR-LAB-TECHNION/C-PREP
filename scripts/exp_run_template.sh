@@ -10,8 +10,8 @@ args=(
     --experiment WithTransferExperiment  # experiment type
     --env gn_4x4_1pas  # env setting
     --context fixed_entities  # context space
-    --num_src_samples 1 3 5 10  # context samples
-    --num_tgt_samples 1 3 5 10
+    --num_src_samples 5 30  # context samples
+    --num_tgt_samples 5 30
     --use_tgt_for_test  # test generalization
     # --mods                # MF
     --mods OHE            # OHE uninformative context
@@ -41,7 +41,7 @@ args=(
     --grid_resolution 2 2
     --grid_resolution 4 4
     --goal_state_reward 100  # other RM hyperparameters
-    --rs_gamma 0.999
+    --rs_gamma 0.9999
     --alg DQN  # algorithm 
 #    --dqn_target_update_interval 1000
     --timesteps 1e6  # time dependent arguments
@@ -55,4 +55,4 @@ args=(
 
 
 scripts/run_multi_sbatch_in_background.sh "${args[@]}"
-#python -m rmrl "${args[@]:4}" --count-only
+#python -m rmrl "${args[@]:4}" --count_only
