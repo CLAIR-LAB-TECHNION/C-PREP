@@ -7,7 +7,7 @@ args=(
     0  # num gpus
     --num_workers 128  # number of maximum jobs to run simultaneously
     --num_seeds 5  # number of times to repeat each experiment
-    --experiment WithTransferExperiment  # experiment type
+    --no_transfer  # experiment type no transfer
     --env gn_4x4_1pas  # env setting
     --context fixed_entities  # context space
     --num_src_samples 5 30  # context samples
