@@ -7,7 +7,7 @@ from tqdm.auto import tqdm
 from rmrl.reward_machines.reward_machine import RewardMachine
 from rmrl.context.multitask_env import MultiTaskWrapper
 
-from stable_baselines3.common.custom_spaces import PygData
+from rmrl.utils.custom_spaces import PygData
 
 ORIG_OBS_KEY = 'obs'
 

@@ -2,7 +2,6 @@ import pickle
 import time
 import traceback
 import warnings
-from abc import ABC, abstractmethod
 from functools import partial
 from typing import List
 
@@ -19,13 +18,15 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 from .configurations import *
 
 
-class Experiment(ABC):
-    def __init__(self, cfg: ExperimentConfiguration, log_interval=1, chkp_freq=None, dump_dir=None, verbose=0,
+class Experiment:
+    def __init__(self, cfg: TransferConfiguration, log_interval=1, chkp_freq=None, dump_dir=None, verbose=0,
                  force_retrain=False):
         self.cfg = cfg
+        self.src_cfg = cfg.get_src_config()
+
         self.log_interval = log_interval
         self.chkp_freq = chkp_freq
-        self.dump_dir = Path(dump_dir or EXPERIMENTS_DUMPS_DIR)
+        self._dump_dir = Path(dump_dir or EXPERIMENTS_DUMPS_DIR)
         self.verbose = verbose
         self.force_retrain = force_retrain
 
@@ -34,7 +35,8 @@ class Experiment(ABC):
         #     self.cfg.alg_kwargs['learning_rate'] = StepSchedule(self.cfg.alg_kwargs['learning_rate'], {0.8: 1e-5})
 
         # save cfg as experiment name
-        self.exp_name = f'{self.__class__.__name__}/{repr(cfg)}'
+        self.exp_name = repr(cfg)
+        self.src_name = repr(self.src_cfg)
 
         # extract special kwargs
         self.pot_fn = cfg.rm_kwargs.pop('pot_fn', DEFAULT_POT_FN)
@@ -50,9 +52,6 @@ class Experiment(ABC):
         # get env specific arguments
         self.env_kwargs = RMENV_DICT[self.cfg.env][ENV_KWARGS_KEY]
 
-        # create dump dir
-        self.dump_dir.mkdir(exist_ok=True)
-
         # easy switch to tell when this is the agent for the target contexts
         self._is_tgt = False
 
@@ -62,6 +61,9 @@ class Experiment(ABC):
         # rms data container to avoid repetition
         self._fixed_rms = {}
         self._fixed_rms_data = {}
+
+        # create dump dir
+        self._dump_dir.mkdir(parents=True, exist_ok=True)
 
     def run(self, *contexts):
         train_envs = []
@@ -78,9 +80,65 @@ class Experiment(ABC):
         end = time.time()
         print(f'execution time: {end - start}; experiment: {self.exp_name}')
 
-    @abstractmethod
-    def _run(self, envs: List[RMEnvWrapper], eval_envs: List[RMEnvWrapper]):
-        pass
+    def _run(self, envs, eval_envs):
+        src_env, tgt_env = envs
+        src_eval_env, tgt_eval_env = eval_envs
+
+        # set tgt ohe settings
+        tgt_env.env.env.ohe_start = self.cfg.num_src_samples
+        tgt_env.env.env.set_fixed_contexts(tgt_env.env.env.fixed_contexts)
+        tgt_eval_env.env.env.ohe_start = self.cfg.num_src_samples
+        tgt_eval_env.env.env.set_fixed_contexts(tgt_eval_env.env.env.fixed_contexts)
+
+        # set tgt env for generalization testing
+        self._tgt_for_test = tgt_eval_env
+
+        # train agent on source contexts from scratch (or load if exists)
+        self._is_tgt = False
+        src_agent = self.get_agent_for_env(src_env, src_eval_env, 'src')
+
+        if not self.cfg.tsf_kwargs['no_transfer']:
+            # train agent on target contexts from scratch (or load if exists)
+            self._is_tgt = True
+            tgt_agent = self.get_agent_for_env(tgt_env, tgt_eval_env, 'tgt')
+
+            # train source agent in target environment
+            self.transfer_agent(src_env, tgt_env, tgt_eval_env)
+
+    def transfer_agent(self, src_env, tgt_env, tgt_eval_env):
+        src_task_name = 'src'
+        tsf_task_name = 'tsf'
+
+        try:
+            tsf_agent = self.load_agent_for_task(tsf_task_name, tgt_env)
+        except FileNotFoundError:
+            # create agent new for target env
+            tsf_agent = self.new_agent_for_env(tgt_env)
+
+            # update parameters from src agent
+            self._is_tgt = False  # set not target to load from the correct folder
+            src_agent = self.load_agent_for_env(src_env, src_task_name,
+                                                force_load=True,  # ignore forced retraining
+                                                model_name=self.cfg.tsf_kwargs['transfer_model'])  # load desired model
+            tsf_agent.set_parameters(src_agent.get_parameters())
+
+            if self.cfg.tsf_kwargs['keep_timesteps']:
+                tsf_agent.num_timesteps = src_agent.num_timesteps
+
+                if self.cfg.alg == Algos.DQN:
+                    # to allow exploration fraction to match the given exploration timesteps:
+                    # - calc exploration_timesteps
+                    # - divide by new max timesteps
+                    tsf_agent.exploration_fraction = (
+                            (tsf_agent.exploration_fraction * self.cfg.max_timesteps) /
+                            (src_agent.num_timesteps + self.cfg.max_timesteps)
+                    )
+
+            # train agent
+            self._is_tgt = True
+            tsf_agent = self.train_agent(tsf_agent, tgt_eval_env, tsf_task_name)
+
+        return tsf_agent
 
     def get_experiment_rm_vec_env_for_context_set(self, context_set):
         # create two identical envs for training and eval
@@ -247,7 +305,7 @@ class Experiment(ABC):
 
     def load_agent_for_env(self, env, task_name, force_load=False, model_name=BEST_MODEL_NAME):
         if not force_load:
-            final_model_file = self.models_dir / task_name / (model_name + '.zip')
+            final_model_file = self.models_dir / task_name / (FINAL_MODEL_NAME + '.zip')
             if not final_model_file.is_file():  # find training complete file
                 raise FileNotFoundError
             elif self.force_retrain:  # don't look for existing model if forcing retrain
@@ -281,7 +339,7 @@ class Experiment(ABC):
         else:
             early_stop_callback = StopTrainingOnNoModelImprovement(
                 max_no_improvement_evals=self.cfg.max_no_improvement_evals,
-                min_evals=self.cfg.min_timesteps // (self.cfg.exp_kwargs['target_eval_freq']
+                min_evals=self.cfg.min_timesteps // (self.cfg.tsf_kwargs['target_eval_freq']
                                                      if self._is_tgt
                                                      else self.cfg.eval_freq),
                 verbose=self.verbose
@@ -289,7 +347,7 @@ class Experiment(ABC):
         eval_callback = CustomEvalCallback(eval_env=eval_env,
                                            callback_after_eval=early_stop_callback,
                                            n_eval_episodes=self.cfg.n_eval_episodes,
-                                           eval_freq=(self.cfg.exp_kwargs['target_eval_freq']
+                                           eval_freq=(self.cfg.tsf_kwargs['target_eval_freq']
                                                       if self._is_tgt
                                                       else self.cfg.eval_freq),
                                            log_path=self.eval_log_dir / task_name,
@@ -306,7 +364,8 @@ class Experiment(ABC):
                                                      verbose=self.verbose + 1)  # they check verbose > 1 here
             callbacks.append(checkpoint_callback)
 
-        if not self._is_tgt and self._tgt_for_test is not None:
+        # add
+        if self.cfg.exp_kwargs['use_tgt_for_test'] and not self._is_tgt and self._tgt_for_test is not None:
             test_callback = CustomEvalCallback(eval_env=self._tgt_for_test,
                                                n_eval_episodes=self.cfg.n_eval_episodes,
                                                eval_freq=self.cfg.eval_freq,
@@ -318,7 +377,7 @@ class Experiment(ABC):
         # train agent
         print(f'training agent for task {task_name}')
         agent = agent.learn(
-            total_timesteps=self.cfg.exp_kwargs['target_timesteps'] if self._is_tgt else self.cfg.max_timesteps,
+            total_timesteps=self.cfg.tsf_kwargs['target_timesteps'] if self._is_tgt else self.cfg.max_timesteps,
             callback=callbacks,
             log_interval=self.log_interval,
             tb_log_name=task_name,
@@ -331,16 +390,16 @@ class Experiment(ABC):
         return agent
 
     @property
-    def exp_dump_dir(self):
-        return self.dump_dir / self.exp_name
+    def dump_dir(self):
+        return self._dump_dir / RUNS_DIR / (self.exp_name if self._is_tgt else self.src_name)
 
     @property
     def models_dir(self):
-        return self.exp_dump_dir / MODELS_DIR
+        return self.dump_dir / MODELS_DIR
 
     @property
     def logs_dir(self):
-        return self.exp_dump_dir / LOGS_DIR
+        return self.dump_dir / LOGS_DIR
 
     @property
     def tb_log_dir(self):
@@ -352,11 +411,11 @@ class Experiment(ABC):
 
     @property
     def saved_contexts_dir(self):
-        return self.dump_dir / SAVED_CONTEXTS_DIR / self.cfg.env_name / self.cfg.cspace_name
+        return self._dump_dir / SAVED_CONTEXTS_DIR / self.cfg.env_name / self.cfg.cspace_name
 
     @property
     def generated_rms_dir(self):
-        return (self.dump_dir / GENERATED_RMS_DIR / self.cfg.env_name / self.cfg.cspace_name /
+        return (self._dump_dir / GENERATED_RMS_DIR / self.cfg.env_name / self.cfg.cspace_name /
                 self.cfg.repr_value('rm_kwargs', self.cfg.rm_kwargs))
 
     @classmethod
@@ -369,10 +428,6 @@ class Experiment(ABC):
         exps = [cls(cfg, dump_dir=path) for cfg in cfgs]
 
         return exps
-
-    @property
-    def label(self):
-        return SupportedExperiments(self.__class__.__name__)
 
     def load_or_sample_contexts(self):
         num_src_samples = self.cfg.num_src_samples

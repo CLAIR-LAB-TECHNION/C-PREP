@@ -9,9 +9,7 @@ import traceback
 from tqdm.auto import tqdm
 
 from .configurations import *
-from .cv_transfer import CVTransferExperiment
-from .no_transfer import NoTransferExperiment
-from .with_transfer import WithTransferExperiment
+from .experiment import Experiment
 
 DONE_FILE = 'DONE'
 FAIL_FILE = 'FAIL'
@@ -19,19 +17,12 @@ FAIL_FILE = 'FAIL'
 
 TIMESTAMP_FORMAT = '%Y-%m-%d-%H_%M_%S.%f'
 
-EXP_TO_FNS = {
-    SupportedExperiments.NO_TRANSFER: NoTransferExperiment,
-    SupportedExperiments.WITH_TRANSFER: WithTransferExperiment,
-    SupportedExperiments.CV_TRANSFER: CVTransferExperiment
-}
-
 pbar_lock = Lock()
 
 
 class ExperimentsRunner:
-    def __init__(self, experiments: List[SupportedExperiments], cfgs: List[ExperimentConfiguration], log_interval,
+    def __init__(self, cfgs: List[ExperimentConfiguration], log_interval,
                  chkp_freq, num_workers, verbose, force_retrain):
-        self.experiments = experiments
         self.cfgs = cfgs
         self.log_interval = log_interval
         self.chkp_freq = chkp_freq
@@ -42,11 +33,9 @@ class ExperimentsRunner:
     def run(self):
         start = time.time()
 
-        exp_classes = [EXP_TO_FNS[exp_label] for exp_label in self.experiments]
-        exp_objects = [exp_class(cfg, self.log_interval, chkp_freq=self.chkp_freq,
+        exp_objects = [Experiment(cfg, self.log_interval, chkp_freq=self.chkp_freq,
                                  dump_dir=EXPERIMENTS_DUMPS_DIR, verbose=self.verbose,
                                  force_retrain=self.force_retrain)
-                       for exp_class in exp_classes
                        for cfg in self.cfgs]
 
         if self.num_workers > 1:
@@ -71,8 +60,15 @@ class ExperimentsRunner:
     def _run_exp(exp):
         print(f'running experiment with CFG: {exp.exp_name}')
 
-        done_file = exp.exp_dump_dir / DONE_FILE
-        fail_file = exp.exp_dump_dir / FAIL_FILE
+        if exp.cfg.tsf_kwargs['no_transfer']:
+            dump_dir = exp.dump_dir
+        else:
+            exp._is_tgt = True
+            dump_dir = exp.dump_dir
+            exp._is_tgt = False
+
+        done_file = dump_dir / DONE_FILE
+        fail_file = dump_dir / FAIL_FILE
 
         if done_file.is_file() and not exp.force_retrain:
             print('experiment already done')
@@ -91,24 +87,16 @@ class ExperimentsRunner:
 
         try:
             c_src, c_tgt = exp.load_or_sample_contexts()
-            if exp.label == SupportedExperiments.NO_TRANSFER:
-                exp.run(c_src, c_tgt)
-            elif exp.label == SupportedExperiments.WITH_TRANSFER:
-                exp.run(c_src, c_tgt)
-            elif exp.label == SupportedExperiments.CV_TRANSFER:
-                exp.run(c_src + c_tgt)
-            else:
-                raise NotImplementedError(f'unsupported experiment label {exp.label.value}')
-
-            open(done_file, 'w').close()
+            exp.run(c_src, c_tgt)
+            open(done_file, 'w').close()  # experiment done indicator
         except:
             # experiment has failed
             # - create path to failure file if not yet created
             # - log traceback to failure file
             # - output traceback to user in stderr
             # - continue to next experiment
-            if not exp.exp_dump_dir.exists():
-                exp.exp_dump_dir.mkdir(parents=True, exist_ok=True)
+            if not exp.dump_dir.exists():
+                exp.dump_dir.mkdir(parents=True, exist_ok=True)
 
             tb = traceback.format_exc()
             with open(fail_file, 'w') as f:
@@ -118,4 +106,4 @@ class ExperimentsRunner:
 
     @property
     def num_runs(self):
-        return math.prod(map(len, [self.experiments, self.cfgs]))
+        return len(self.cfgs)

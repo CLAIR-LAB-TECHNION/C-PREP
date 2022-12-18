@@ -6,13 +6,11 @@ from collections.abc import Iterable as IterableType
 from itertools import product
 
 import torch_geometric.nn
-
 from tqdm.auto import tqdm
 
 from rmrl.experiments.configurations import *
 from rmrl.experiments.runner import ExperimentsRunner
 from rmrl.nn import models
-from rmrl.utils.misc import powerset
 
 EXP_CHOICES = [exp_label.value for exp_label in SupportedExperiments]
 ENV_CHOICES = [env_label.value for env_label in SupportedEnvironments]
@@ -34,7 +32,7 @@ def main():
     print(f'collect configurations execution time {end - start}\n')
 
     # run all experiments
-    runner = ExperimentsRunner(args.experiment, cfgs, args.log_interval, args.chkp_freq, args.num_workers, args.verbose,
+    runner = ExperimentsRunner(cfgs, args.log_interval, args.chkp_freq, args.num_workers, args.verbose,
                                args.force)
     print(f'running {runner.num_runs} experiments')
     if args.count_only:
@@ -53,14 +51,15 @@ def get_all_configurations(single_run_args_list):
         rm_kwargs = __get_rm_kwargs(run_args)
         model_kwargs = __get_model_kwargs(run_args)
         alg_kwargs = __get_alg_kwargs(run_args)
+        tsf_kwargs = __get_tsf_kwargs(run_args)
 
-        cfg = ExperimentConfiguration(env=run_args.env, cspace=run_args.context, alg=run_args.alg, mods=run_args.mods,
-                                      exp_kwargs=exp_kwargs, rm_kwargs=rm_kwargs, model_kwargs=model_kwargs,
-                                      alg_kwargs=alg_kwargs, num_src_samples=run_args.num_src_samples,
-                                      num_tgt_samples=run_args.num_tgt_samples, max_timesteps=run_args.timesteps,
-                                      eval_freq=run_args.eval_freq, n_eval_episodes=run_args.n_eval_episodes,
-                                      max_no_improvement_evals=run_args.max_no_improvement_evals,
-                                      min_timesteps=run_args.min_timesteps, seed=run_args.seed)
+        cfg = TransferConfiguration(env=run_args.env, cspace=run_args.context, alg=run_args.alg, mods=run_args.mods,
+                                    exp_kwargs=exp_kwargs, rm_kwargs=rm_kwargs, model_kwargs=model_kwargs,
+                                    alg_kwargs=alg_kwargs, num_src_samples=run_args.num_src_samples,
+                                    num_tgt_samples=run_args.num_tgt_samples, max_timesteps=run_args.timesteps,
+                                    eval_freq=run_args.eval_freq, n_eval_episodes=run_args.n_eval_episodes,
+                                    max_no_improvement_evals=run_args.max_no_improvement_evals,
+                                    min_timesteps=run_args.min_timesteps, seed=run_args.seed, tsf_kwargs=tsf_kwargs)
 
         if repr(cfg) not in unique_cfgs_map:
             unique_cfgs_map[repr(cfg)] = cfg
@@ -70,15 +69,8 @@ def get_all_configurations(single_run_args_list):
 
 def __get_exp_kwargs(run_args):
     exp_kwargs = dict(
-        use_tgt_for_test=run_args.use_tgt_for_test
+        use_tgt_for_test=run_args.use_tgt_for_test,
     )
-    if run_args.experiment == SupportedExperiments.WITH_TRANSFER:
-        exp_kwargs.update(dict(
-            transfer_model=run_args.transfer_model,
-            keep_timesteps=run_args.keep_timesteps,
-            target_timesteps=run_args.target_timesteps,
-            target_eval_freq=run_args.target_eval_freq
-        ))
 
     return exp_kwargs
 
@@ -151,6 +143,20 @@ def __get_alg_kwargs(run_args):
     return alg_kwargs
 
 
+def __get_tsf_kwargs(run_args):
+    tsf_kwargs = dict(no_transfer=run_args.no_transfer)
+
+    if not run_args.no_transfer:
+        tsf_kwargs.update(dict(
+            transfer_model=run_args.transfer_model,
+            keep_timesteps=run_args.keep_timesteps,
+            target_timesteps=run_args.target_timesteps,
+            target_eval_freq=run_args.target_eval_freq
+        ))
+
+    return tsf_kwargs
+
+
 def get_single_run_args_list(args):
     args_dict = vars(args)
     iterable_args_dict = OrderedDict(filter(lambda kv: isinstance(kv[1], IterableType), args_dict.items()))
@@ -163,9 +169,11 @@ def get_single_run_args_list(args):
         d.update(single_value_args_dict)
 
         # exp-specific args
-        if d['experiment'] != SupportedExperiments.WITH_TRANSFER:
+        if d['no_transfer']:
             d.pop('transfer_model')
             d.pop('keep_timesteps')
+            d.pop('target_timesteps')
+            d.pop('target_eval_freq')
 
         # model-specific args
         if d['ofe_identity']:
@@ -203,19 +211,16 @@ def get_single_run_args_list(args):
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Run RMRL experiemnts')
+    parser = argparse.ArgumentParser(description='RMRL experiment arguments')
 
     # general experiment args
     exp_group = parser.add_argument_group('experiment values')
     exp_group.add_argument('--count_only',
                            help='only display the number of experiments slotted to run, then exit',
                            action='store_true')
-    exp_group.add_argument('--experiment',
-                           help='the experiment type to run',
-                           choices=SupportedExperiments,
-                           nargs='+',
-                           type=SupportedExperiments,
-                           default=list(SupportedExperiments))
+    exp_group.add_argument('--no_transfer',
+                           help='if provided, the agent will not be trained on the target contexts',
+                           action='store_true')
     exp_group.add_argument('--env',
                            help='the environment on which to experiment',
                            choices=SupportedEnvironments,

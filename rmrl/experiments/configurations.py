@@ -61,6 +61,7 @@ DEFAULT_NUM_TGT_SAMPLES_FOR_CV = 1
 EXPERIMENTS_DUMPS_DIR = Path('experiment_dumps/')
 PRETRAINED_GNN_DIR = Path('grpt_model/')
 
+RUNS_DIR = 'runs'
 MODELS_DIR = 'models'
 LOGS_DIR = 'logs'
 TB_LOG_DIR = 'tensorboard'
@@ -991,3 +992,19 @@ class ExperimentConfiguration:
                 pass
 
         return repr_val  # return as string
+
+
+class TransferConfiguration(ExperimentConfiguration):
+    def __init__(self, env: SupportedEnvironments, cspace: ContextSpaces, alg: Algos, mods: Iterable[Mods],
+                 exp_kwargs: dict, rm_kwargs: dict, model_kwargs: dict, alg_kwargs: dict, num_src_samples: int,
+                 num_tgt_samples: int, max_timesteps: int, eval_freq: int, n_eval_episodes: int,
+                 max_no_improvement_evals: int, min_timesteps: int, seed: int, tsf_kwargs: dict):
+        super().__init__(env, cspace, alg, mods, exp_kwargs, rm_kwargs, model_kwargs, alg_kwargs, num_src_samples,
+                         num_tgt_samples, max_timesteps, eval_freq, n_eval_episodes, max_no_improvement_evals,
+                         min_timesteps, seed)
+        self.tsf_kwargs = tsf_kwargs
+
+    def get_src_config(self):
+        kwargs = vars(self).copy()
+        kwargs.pop('tsf_kwargs')
+        return ExperimentConfiguration(**kwargs)
