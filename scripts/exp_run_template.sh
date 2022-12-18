@@ -3,7 +3,7 @@
 args=(
     GN-4X4-1PAS-DQN  # job name
     newton9  # server name
-    2  # num cpus
+    1  # num cpus
     0  # num gpus
     --num_workers 128  # number of maximum jobs to run simultaneously
     --num_seeds 5  # number of times to repeat each experiment
@@ -41,7 +41,8 @@ args=(
     --grid_resolution 2 2
     --grid_resolution 4 4
     --goal_state_reward 100  # other RM hyperparameters
-    --rs_gamma 0.9999
+    --rs_gamma 0.999
+    --ofe_identity  # model
     --alg DQN  # algorithm 
 #    --dqn_target_update_interval 1000
     --timesteps 1e6  # time dependent arguments
