@@ -1,7 +1,6 @@
 import glob
 import re
 import shutil
-from typing import Type
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -9,7 +8,6 @@ import numpy as np
 from tqdm.auto import tqdm
 
 from .configurations import *
-from .cv_transfer import CVTransferExperiment
 from .experiment import Experiment
 from .with_transfer import WithTransferExperiment
 
@@ -28,9 +26,8 @@ COLORS = list(mpl.colors.BASE_COLORS.keys())
 
 
 class ResultsHandler:
-    def __init__(self, exp_type: Type[Experiment], dump_dir: os.PathLike = None):
-        self.exp_type = exp_type
-        self.exp_dump_dir = Path(dump_dir or EXPERIMENTS_DUMPS_DIR) / exp_type.__name__
+    def __init__(self, dump_dir: os.PathLike = None):
+        self.exp_dump_dir = Path(dump_dir or EXPERIMENTS_DUMPS_DIR) / RUNS_DIR
 
         done_paths, self.failed_experiments, self.incomplete_experiments = self.load_all_run_dump_paths()
         self.exp_path_dict = dict(enumerate(done_paths, 1))
@@ -43,27 +40,27 @@ class ResultsHandler:
                                           for i in self.path_to_idx_seed_agg[p]]
                                       for k, p in self.exp_path_dict_seed_agg.items()}
 
-        if exp_type == CVTransferExperiment:
-            self.path_to_idx_fold_agg = self.__get_exp_agg(CFG_VALS_SEP + r'fold-[0-9]+')
-            self.exp_path_dict_fold_agg = dict(enumerate(self.path_to_idx_fold_agg.keys(), 1))
-            self.exp_obj_dict_fold_agg = {k: [self.exp_obj_dict[i][0]
-                                              for i in self.path_to_idx_fold_agg[p]]
-                                          for k, p in self.exp_path_dict_fold_agg.items()}
-
-            self.path_to_idx_fold_and_seed_agg = self.__get_exp_agg(CFG_VALS_SEP + r'seed-[0-9]+/fold-[0-9]+')
-            self.exp_path_dict_fold_and_seed_agg = dict(enumerate(self.path_to_idx_fold_and_seed_agg.keys(), 1))
-            self.exp_obj_dict_fold_and_seed_agg = {k: [self.exp_obj_dict[i][0]
-                                                       for i in self.path_to_idx_fold_and_seed_agg[p]]
-                                                   for k, p in self.exp_path_dict_fold_and_seed_agg.items()}
-
-        else:
-            self.path_to_idx_fold_agg = {}
-            self.exp_path_dict_fold_agg = {}
-            self.exp_obj_dict_fold_agg = {}
-
-            self.path_to_idx_fold_and_seed_agg = {}
-            self.exp_path_dict_fold_and_seed_agg = {}
-            self.exp_obj_dict_fold_and_seed_agg = {}
+        # if exp_type == CVTransferExperiment:
+        #     self.path_to_idx_fold_agg = self.__get_exp_agg(CFG_VALS_SEP + r'fold-[0-9]+')
+        #     self.exp_path_dict_fold_agg = dict(enumerate(self.path_to_idx_fold_agg.keys(), 1))
+        #     self.exp_obj_dict_fold_agg = {k: [self.exp_obj_dict[i][0]
+        #                                       for i in self.path_to_idx_fold_agg[p]]
+        #                                   for k, p in self.exp_path_dict_fold_agg.items()}
+        #
+        #     self.path_to_idx_fold_and_seed_agg = self.__get_exp_agg(CFG_VALS_SEP + r'seed-[0-9]+/fold-[0-9]+')
+        #     self.exp_path_dict_fold_and_seed_agg = dict(enumerate(self.path_to_idx_fold_and_seed_agg.keys(), 1))
+        #     self.exp_obj_dict_fold_and_seed_agg = {k: [self.exp_obj_dict[i][0]
+        #                                                for i in self.path_to_idx_fold_and_seed_agg[p]]
+        #                                            for k, p in self.exp_path_dict_fold_and_seed_agg.items()}
+        #
+        # else:
+        #     self.path_to_idx_fold_agg = {}
+        #     self.exp_path_dict_fold_agg = {}
+        #     self.exp_obj_dict_fold_agg = {}
+        #
+        #     self.path_to_idx_fold_and_seed_agg = {}
+        #     self.exp_path_dict_fold_and_seed_agg = {}
+        #     self.exp_obj_dict_fold_and_seed_agg = {}
 
     def __get_exp_agg(self, agg_cfg_pattern):
         exp_dict_agg = {}
@@ -189,6 +186,7 @@ class ResultsHandler:
                               show_tgt_scratch=True,
                               show_tgt_transfer=True,
                               save_path=None,
+                              axes=None,
                               **save_kwargs):
 
         path_to_idx, cfg_idx_to_path = self.get_cfg_idx_to_path_to_seed_idx_maps(experiments_idx,
@@ -200,113 +198,94 @@ class ResultsHandler:
         if not experiments_idx:
             experiments_idx = list(cfg_idx_to_path.keys())
 
-        if issubclass(self.exp_type, WithTransferExperiment):
-            self.__plot_compare_evals(
-                src_evals={k: all_res[k][SRC_KEY] for k in experiments_idx if k in all_res},
-                tst_evals={k: all_res[k].get(TST_KEY) for k in experiments_idx if k in all_res},
-                tgt_evals={k: all_res[k][TGT_KEY] for k in experiments_idx if k in all_res},
-                tsf_evals={k: all_res[k][TSF_KEY] for k in experiments_idx if k in all_res},
-                l_bound=l_bound,
-                u_bound=u_bound,
-                show_src_scratch=show_src_scratch,
-                show_src_test=show_src_test,
-                show_tgt_scratch=show_tgt_scratch,
-                show_tgt_transfer=show_tgt_transfer,
-                src_xlim=src_xlim,
-                tgt_xlim=tgt_xlim,
-                plt_kwargs=plot_kwargs_per_idx or {},
-                record_returns=record_returns,
-                record_median=record_median,
-                with_deviation=with_deviation
-            )
-        else:
-            self.__plot_src_evals(
-                src_evals={k: v[SRC_KEY] for k, v in all_res.items()},
-                l_bound=l_bound,
-                u_bound=u_bound,
-                src_xlim=src_xlim,
-                plt_kwargs=plot_kwargs_per_idx or {},
-                record_returns=record_returns,
-                record_median=record_median,
-                with_deviation=with_deviation
-            )
+        self.__plot_compare_evals(
+            src_evals={k: all_res[k].get(SRC_KEY) for k in experiments_idx if k in all_res},
+            tst_evals={k: all_res[k].get(TST_KEY) for k in experiments_idx if k in all_res},
+            tgt_evals={k: all_res[k].get(TGT_KEY) for k in experiments_idx if k in all_res},
+            tsf_evals={k: all_res[k].get(TSF_KEY) for k in experiments_idx if k in all_res},
+            l_bound=l_bound,
+            u_bound=u_bound,
+            show_src_scratch=show_src_scratch,
+            show_src_test=show_src_test,
+            show_tgt_scratch=show_tgt_scratch,
+            show_tgt_transfer=show_tgt_transfer,
+            src_xlim=src_xlim,
+            tgt_xlim=tgt_xlim,
+            plt_kwargs=plot_kwargs_per_idx or {},
+            record_returns=record_returns,
+            record_median=record_median,
+            with_deviation=with_deviation,
+            axes=axes
+        )
 
         if save_path is not None:
             plt.savefig(save_path, **save_kwargs)
         else:
             plt.show()
 
-    def __plot_src_evals(self, src_evals, l_bound, u_bound, src_xlim, plt_kwargs, record_returns=False,
-                         record_median=False, with_deviation=False, ax=None):
-        if ax is None:
-            _, ax = plt.subplots(1, 1, figsize=(15, 7))
+    def __plot_compare_evals(self, src_evals, tst_evals, tgt_evals, tsf_evals, l_bound, u_bound, show_src_scratch,
+                             show_src_test, show_tgt_scratch, show_tgt_transfer, src_xlim, tgt_xlim, plt_kwargs,
+                             record_returns=False, record_median=False, with_deviation=False, axes=None):
+        # check which axes are required
+        has_src = any(e is not None for e in src_evals)
+        has_tst = any(e is not None for e in tst_evals)
+        has_tgt = any(e is not None for e in tgt_evals)
+        has_tsf = any(e is not None for e in tsf_evals)
+        display_src = has_src and show_src_scratch
+        display_tst = has_tst and show_src_test
+        display_tgt = has_tgt and show_tgt_scratch
+        display_tsf = has_tsf and show_tgt_transfer
+        use_src_axis = display_src or display_tst
+        use_tgt_axis = display_tgt or display_tsf
+
+        if axes is None:
+            if use_src_axis and use_tgt_axis:
+                _, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 7))
+            elif use_src_axis:
+                _, ax1 = plt.subplots(1, 1, figsize=(15, 7))
+                ax2 = None
+            elif use_tgt_axis:
+                ax1 = None
+                _, ax2 = plt.subplots(1, 1, figsize=(15, 7))
+            else:
+                ax1, ax2 = None, None
+                plt.figure()  # figure for showing
+        else:
+            ax1, ax2 = axes
 
         y_label = ('median' if record_median else 'average') + (' return' if record_returns else ' acc reward')
 
-        ax.set_title(f'Policy performance on source context')
+        if use_src_axis:
+            self.__handle_single_axis(ax1, src_evals, tst_evals, display_src, display_tst, record_median,
+                                      with_deviation, l_bound, u_bound, src_xlim, y_label, plt_kwargs)
+
+        if use_tgt_axis:
+            self.__handle_single_axis(ax2, tgt_evals, tsf_evals, display_tgt, display_tsf, record_median,
+                                      with_deviation, l_bound, u_bound, tgt_xlim, y_label, plt_kwargs)
+
+    def __handle_single_axis(self, ax, evals_1, evals_2, display_1, display_2, record_median, with_deviation, l_bound,
+                             u_bound,
+                             xlim, y_label, plt_kwargs):
+        if display_1 and display_2:
+            ax.set_title(f'Policy performance training on source context and testing on target context')
+        elif display_1:
+            ax.set_title(f'Policy performance training on source context')
+        elif display_2:
+            ax.set_title(f'Policy performance testing on target while training on source')
         ax.set_xlabel('timesteps')
         ax.set_ylabel(y_label)
         if u_bound is not None:
             ax.axhline(u_bound, ls='--')
         if l_bound is not None:
             ax.axhline(l_bound, ls='--')
-
-        self.__plot_evals(src_evals, plt_kwargs, record_median=record_median, with_deviation=with_deviation, ax=ax)
-        ax.set_xlim(src_xlim)
+        if display_1:
+            self.__plot_evals(evals_1, plt_kwargs, record_median=record_median, with_deviation=with_deviation, ax=ax)
+        if display_2:
+            self.__plot_evals(evals_2, plt_kwargs, is_test=display_1, record_median=record_median,
+                              with_deviation=with_deviation, ax=ax)
+        ax.set_xlim(xlim)
         ax.legend()
         ax.grid()
-
-    def __plot_compare_evals(self, src_evals, tst_evals, tgt_evals, tsf_evals, l_bound, u_bound, show_src_scratch,
-                             show_src_test, show_tgt_scratch, show_tgt_transfer, src_xlim, tgt_xlim, plt_kwargs,
-                             record_returns=False, record_median=False, with_deviation=False, axes=None):
-        if axes is None:
-            _, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 7))
-        else:
-            ax1, ax2 = axes
-
-        y_label = ('median' if record_median else 'average') + (' return' if record_returns else ' acc reward')
-
-        ax1.set_title(f'Policy performance on source context')
-        ax1.set_xlabel('timesteps')
-        ax1.set_ylabel(y_label)
-        if u_bound is not None:
-            ax1.axhline(u_bound, ls='--')
-        if l_bound is not None:
-            ax1.axhline(l_bound, ls='--')
-
-        if show_src_scratch:
-            self.__plot_evals(src_evals, plt_kwargs, record_median=record_median, with_deviation=with_deviation, ax=ax1)
-        if show_src_test and tst_evals is not None:
-            self.__plot_evals(tst_evals, plt_kwargs, is_test=show_src_scratch, record_median=record_median,
-                              with_deviation=with_deviation, ax=ax1)
-
-        if show_src_scratch or show_src_test:
-            ax1.set_xlim(src_xlim)
-            ax1.legend()
-            ax1.grid()
-
-        if show_tgt_scratch and show_tgt_transfer:
-            ax2.set_title(f'Policy performance on target context with and without transfer from source')
-        elif show_tgt_scratch:
-            ax2.set_title(f'Policy performance on target context')
-        elif show_tgt_transfer:
-            ax2.set_title(f'Policy performance on target context with transfer from source')
-        ax2.set_xlabel('timesteps')
-        ax2.set_ylabel(y_label)
-        if u_bound is not None:
-            ax2.axhline(u_bound, ls='--')
-        if l_bound is not None:
-            ax2.axhline(l_bound, ls='--')
-        if show_tgt_scratch:
-            self.__plot_evals(tgt_evals, plt_kwargs, record_median=record_median, with_deviation=with_deviation, ax=ax2)
-        if show_tgt_transfer:
-            self.__plot_evals(tsf_evals, plt_kwargs, is_transfer=show_tgt_scratch, record_median=record_median,
-                              with_deviation=with_deviation, ax=ax2)
-
-        if show_tgt_scratch or show_tgt_transfer:
-            ax2.set_xlim(tgt_xlim)
-            ax2.legend()
-            ax2.grid()
 
     def __plot_evals(self, evals, plt_kwargs, is_transfer=False, is_test=False, record_median=False,
                      with_deviation=False, ax=None):
@@ -315,6 +294,8 @@ class ResultsHandler:
 
         assert len(evals) == len(plt_kwargs)
         for i, ((k, npz), kwargs) in enumerate(zip(evals.items(), plt_kwargs)):
+            if npz is None:
+                continue
             if 'color' not in kwargs:
                 kwargs['color'] = COLORS[i % len(COLORS)]
             if is_transfer:
@@ -366,18 +347,18 @@ class ResultsHandler:
             per_idx_results = self.load_results_for_indices(idx)
 
             # aggregate episode data
-            res[path_to_cfg_idx[p]] = {
-                SRC_KEY: self.mean_discounted_rewards(per_idx_results, SRC_KEY, val_key),
-            }
-
-            if issubclass(self.exp_type, WithTransferExperiment):
-                res[path_to_cfg_idx[p]].update({
+            if self.__path_is_tgt(p):
+                res[path_to_cfg_idx[p]] = {
                     TGT_KEY: self.mean_discounted_rewards(per_idx_results, TGT_KEY, val_key),
                     TSF_KEY: self.mean_discounted_rewards(per_idx_results, TSF_KEY, val_key),
-                })
+                }
+            else:
+                res[path_to_cfg_idx[p]] = {
+                    SRC_KEY: self.mean_discounted_rewards(per_idx_results, SRC_KEY, val_key),
+                }
 
-            if self.exp_obj_dict[path_to_cfg_idx[p]][0].cfg.exp_kwargs['use_tgt_for_test']:
-                res[path_to_cfg_idx[p]][TST_KEY] = self.mean_discounted_rewards(per_idx_results, TST_KEY, val_key)
+                if self.exp_obj_dict[path_to_cfg_idx[p]][0].cfg.exp_kwargs['use_tgt_for_test']:
+                    res[path_to_cfg_idx[p]][TST_KEY] = self.mean_discounted_rewards(per_idx_results, TST_KEY, val_key)
 
         return res
 
@@ -411,21 +392,20 @@ class ResultsHandler:
             tgt_path = p / 'tgt'
             tsf_path = p / 'tsf'
 
-            if issubclass(self.exp_type, WithTransferExperiment):
+            if self.__path_is_tgt(p):
                 results[i] = {
-                    SRC_KEY: self.load_exp_eval_in_path(src_path),
                     TGT_KEY: self.load_exp_eval_in_path(tgt_path),
                     TSF_KEY: self.load_exp_eval_in_path(tsf_path)
                 }
 
             else:
                 results[i] = {
-                    SRC_KEY: self.load_exp_eval_in_path(p / src_path),
+                    SRC_KEY: self.load_exp_eval_in_path(src_path),
                 }
 
-            # load test set if expected
-            if self.exp_obj_dict[i][0].cfg.exp_kwargs['use_tgt_for_test']:
-                results[i][TST_KEY] = self.load_exp_eval_in_path(tst_path)
+                # load test set if expected
+                if self.exp_obj_dict[i][0].cfg.exp_kwargs['use_tgt_for_test']:
+                    results[i][TST_KEY] = self.load_exp_eval_in_path(tst_path)
 
         return results
 
@@ -522,6 +502,15 @@ class ResultsHandler:
 
         with tqdm(desc='collecting dumps') as pb:
             for root, dirs, files in os.walk(self.exp_dump_dir):
+                root = Path(root)
+                root_parent = root.parent
+                if root.name == 'models' and 'logs' in set(p.name for p in root.parent.iterdir()):
+                    root = str(root_parent)
+                    dirs = [d.name for d in root_parent.iterdir() if d.is_dir()]
+                    files = [f.name for f in root_parent.iterdir() if f.is_file()]
+                else:
+                    continue
+
                 if 'DONE' in files and 'FAIL' not in files:
                     done_paths.append(root)
                     pb.update()
@@ -533,10 +522,18 @@ class ResultsHandler:
                     pb.update()
 
         done_paths = sorted(done_paths, key=lambda x: x.split(CFG_VALS_SEP))
+        failed_paths = sorted(failed_paths, key=lambda x: x.split(CFG_VALS_SEP))
+        inc_paths = sorted(inc_paths, key=lambda x: x.split(CFG_VALS_SEP))
         return done_paths, failed_paths, inc_paths
 
     def make_exp_for_path(self, path):
         no_exp_name_repr = path.replace(str(self.exp_dump_dir) + '/', '', 1)
-        no_fold_repr = re.sub(r'/fold-[0-9]+', '', no_exp_name_repr)  # handle for CV experiment
-        cfg = ExperimentConfiguration.from_repr_value(no_fold_repr)
-        return self.exp_type(cfg)
+        # no_fold_repr = re.sub(r'/fold-[0-9]+', '', no_exp_name_repr)  # handle for CV experiment
+        if not self.__path_is_tgt(no_exp_name_repr):
+            no_exp_name_repr += '/tsf_kwargs-((no_transfer-True))'
+
+        cfg = TransferConfiguration.from_repr_value(no_exp_name_repr)
+        return Experiment(cfg)
+
+    def __path_is_tgt(self, p):
+        return 'tsf_kwargs' in str(p)
