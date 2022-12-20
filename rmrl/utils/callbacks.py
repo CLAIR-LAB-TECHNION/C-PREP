@@ -2,13 +2,12 @@ import os
 from collections import deque
 
 import numpy as np
-from tqdm.auto import tqdm
-
 from stable_baselines3.common.callbacks import BaseCallback, EvalCallback
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.off_policy_algorithm import OffPolicyAlgorithm
 from stable_baselines3.common.utils import safe_mean
 from stable_baselines3.common.vec_env import sync_envs_normalization
+from tqdm.auto import tqdm
 
 
 class RMEnvRewardCallback(BaseCallback):
@@ -64,6 +63,34 @@ class ProgressBarCallback(BaseCallback):
 
 
 class CustomEvalCallback(EvalCallback):
+    def __init__(self,
+                 eval_env,
+                 callback_on_new_best=None,
+                 callback_after_eval=None,
+                 n_eval_episodes=5,
+                 eval_freq=10000,
+                 log_path=None,
+                 best_model_save_path=None,
+                 deterministic=True,
+                 render=False,
+                 verbose=1,
+                 warn=True,
+                 logger_prefix=''):
+
+        super().__init__(eval_env,
+                         callback_on_new_best,
+                         callback_after_eval,
+                         n_eval_episodes,
+                         eval_freq,
+                         log_path,
+                         best_model_save_path,
+                         deterministic,
+                         render,
+                         verbose,
+                         warn)
+
+        self.logger_prefix = logger_prefix
+
     def _init_callback(self):
         super()._init_callback()
 
@@ -151,18 +178,22 @@ class CustomEvalCallback(EvalCallback):
                     f"Eval num_timesteps={self.num_timesteps}, " f"episode_reward={mean_reward:.2f} +/- {std_reward:.2f}")
                 print(f"Episode length: {mean_ep_length:.2f} +/- {std_ep_length:.2f}")
             # Add to current Logger
-            self.logger.record("eval/mean_reward", float(mean_reward))
-            self.logger.record("eval/mean_ep_length", mean_ep_length)
+            self.logger.record(f"{self.logger_prefix + '_' if self.logger_prefix else ''}eval/mean_reward",
+                               float(mean_reward))
+            self.logger.record(f"{self.logger_prefix + '_' if self.logger_prefix else ''}eval/mean_ep_length",
+                               mean_ep_length)
 
             if len(self._returns_buffer) > 0:
                 mean_return, std_return = np.mean(self._returns_buffer), np.std(self._returns_buffer)
                 self._returns_buffer = []
                 if self.verbose > 0:
                     print(f"Episode return: {mean_return:.2f} +/- {std_return:.2f}")
-                self.logger.record("eval/mean_return", mean_return)
+                self.logger.record(f"{self.logger_prefix + '_' if self.logger_prefix else ''}eval/mean_return",
+                                   mean_return)
 
             # Dump log so the evaluation results are printed with the correct timestep
-            self.logger.record("time/total_timesteps", self.num_timesteps, exclude="tensorboard")
+            self.logger.record(f"time/total_timesteps",
+                               self.num_timesteps, exclude="tensorboard")
             self.logger.dump(self.num_timesteps)
 
             if mean_reward > self.best_mean_reward:

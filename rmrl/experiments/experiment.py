@@ -3,18 +3,17 @@ import time
 import traceback
 import warnings
 from functools import partial
-from typing import List
-
-from tqdm.auto import tqdm
 
 import stable_baselines3 as sb3
+from stable_baselines3.common.callbacks import StopTrainingOnNoModelImprovement, CheckpointCallback
+from stable_baselines3.common.monitor import Monitor
+from stable_baselines3.common.vec_env import DummyVecEnv
+from tqdm.auto import tqdm
+
 from rmrl.nn.models import RMFeatureExtractorSB
 from rmrl.reward_machines.rm_env import RMEnvWrapper
 from rmrl.utils.callbacks import RMEnvRewardCallback, ProgressBarCallback, CustomEvalCallback
 from rmrl.utils.misc import uniqify_samples, sha3_hash
-from stable_baselines3.common.callbacks import StopTrainingOnNoModelImprovement, CheckpointCallback
-from stable_baselines3.common.monitor import Monitor
-from stable_baselines3.common.vec_env import DummyVecEnv
 from .configurations import *
 
 
@@ -85,13 +84,17 @@ class Experiment:
         src_eval_env, tgt_eval_env = eval_envs
 
         # set tgt ohe settings
-        tgt_env.env.env.ohe_start = self.cfg.num_src_samples
-        tgt_env.env.env.set_fixed_contexts(tgt_env.env.env.fixed_contexts)
-        tgt_eval_env.env.env.ohe_start = self.cfg.num_src_samples
-        tgt_eval_env.env.env.set_fixed_contexts(tgt_eval_env.env.env.fixed_contexts)
+        tgt_env.first_multitask_wrapper.ohe_start = self.cfg.num_src_samples
+        tgt_env.first_multitask_wrapper.set_fixed_contexts(tgt_env.first_multitask_wrapper.fixed_contexts)
+        tgt_eval_env.first_multitask_wrapper.ohe_start = self.cfg.num_src_samples
+        tgt_eval_env.first_multitask_wrapper.set_fixed_contexts(tgt_eval_env.first_multitask_wrapper.fixed_contexts)
 
         # set tgt env for generalization testing
-        self._tgt_for_test = tgt_eval_env
+        self._tgt_for_test = self.get_single_rm_env_for_context_set(tgt_eval_env.first_multitask_wrapper.fixed_contexts)
+        self._tgt_for_test.first_multitask_wrapper.ohe_start = self.cfg.num_src_samples
+        self._tgt_for_test.first_multitask_wrapper.set_fixed_contexts(
+            tgt_eval_env.first_multitask_wrapper.fixed_contexts
+        )
 
         # train agent on source contexts from scratch (or load if exists)
         self._is_tgt = False
@@ -365,13 +368,14 @@ class Experiment:
             callbacks.append(checkpoint_callback)
 
         # add
-        if self.cfg.exp_kwargs['use_tgt_for_test'] and not self._is_tgt and self._tgt_for_test is not None:
+        if not self._is_tgt and self.cfg.exp_kwargs['use_tgt_for_test']:
             test_callback = CustomEvalCallback(eval_env=self._tgt_for_test,
                                                n_eval_episodes=self.cfg.n_eval_episodes,
                                                eval_freq=self.cfg.eval_freq,
                                                log_path=self.eval_log_dir / 'test',
                                                best_model_save_path=self.models_dir / 'test',
-                                               verbose=self.verbose)
+                                               verbose=self.verbose,
+                                               logger_prefix='test')
             callbacks.append(test_callback)
 
         # train agent
