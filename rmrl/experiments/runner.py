@@ -60,49 +60,56 @@ class ExperimentsRunner:
     def _run_exp(exp):
         print(f'running experiment with CFG: {exp.exp_name}')
 
-        if exp.cfg.tsf_kwargs['no_transfer']:
-            dump_dir = exp.dump_dir
-        else:
-            exp._is_tgt = True
-            dump_dir = exp.dump_dir
-            exp._is_tgt = False
+        # get dump dirs for src and tgt
+        old_is_tgt = exp._is_tgt
+        exp._is_tgt = False
+        src_dump_dir = exp.dump_dir
+        exp._is_tgt = True
+        tgt_dump_dir = exp.dump_dir
+        exp._is_tgt = old_is_tgt
 
-        done_file = dump_dir / DONE_FILE
-        fail_file = dump_dir / FAIL_FILE
+        # get path to done and fail files
+        src_done_file = src_dump_dir / DONE_FILE
+        src_fail_file = src_dump_dir / FAIL_FILE
+        tgt_done_file = tgt_dump_dir / DONE_FILE
+        tgt_fail_file = tgt_dump_dir / FAIL_FILE
 
-        if done_file.is_file() and not exp.force_retrain:
-            print('experiment already done')
+        # check if src and tgt experiments are done
+        src_done = ExperimentsRunner.check_exp_done(exp, 'src', src_done_file, src_fail_file)
+        tgt_done = ExperimentsRunner.check_exp_done(exp, 'tgt', tgt_done_file, tgt_fail_file)
+
+        if src_done and tgt_done:
+            print('experiment already completed')
             return
-        elif done_file.is_file():  # forced retrainig
-            done_file.unlink()
-            print('overwriting done experiment')
-        elif fail_file.is_file():
-            fail_file.unlink()
-            print('experiment failed in the passed. retraining all agents')
-            exp.force_retrain = True
-        elif exp.force_retrain:
-            print('redoing experiment')
-        else:
-            print('finishing incomplete experiment')
-
         try:
             c_src, c_tgt = exp.load_or_sample_contexts()
             exp.run(c_src, c_tgt)
-            open(done_file, 'w').close()  # experiment done indicator
         except:
             # experiment has failed
-            # - create path to failure file if not yet created
-            # - log traceback to failure file
             # - output traceback to user in stderr
             # - continue to next experiment
-            if not exp.dump_dir.exists():
-                exp.dump_dir.mkdir(parents=True, exist_ok=True)
-
             tb = traceback.format_exc()
-            with open(fail_file, 'w') as f:
-                f.write(tb)
-
             print(tb, file=sys.stderr)
+
+    @staticmethod
+    def check_exp_done(exp, exp_name, done_file, fail_file):
+        done = False
+        if done_file.is_file() and not exp.force_retrain:
+            done = True
+            print(f'{exp_name} experiment already done')
+        elif done_file.is_file():  # forced retrainig
+            done_file.unlink()
+            print(f'overwriting done {exp_name} experiment')
+        elif fail_file.is_file():
+            fail_file.unlink()
+            print(f'{exp_name} experiment failed in the passed. retraining all agents')
+            exp.force_retrain = True
+        elif exp.force_retrain:
+            print(f'redoing {exp_name} experiment')
+        else:
+            print(f'finishing incomplete {exp_name} experiment')
+
+        return done
 
     @property
     def num_runs(self):

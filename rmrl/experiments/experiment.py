@@ -16,6 +16,9 @@ from rmrl.utils.callbacks import RMEnvRewardCallback, ProgressBarCallback, Custo
 from rmrl.utils.misc import uniqify_samples, sha3_hash
 from .configurations import *
 
+DONE_FILE = 'DONE'
+FAIL_FILE = 'FAIL'
+
 
 class Experiment:
     def __init__(self, cfg: TransferConfiguration, log_interval=1, chkp_freq=None, dump_dir=None, verbose=0,
@@ -303,7 +306,14 @@ class Experiment:
             agent = self.load_agent_for_env(env, task_name, force_load=force_load, model_name=model_name)
         except FileNotFoundError:
             agent = self.train_agent_for_env(env, eval_env, task_name)
+        except:
+            tb = traceback.format_exc()
+            with open(self.dump_dir / FAIL_FILE, 'w') as f:
+                f.write(tb)
 
+            raise
+
+        open(self.dump_dir / DONE_FILE, 'w').close()  # experiment done indicator
         return agent
 
     def load_agent_for_env(self, env, task_name, force_load=False, model_name=BEST_MODEL_NAME):
