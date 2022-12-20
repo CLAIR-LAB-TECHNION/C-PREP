@@ -57,7 +57,7 @@ class RMEnvWrapper(gym.Wrapper):
     def get_fixed_task_rms(self, tasks):
         out = {}
 
-        multitask_env = self.__get_first_multitask_wrapper()
+        multitask_env = self.first_multitask_wrapper
 
         # stop change task on reset. keep old setting to keep consistent
         old_change_task_on_reset = self.env.change_task_on_reset
@@ -73,7 +73,8 @@ class RMEnvWrapper(gym.Wrapper):
 
         return out
 
-    def __get_first_multitask_wrapper(self):
+    @property
+    def first_multitask_wrapper(self):
         env = self.env
         while not isinstance(env, MultiTaskWrapper):
             env = env.env
