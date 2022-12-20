@@ -203,7 +203,7 @@ class Experiment:
                               hcv_ctx=Mods.HCV in self.cfg)
 
         # creates, stores, and injects fixed rms into the environment
-        self.cache_rm_env_rms(rm_env)
+        # self.cache_rm_env_rms(rm_env)
 
         # enforce first reset
         rm_env.reset()
