@@ -333,7 +333,7 @@ def parse_args():
                                 help='for PPO only! number of training epochs per rollout',
                                 type=lambda x: int(float(x)),
                                 nargs='+',
-                                default=ON_POLICY_N_STEPS)
+                                default=PPO_N_EPOCHS)
     learning_group.add_argument('--off_policy_learning_starts',
                                 help='for off-policy algorithms only! minimal number of steps to take before learning',
                                 type=lambda x: int(float(x)),
