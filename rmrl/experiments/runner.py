@@ -90,6 +90,7 @@ class ExperimentsRunner:
             # - continue to next experiment
             tb = traceback.format_exc()
             print(tb, file=sys.stderr)
+            raise
 
     @staticmethod
     def check_exp_done(exp, exp_name, done_file, fail_file):

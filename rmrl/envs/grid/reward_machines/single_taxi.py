@@ -13,6 +13,8 @@ class TaxiEnvRM(RewardMachine):
         self.dm = self.env.unwrapped.domain_map
         self.num_passengers = self.env.unwrapped.num_passengers
         self.pickup_only = self.env.unwrapped.pickup_only  # check "pickup only" setting where there is no dropoff
+        self.pickup_order = self.env.unwrapped.pickup_order
+        self.dropoff_order = self.env.unwrapped.dropoff_order
 
         # goal state info
         self.goal_state_reward = goal_state_reward
@@ -84,11 +86,21 @@ class TaxiEnvRM(RewardMachine):
 
                     # add pickup status change only if not picked up
                     if passenger_pickup_status == 0:
-                        passenger_loc = p.location
-                        passenger_sec = self.loc_to_sec[passenger_loc]
+                        passenger_sec = self.loc_to_sec[p.location]  # get passenger section
 
-                        # if the passenger is in the taxi section, it can be picked up
-                        if passenger_sec == sec:
+                        # check that preceding passengers in the pickup order have already been picked up
+                        p_order = self.pickup_order.index(p.id) if p.id in self.pickup_order else None
+                        if p_order is None:  # not in order, can always be picked up
+                            preceding_picked_up = True
+                        else:  # is ordered, check preceding passengers' pickup statuses
+                            preceding = self.pickup_order[:p_order]
+                            preceding_picked_up = all(
+                                sec_prop[self.__get_pickup_prop_idx(p_id)] == 1
+                                for p_id in preceding
+                            )
+
+                        # if the passenger is in the taxi section and pickup ordering allows, it can be picked up
+                        if passenger_sec == sec and preceding_picked_up:
                             passenger_picked_up_prop = single_props[self.__get_pickup_prop_idx(i)]
                             pickup_sec_prop = sec_prop + passenger_picked_up_prop
 
@@ -100,11 +112,21 @@ class TaxiEnvRM(RewardMachine):
 
                     # add dropoff status change only if picked up and not dropped off
                     elif not self.pickup_only and sec_prop[self.__get_dropoff_prop_idx(i)] == 0:
-                        dst_loc = p.destination
-                        dst_sec = self.loc_to_sec[dst_loc]
+                        dst_sec = self.loc_to_sec[p.destination]
+
+                        # check that preceding passengers in the dropoff order have already been dropped off
+                        p_order = self.dropoff_order.index(p.id) if p.id in self.dropoff_order else None
+                        if p_order is None:  # not in order, can always be picked up
+                            preceding_dropped_off = True
+                        else:  # is ordered, check preceding passengers' pickup statuses
+                            preceding = self.dropoff_order[:p_order]
+                            preceding_dropped_off = all(
+                                sec_prop[self.__get_dropoff_prop_idx(p_id)] == 1
+                                for p_id in preceding
+                            )
 
                         # if the destination is in the taxi section, it can be dropped off
-                        if dst_sec == sec:
+                        if dst_sec == sec and preceding_dropped_off:
                             passenger_dropped_off_prop = single_props[self.__get_dropoff_prop_idx(i)]
                             dropoff_sec_prop = sec_prop + passenger_dropped_off_prop
 
@@ -173,112 +195,3 @@ class TaxiEnvRM(RewardMachine):
 
     def __adjacent_secs(self, sec1, sec2):
         return any(self.__adjacent_loc_to_sec(l1, sec2) for l1 in self.sec_to_locs[sec1])
-
-
-# class SingleFixedPassengerHighResRM(RewardMachine):
-#     def _init(self, taxi_loc_idx: list, pass_loc_idx: list, pickup_ind_idx: int, resolution: tuple, dm: DomainMap,
-#               use_prop_vector_attr=False):
-#         self.taxi_loc_idx = taxi_loc_idx
-#         self.pass_loc_idx = pass_loc_idx
-#         self.pickup_ind_idx = pickup_ind_idx
-#         self.use_prop_vector_attr = use_prop_vector_attr
-#
-#         # divide all locations into sectors according to the resolution
-#         self.res_y, self.res_x = resolution
-#         self.num_sectors = self.res_x * self.res_y
-#         cell_res_x = dm.map_width // self.res_x + (dm.map_width % self.res_x != 0)
-#         cell_res_y = dm.map_height // self.res_y + (dm.map_height % self.res_y != 0)
-#         self.loc_to_sec = {
-#             (r, c): (r // cell_res_y) * self.res_x + (c // cell_res_x)
-#             for r, c in dm.iter_free_locations()
-#         }
-#         self.sec_to_locs = {i: [] for i in range(self.num_sectors)}
-#         [self.sec_to_locs[self.loc_to_sec[loc]].append(loc) for loc in self.loc_to_sec]
-#
-#         # find edge connections
-#         self.sector_connections = {}
-#         for sec1, locs1 in self.sec_to_locs.items():
-#             self.sector_connections[sec1] = set()
-#             for sec2, locs2 in self.sec_to_locs.items():
-#                 if any(self.__adjacent(l1, l2) and not dm.hit_obstacle(l1, l2)
-#                        for l1 in locs1 for l2 in locs2):
-#                     self.sector_connections[sec1].add(sec2)
-#
-#         self.__dm = dm  # save dm for task choosing
-#
-#         self.__passenger_sector = None
-#
-#     @staticmethod
-#     def __adjacent(l1, l2):
-#         return (abs(l1[0] - l2[0]) == 1 and l1[1] == l2[1]) or (abs(l1[1] - l2[1]) == 1 and l1[0] == l2[0])
-#
-#     @property
-#     def P(self):
-#         return ([f'in sector {i}' for i in range(self.res_x * self.res_y)] +
-#                 ['on pass', 'picked up'])
-#
-#     def u0(self, s0) -> int:
-#         # labeling function only needs the current state
-#         props = self.L(s0)
-#
-#         # get max idx proposition as state id
-#         max_prop = max(np.where(self.prop_list_to_bitmap(props))[0])
-#
-#         return max_prop
-#
-#     def delta(self, u, props):
-#         next_u = max(np.where(self.prop_list_to_bitmap(props))[0])
-#         return next_u, self.G[u][next_u][REWARD_ATTR]
-#
-#     def L(self, s):
-#         # start with current sector
-#         taxi_loc = tuple(s[self.taxi_loc_idx])
-#         taxi_sector = self.loc_to_sec[taxi_loc]
-#         props = [self.P[taxi_sector]]
-#
-#         # continue to check if on passenger or picked up passenger
-#         if np.all(s[self.taxi_loc_idx] == s[self.pass_loc_idx]):
-#             props.append(self.P[self.num_sectors])
-#
-#         if s[self.pickup_ind_idx]:
-#             props.append(self.P[self.num_sectors + 1])
-#
-#         return props
-#
-#     def new_task(self, task):
-#         self.reset_sm()
-#
-#         # expecting single passenger, no destination
-#         _, passenger_loc, _ = task
-#
-#         for sec, locs in self.sec_to_locs.items():
-#             if any(self.__adjacent(loc, passenger_loc) and not self.__dm.hit_obstacle(loc, passenger_loc)
-#                    for loc in locs):
-#                 # at `num_sectors` we find the "on pass" symbol
-#                 self.G.add_edge(sec, self.num_sectors, **{REWARD_ATTR: 0})
-#                 self.G.add_edge(self.num_sectors, sec, **{REWARD_ATTR: 0})
-#
-#         self.__passenger_sector = self.loc_to_sec[passenger_loc]
-#
-#         if self.use_prop_vector_attr:
-#             self._add_prop_vector()
-#
-#     def create_state_machine(self):
-#         # adds nodes and edges for sector states
-#         sm = nx.DiGraph(self.sector_connections)
-#
-#         # adds nodes and edges for "on passenger" and "picked up" states
-#         sm.add_edge(self.num_sectors, self.num_sectors)  # self loop if staying on the passenger
-#         sm.add_edge(self.num_sectors, self.num_sectors + 1, **{REWARD_ATTR: 1000})
-#
-#         return sm
-#
-#     def _add_prop_vector(self):
-#         for u, u_data in self.G.nodes(data=True):
-#             pv = [0] * self.num_propositions
-#             pv[u] = 1
-#
-#             if u >= self.num_sectors:  # at passenger. add containing sector
-#                 pv[self.__passenger_sector] = 1
-#
-#             u_data[PROPS_VECTOR_ATTR] = pv

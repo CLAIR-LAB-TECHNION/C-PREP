@@ -16,7 +16,9 @@ def fixed_entities_env(initial_task=None, change_task_on_reset=False, ohe_classe
     env = single_taxi_v0.gym_env(**env_kwargs)
     env = FixedLocsWrapper(env, initial_task=initial_task, change_task_on_reset=change_task_on_reset,
                            ohe_classes=ohe_classes, ohe_start=ohe_start)
-    env = NoPassLocDstWrapper(env)  # positions are part of the context space
+
+    # positions are part of the context space
+    env = FilteredObsWrapper(env, r'passenger_.*_(location|destination)_.*')
 
     return env
 
@@ -27,18 +29,33 @@ def changing_map_env(initial_task=None, change_task_on_reset=False, ohe_classes=
                            ohe_classes=ohe_classes, ohe_start=ohe_start)
     env = FixedLocsAddition(env, initial_task=initial_task, change_task_on_reset=change_task_on_reset,
                             ohe_classes=ohe_classes, ohe_start=ohe_start)
-    env = NoPassLocDstWrapper(env)  # positions are locked. no need for them in our observation
+    # positions are locked. no need for them in our observation
+    env = FilteredObsWrapper(env, r'passenger_.*_(location|destination)_.*')
+
     return env
 
 
-class NoPassLocDstWrapper(gym.Wrapper):
-    def __init__(self, env):
+def pickup_order_env(initial_task=None, change_task_on_reset=False, ohe_classes=None, ohe_start=None, **env_kwargs):
+    env = single_taxi_v0.gym_env(**env_kwargs)
+    env = PickupOrderWrapper(env, initial_task=initial_task, change_task_on_reset=change_task_on_reset,
+                             ohe_classes=ohe_classes, ohe_start=ohe_start)
+    env = FixedLocsAddition(env, initial_task=initial_task, change_task_on_reset=change_task_on_reset,
+                            ohe_classes=ohe_classes, ohe_start=ohe_start)
+
+    # positions are locked. no need for them in our observation
+    env = FilteredObsWrapper(env, r'passenger_.*_(location|destination)_.*|passenger_.*_(pickup|dropoff)_order')
+
+    return env
+
+
+class FilteredObsWrapper(gym.Wrapper):
+    def __init__(self, env, regex):
         super().__init__(env)
 
         meanings = self.env.unwrapped.get_observation_meanings()
         remove_idxs = set()
         for i in range(len(meanings)):
-            if re.match(r'passenger_.*_(location|destination)_.*', meanings[i]):
+            if re.match(regex, meanings[i]):
                 remove_idxs.add(i)
         all_idxs = set(range(len(self.env.observation_space)))
         self.keep_idxs = sorted(all_idxs - remove_idxs)
@@ -250,3 +267,16 @@ class ChangeMapWrapper(MultiTaskWrapper):
 
         # return flat vector
         return wall_indicator_mat.flatten()
+
+
+class PickupOrderWrapper(MultiTaskWrapper):
+    def _set_task(self, task):
+        self.unwrapped.pickup_order = list(task)
+
+    def _sample_task(self, n):
+        return [tuple(self._task_np_random.permutation(self.unwrapped.num_passengers))
+                for _ in range(n)]
+
+    def _get_hcv_rep(self, task):
+        # return np.array([task.index(p_id) for p_id in range(self.unwrapped.num_passengers)])
+        return np.eye(self.unwrapped.num_passengers)[list(task)]

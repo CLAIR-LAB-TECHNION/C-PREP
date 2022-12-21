@@ -6,7 +6,7 @@ from typing import Iterable
 from torch_geometric.nn import GATConv, GINEConv
 
 from rmrl.envs.grid.reward_machines.single_taxi import TaxiEnvRM
-from rmrl.envs.grid.single_taxi import fixed_entities_env, changing_map_env
+from rmrl.envs.grid.single_taxi import fixed_entities_env, changing_map_env, pickup_order_env
 from rmrl.nn.models import cur_state_embedding, ignore_state_mean
 from rmrl.reward_machines.potential_functions import ValueIteration
 from rmrl.utils.lr_schedulers import *
@@ -92,12 +92,12 @@ class SupportedEnvironments(Enum):
     GN_4X4_1PAS = 'gn_4x4_1pas'
     GN_4X4_2PAS = 'gn_4x4_2pas'
     GN_4X4_3PAS = 'gn_4x4_3pas'
-    
+
     GN_6X6_1PAS = 'gn_6x6_1pas'
     GN_6X6_2PAS = 'gn_6x6_2pas'
     GN_6X6_3PAS = 'gn_6x6_3pas'
     GN_6X6_4PAS = 'gn_6x6_4pas'
-    
+
     GN_DEFAULT_1PAS = 'gn_default_1pas'
     GN_DEFAULT_2PAS = 'gn_default_2pas'
     GN_DEFAULT_3PAS = 'gn_default_3pas'
@@ -119,10 +119,14 @@ class SupportedEnvironments(Enum):
     PD_DEFAULT_4PAS = 'pd_default_4pas'
     PD_DEFAULT_5PAS = 'pd_default_5pas'
 
+    PO_4X4_5PAS = 'po_4x4_5pas'
+    PO_6X6_5PAS = 'po_6x6_5pas'
+
 
 class ContextSpaces(Enum):
     FIXED_ENTITIES = 'fixed_entities'
     CHANGING_MAP = 'changing_map'
+    PICKUP_ORDER = 'pickup_order'
 
 
 RMENV_DICT = {
@@ -155,7 +159,7 @@ RMENV_DICT = {
             ContextSpaces.CHANGING_MAP: {
                 ENV_KEY: changing_map_env,
                 RM_KEY: TaxiEnvRM,
-            }
+            },
         }
     },
     SupportedEnvironments.GN_4X4_2PAS: {
@@ -831,6 +835,66 @@ RMENV_DICT = {
                 ENV_KEY: changing_map_env,
                 RM_KEY: TaxiEnvRM,
             }
+        }
+    },
+
+    # pickup order environments
+    SupportedEnvironments.PO_4X4_5PAS: {
+        ENV_KWARGS_KEY: {
+            'num_passengers': 5,
+            'pickup_only': True,
+            'pickup_order': [0, 1, 2, 3, 4],
+            'max_steps': 100,
+            'domain_map': [
+                "+-------+",
+                "| : | : |",
+                "| : : : |",
+                "| : | | |",
+                "| | | : |",
+                "+-------+"
+            ],
+            'reward_table': {
+                Event.STEP: 0,
+                Event.PICKUP: 0,
+                Event.DEAD: 0,
+                Event.OBJECTIVE: 1
+            },
+        },
+        CONTEXT_SPACES_KEY: {
+            ContextSpaces.PICKUP_ORDER: {
+                ENV_KEY: pickup_order_env,
+                RM_KEY: TaxiEnvRM,
+            },
+        }
+    },
+    SupportedEnvironments.PO_6X6_5PAS: {  # aimed for pickcup order context space
+        ENV_KWARGS_KEY: {
+            'num_passengers': 5,
+            'pickup_only': True,
+            'pickup_order': [0, 1, 2, 3, 4],
+            'max_steps': 225,
+            'domain_map': [
+                "+-----------+",
+                "| | | : | : |",
+                "| | : : : : |",
+                "| | | : | : |",
+                "| : : : | : |",
+                "| : : | : | |",
+                "| | : : : | |",
+                "+-----------+"
+            ],
+            'reward_table': {
+                Event.STEP: 0,
+                Event.PICKUP: 0,
+                Event.DEAD: 0,
+                Event.OBJECTIVE: 1
+            },
+        },
+        CONTEXT_SPACES_KEY: {
+            ContextSpaces.PICKUP_ORDER: {
+                ENV_KEY: pickup_order_env,
+                RM_KEY: TaxiEnvRM,
+            },
         }
     },
 }
