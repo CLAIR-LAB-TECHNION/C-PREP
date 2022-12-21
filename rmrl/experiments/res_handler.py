@@ -227,10 +227,10 @@ class ResultsHandler:
                              show_src_test, show_tgt_scratch, show_tgt_transfer, src_xlim, tgt_xlim, plt_kwargs,
                              record_returns=False, record_median=False, with_deviation=False, axes=None):
         # check which axes are required
-        has_src = any(e is not None for e in src_evals)
-        has_tst = any(e is not None for e in tst_evals)
-        has_tgt = any(e is not None for e in tgt_evals)
-        has_tsf = any(e is not None for e in tsf_evals)
+        has_src = any(e is not None for e in src_evals.values())
+        has_tst = any(e is not None for e in tst_evals.values())
+        has_tgt = any(e is not None for e in tgt_evals.values())
+        has_tsf = any(e is not None for e in tsf_evals.values())
         display_src = has_src and show_src_scratch
         display_tst = has_tst and show_src_test
         display_tgt = has_tgt and show_tgt_scratch
