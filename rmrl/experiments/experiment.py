@@ -312,7 +312,13 @@ class Experiment:
         try:
             agent = self.load_agent_for_env(env, task_name, force_load=force_load, model_name=model_name)
         except FileNotFoundError:
-            agent = self.train_agent_for_env(env, eval_env, task_name)
+            try:
+                agent = self.train_agent_for_env(env, eval_env, task_name)
+            except:
+                tb = traceback.format_exc()
+                with open(self.dump_dir / FAIL_FILE, 'w') as f:
+                    f.write(tb)
+                raise
         except:
             tb = traceback.format_exc()
             with open(self.dump_dir / FAIL_FILE, 'w') as f:
