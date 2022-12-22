@@ -279,4 +279,4 @@ class PickupOrderWrapper(MultiTaskWrapper):
 
     def _get_hcv_rep(self, task):
         # return np.array([task.index(p_id) for p_id in range(self.unwrapped.num_passengers)])
-        return np.eye(self.unwrapped.num_passengers)[list(task)]
+        return np.eye(self.unwrapped.num_passengers)[list(task)].flatten()
