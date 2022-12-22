@@ -175,6 +175,7 @@ class ResultsHandler:
                               cfg_constraints=None,
                               exp_agg_type=None,  # None, "seed", "fold", or "fold_and_seed"
                               record_median=False,
+                              record_iqm=False,
                               record_returns=False,
                               with_deviation=False,
                               src_xlim=None,
@@ -214,6 +215,7 @@ class ResultsHandler:
             plt_kwargs=plot_kwargs_per_idx or {},
             record_returns=record_returns,
             record_median=record_median,
+            record_iqm=record_iqm,
             with_deviation=with_deviation,
             axes=axes
         )
@@ -225,7 +227,8 @@ class ResultsHandler:
 
     def __plot_compare_evals(self, src_evals, tst_evals, tgt_evals, tsf_evals, l_bound, u_bound, show_src_scratch,
                              show_src_test, show_tgt_scratch, show_tgt_transfer, src_xlim, tgt_xlim, plt_kwargs,
-                             record_returns=False, record_median=False, with_deviation=False, axes=None):
+                             record_returns=False, record_median=False, record_iqm=False, with_deviation=False,
+                             axes=None):
         # check which axes are required
         has_src = any(e is not None for e in src_evals.values())
         has_tst = any(e is not None for e in tst_evals.values())
@@ -253,19 +256,19 @@ class ResultsHandler:
         else:
             ax1, ax2 = axes
 
-        y_label = ('median' if record_median else 'average') + (' return' if record_returns else ' acc reward')
+        y_label = (('IQM' if record_iqm else 'median' if record_median else 'average') +
+                   (' return' if record_returns else ' accumulated reward'))
 
         if use_src_axis:
-            self.__handle_single_axis(ax1, src_evals, tst_evals, display_src, display_tst, record_median,
-                                      with_deviation, l_bound, u_bound, src_xlim, y_label, plt_kwargs)
+            self.__handle_single_axis(ax1, src_evals, tst_evals, display_src, display_tst, 'tst', record_median,
+                                      record_iqm, with_deviation, l_bound, u_bound, src_xlim, y_label, plt_kwargs)
 
         if use_tgt_axis:
-            self.__handle_single_axis(ax2, tgt_evals, tsf_evals, display_tgt, display_tsf, record_median,
-                                      with_deviation, l_bound, u_bound, tgt_xlim, y_label, plt_kwargs)
+            self.__handle_single_axis(ax2, tgt_evals, tsf_evals, display_tgt, display_tsf, 'tsf', record_median,
+                                      record_iqm, with_deviation, l_bound, u_bound, tgt_xlim, y_label, plt_kwargs)
 
-    def __handle_single_axis(self, ax, evals_1, evals_2, display_1, display_2, record_median, with_deviation, l_bound,
-                             u_bound,
-                             xlim, y_label, plt_kwargs):
+    def __handle_single_axis(self, ax, evals_1, evals_2, display_1, display_2, exp_title, record_median, record_iqm,
+                             with_deviation, l_bound, u_bound, xlim, y_label, plt_kwargs):
         if display_1 and display_2:
             ax.set_title(f'Policy performance training on source context and testing on target context')
         elif display_1:
@@ -279,15 +282,16 @@ class ResultsHandler:
         if l_bound is not None:
             ax.axhline(l_bound, ls='--')
         if display_1:
-            self.__plot_evals(evals_1, plt_kwargs, record_median=record_median, with_deviation=with_deviation, ax=ax)
-        if display_2:
-            self.__plot_evals(evals_2, plt_kwargs, is_test=display_1, record_median=record_median,
+            self.__plot_evals(evals_1, plt_kwargs, record_median=record_median, record_iqm=record_iqm,
                               with_deviation=with_deviation, ax=ax)
+        if display_2:
+            self.__plot_evals(evals_2, plt_kwargs, exp_type=exp_title if display_1 else '', record_median=record_median,
+                              record_iqm=record_iqm, with_deviation=with_deviation, ax=ax)
         ax.set_xlim(xlim)
         ax.legend()
         ax.grid()
 
-    def __plot_evals(self, evals, plt_kwargs, is_transfer=False, is_test=False, record_median=False,
+    def __plot_evals(self, evals, plt_kwargs, exp_type='', record_median=False, record_iqm=False,
                      with_deviation=False, ax=None):
         if isinstance(plt_kwargs, dict):
             plt_kwargs = [plt_kwargs.copy() for _ in range(len(evals))]
@@ -298,16 +302,16 @@ class ResultsHandler:
                 continue
             if 'color' not in kwargs:
                 kwargs['color'] = COLORS[i % len(COLORS)]
-            if is_transfer:
+            if exp_type == 'tsf':
                 if 'ls' not in kwargs and 'linestyle' not in kwargs:
                     kwargs['ls'] = '-.'
-            if is_test:
+            elif exp_type == 'tst':
                 if 'ls' not in kwargs and 'linestyle' not in kwargs:
                     kwargs['ls'] = '-.'
-            self.__plot_single_eval(npz, k, is_transfer=is_transfer, is_test=is_test, record_median=record_median,
+            self.__plot_single_eval(npz, k, exp_type=exp_type, record_median=record_median, record_iqm=record_iqm,
                                     with_deviation=with_deviation, ax=ax, **kwargs)
 
-    def __plot_single_eval(self, res_dict, eval_key=None, is_transfer=False, is_test=False, record_median=False,
+    def __plot_single_eval(self, res_dict, eval_key=None, exp_type='', record_median=False, record_iqm=False,
                            with_deviation=False,
                            ax=None, **plt_kwargs):
         if ax is None:
@@ -316,17 +320,17 @@ class ResultsHandler:
         x = res_dict['timesteps']
         ys = res_dict['results']
 
-        if record_median:
+        if record_iqm:
+            to_plot = np.array([self.__nan_iqm(yy) for yy in ys])
+        elif record_median:
             to_plot = np.array([np.nanmedian(yy) for yy in ys])
         else:
             to_plot = np.array([np.nanmean(yy) for yy in ys])
 
         if 'label' not in plt_kwargs:
             plt_kwargs['label'] = str(eval_key)
-        if is_transfer:
-            plt_kwargs['label'] += ' tsf'
-        elif is_test:
-            plt_kwargs['label'] += ' tst'
+        if exp_type:
+            plt_kwargs['label'] += f' {exp_type}'
         ax.plot(x, to_plot, **plt_kwargs)
 
         if with_deviation:
@@ -535,5 +539,20 @@ class ResultsHandler:
         cfg = TransferConfiguration.from_repr_value(no_exp_name_repr)
         return Experiment(cfg)
 
-    def __path_is_tgt(self, p):
+    @staticmethod
+    def __path_is_tgt(p):
         return 'tsf_kwargs' in str(p)
+
+    @staticmethod
+    def __nan_iqm(data):
+        # clean data from `nan` values
+        data = data[~np.isnan(data)]
+
+        # calculate data within IQR
+        q3, q1 = np.percentile(data, [75, 25])
+        iqr_data = data[(q1 <= data) & (data <= q3)]
+
+        # calculate mean of data in IQR (aka IQM)
+        iqm = np.mean(iqr_data)
+
+        return iqm
