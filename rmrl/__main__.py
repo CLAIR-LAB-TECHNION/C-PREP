@@ -151,8 +151,11 @@ def __get_tsf_kwargs(run_args):
             transfer_model=run_args.transfer_model,
             keep_timesteps=run_args.keep_timesteps,
             target_timesteps=run_args.target_timesteps,
-            target_eval_freq=run_args.target_eval_freq
+            target_eval_freq=run_args.target_eval_freq,
         ))
+
+        if run_args.alg in OFF_POLICY_ALGOS:
+            tsf_kwargs['keep_buffer'] = run_args.keep_buffer
 
     return tsf_kwargs
 
@@ -174,6 +177,9 @@ def get_single_run_args_list(args):
             d.pop('keep_timesteps')
             d.pop('target_timesteps')
             d.pop('target_eval_freq')
+
+            if d['alg'] in OFF_POLICY_ALGOS:
+                d.pop('keep_buffer')
 
         # model-specific args
         if d['ofe_identity']:
@@ -279,6 +285,9 @@ def parse_args():
                                 'context',
                            type=lambda x: int(float(x)),
                            default=TARGET_EVAL_FREQ)
+    tsf_group.add_argument('--keep_buffer',
+                           help='if True, transfers the rollout buffer from the source context to the transfer agent',
+                           action='store_true')
 
     # policy config args
     policy_group = parser.add_argument_group('policy configurations')

@@ -81,6 +81,10 @@ BEST_MODEL_NAME = 'best_model'
 FINAL_MODEL_NAME = 'final_model'
 CHKP_MODEL_NAME_PREFIX = 'chkp'
 
+# saved buffers
+BEST_BUFFER_NAME = 'best_buffer'
+FINAL_BUFFER_NAME = 'final_buffer'
+
 
 class SupportedExperiments(Enum):
     NO_TRANSFER = 'NoTransferExperiment'

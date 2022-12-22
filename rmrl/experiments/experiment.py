@@ -7,6 +7,7 @@ from functools import partial
 import stable_baselines3 as sb3
 from stable_baselines3.common.callbacks import StopTrainingOnNoModelImprovement, CheckpointCallback
 from stable_baselines3.common.monitor import Monitor
+from stable_baselines3.common.off_policy_algorithm import OffPolicyAlgorithm
 from stable_baselines3.common.vec_env import DummyVecEnv
 from tqdm.auto import tqdm
 
@@ -127,6 +128,12 @@ class Experiment:
                                                 force_load=True,  # ignore forced retraining
                                                 model_name=self.cfg.tsf_kwargs['transfer_model'])  # load desired model
             tsf_agent.set_parameters(src_agent.get_parameters())
+
+            if self.cfg.tsf_kwargs['keep_buffer'] and isinstance(tsf_agent, OffPolicyAlgorithm):
+                transfer_buffer_name = (BEST_BUFFER_NAME
+                                        if self.cfg.tsf_kwargs['transfer_model'] == BEST_MODEL_NAME
+                                        else FINAL_BUFFER_NAME)
+                tsf_agent.load_replay_buffer(self.models_dir / src_task_name / transfer_buffer_name)
 
             if self.cfg.tsf_kwargs['keep_timesteps']:
                 tsf_agent.num_timesteps = src_agent.num_timesteps
@@ -400,6 +407,8 @@ class Experiment:
 
         # save final agent model
         agent.save(self.models_dir / task_name / FINAL_MODEL_NAME)
+        if isinstance(agent, OffPolicyAlgorithm):
+            agent.save_replay_buffer(self.models_dir / task_name / FINAL_BUFFER_NAME)
 
         return agent
 
