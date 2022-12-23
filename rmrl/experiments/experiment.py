@@ -379,7 +379,7 @@ class Experiment:
                                            log_path=self.eval_log_dir / task_name,
                                            best_model_save_path=self.models_dir / task_name,
                                            verbose=self.verbose,
-                                           save_buffer=True)
+                                           save_buffer=task_name == 'src')
 
         callbacks = [true_reward_callback, pb_callback, eval_callback]
 
