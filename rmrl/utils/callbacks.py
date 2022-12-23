@@ -75,6 +75,7 @@ class CustomEvalCallback(EvalCallback):
                  render=False,
                  verbose=1,
                  warn=True,
+                 save_buffer=False,
                  logger_prefix=''):
 
         super().__init__(eval_env,
@@ -89,6 +90,7 @@ class CustomEvalCallback(EvalCallback):
                          verbose,
                          warn)
 
+        self.save_buffer = save_buffer
         self.logger_prefix = logger_prefix
 
     def _init_callback(self):
@@ -201,7 +203,7 @@ class CustomEvalCallback(EvalCallback):
                     print("New best mean reward!")
                 if self.best_model_save_path is not None:
                     self.model.save(os.path.join(self.best_model_save_path, "best_model"))
-                    if isinstance(self.model, OffPolicyAlgorithm):
+                    if self.save_buffer and isinstance(self.model, OffPolicyAlgorithm):
                         self.model.save_replay_buffer(os.path.join(self.best_model_save_path, "best_buffer"))
                 self.best_mean_reward = mean_reward
                 # Trigger callback on new best model, if needed
