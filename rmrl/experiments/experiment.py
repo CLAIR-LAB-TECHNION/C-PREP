@@ -428,10 +428,10 @@ class Experiment:
         return self.task_dir(task_name) / LOGS_DIR
 
     def tb_log_dir(self, task_name):
-        return self.task_dir(task_name) / TB_LOG_DIR
+        return self.logs_dir(task_name) / TB_LOG_DIR
 
     def eval_log_dir(self, task_name):
-        return self.task_dir(task_name) / EVAL_LOG_DIR
+        return self.logs_dir(task_name) / EVAL_LOG_DIR
 
     def done_file(self, task_name):
         return self.task_dir(task_name) / DONE_FILE
