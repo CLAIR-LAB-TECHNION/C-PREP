@@ -11,7 +11,7 @@ from .configurations import *
 from .experiment import Experiment, SRC_TASK_NAME, TST_TASK_NAME, TGT_TASK_NAME, TSF_TASK_NAME, DONE_FILE, FAIL_FILE
 
 PLOT_LINE_STYLES = [
-    # '-',  # solid
+    '-',  # solid
     '--',  # dashed
     ':',  # dotted
     '.-',  #dotdash
@@ -281,12 +281,13 @@ class ResultsHandler:
             if 'color' not in kwargs:
                 kwargs['color'] = COLORS[i % len(COLORS)]
 
-            if exp_type == 'tsf':
+            if exp_type == 'tsf' or isinstance(npz, list):
                 for j, npz_tsf in enumerate(npz):
                     kwargs_tsf = kwargs.copy()
 
                     if 'ls' not in kwargs and 'linestyle' not in kwargs:
-                        kwargs_tsf['ls'] = PLOT_LINE_STYLES[j % len(PLOT_LINE_STYLES)]
+                        ls_idx = j % (len(PLOT_LINE_STYLES) - 1) + 1 if exp_type == 'tsf' else j % len(PLOT_LINE_STYLES)
+                        kwargs_tsf['ls'] = PLOT_LINE_STYLES[ls_idx]
 
                     self.__plot_single_eval(npz_tsf, k, exp_type=exp_type + f'{j + 1}', record_median=record_median,
                                             record_iqm=record_iqm,
