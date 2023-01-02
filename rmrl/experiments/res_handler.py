@@ -527,6 +527,11 @@ class ResultsHandler:
         # clean data from `nan` values
         data = data[~np.isnan(data)]
 
+        # not supported for tiny dataset.
+        # return regular mean
+        if len(data) < 3:
+            return np.mean(data)
+
         # calculate data within IQR
         q3, q1 = np.percentile(data, [75, 25])
         iqr_data = data[(q1 <= data) & (data <= q3)]
