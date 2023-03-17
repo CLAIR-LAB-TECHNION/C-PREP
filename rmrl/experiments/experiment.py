@@ -17,6 +17,7 @@ from rmrl.reward_machines.rm_env import RMEnvWrapper
 from rmrl.utils.callbacks import RMEnvRewardCallback, ProgressBarCallback, CustomEvalCallback
 from rmrl.utils.misc import uniqify_samples, sha3_hash
 from .configurations import *
+from rmrl.utils.wrappers import NewGymWrapper
 
 DONE_FILE = 'DONE'
 FAIL_FILE = 'FAIL'
@@ -50,7 +51,10 @@ class Experiment:
         self.tsf_dir = re.findall(r'tsf_kwargs-.*/?', self.exp_name)[0]
 
         # extract special kwargs
-        self.pot_fn = cfg.rm_kwargs.pop('pot_fn', DEFAULT_POT_FN)
+        default_fn = (DEFAULT_POT_FN_CHEETAH
+                      if cfg.env in [SupportedEnvironments.CHEETAH_LAP, SupportedEnvironments.CHEETAH_LOC]
+                      else DEFAULT_POT_FN)
+        self.pot_fn = cfg.rm_kwargs.pop('pot_fn', default_fn)
 
         # get algorithm class
         self.alg_class = getattr(sb3, cfg.alg.value)
@@ -180,7 +184,7 @@ class Experiment:
         env.set_fixed_contexts(context_set)
         env.reset()
 
-        return env
+        return NewGymWrapper(env)
 
     def env_to_rm_env(self, env):
         def rm_fn_with_rs(task_env):
@@ -301,6 +305,7 @@ class Experiment:
         try:
             agent = self.load_agent_for_env(env, task_name, force_load=force_load, model_name=model_name)
         except FileNotFoundError:
+            self.task_dir(task_name).mkdir(parents=True, exist_ok=True)
             try:
                 if task_name == TSF_TASK_NAME:
                     agent = self.train_tsf_agent_for_env(env, env, eval_env)
@@ -370,7 +375,7 @@ class Experiment:
                                            log_path=self.eval_log_dir(task_name),
                                            best_model_save_path=self.models_dir(task_name),
                                            verbose=self.verbose,
-                                           save_buffer=task_name == 'src')
+                                           save_buffer=False)  #task_name == 'src')
 
         callbacks = [true_reward_callback, pb_callback, eval_callback]
 
@@ -406,8 +411,8 @@ class Experiment:
 
         # save final agent model
         agent.save(self.models_dir(task_name) / FINAL_MODEL_NAME)
-        if isinstance(agent, OffPolicyAlgorithm) and task_name == SRC_TASK_NAME:  # save src agent buffer for transfer
-            agent.save_replay_buffer(self.models_dir(task_name) / FINAL_BUFFER_NAME)
+        # if isinstance(agent, OffPolicyAlgorithm) and task_name == SRC_TASK_NAME:  # save src agent buffer for transfer
+        #     agent.save_replay_buffer(self.models_dir(task_name) / FINAL_BUFFER_NAME)
 
         return agent
 
@@ -479,8 +484,10 @@ class Experiment:
             # create env for sampling
             env = self.get_experiment_env()
 
+            from stable_baselines3.common.utils import compat_gym_seed
+
             # set seed for constant sampling
-            env.seed(self.cfg.seed)
+            compat_gym_seed(env, self.cfg.seed)
 
             # sample contexts
             num_samples = num_src_samples + num_tgt_samples

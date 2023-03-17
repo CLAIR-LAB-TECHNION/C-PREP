@@ -80,9 +80,14 @@ def __get_rm_kwargs(run_args):
         rm_kwargs = dict(
             rs_gamma=run_args.rs_gamma,
             goal_state_reward=run_args.goal_state_reward,
-            grid_resolution=run_args.grid_resolution,
-            fuel_resolution=run_args.fuel_resolution,
         )
+        if run_args.context in [ContextSpaces.CHANGING_MAP,
+                                ContextSpaces.FIXED_ENTITIES,
+                                ContextSpaces.PICKUP_ORDER]:
+            rm_kwargs.update(dict(
+                grid_resolution=run_args.grid_resolution,
+                fuel_resolution=run_args.fuel_resolution
+            ))
     else:
         rm_kwargs = {}
 
@@ -118,26 +123,24 @@ def __get_alg_kwargs(run_args):
         gamma=run_args.gamma
     )
 
+    # on policy and off policy specific args
+    if run_args.alg in OFF_POLICY_ALGOS:
+        alg_kwargs['learning_starts'] = run_args.off_policy_learning_starts
+        alg_kwargs['gradient_steps'] = run_args.off_policy_gradient_steps
+        alg_kwargs['train_freq'] = run_args.off_policy_train_freq
+        if run_args.off_policy_train_freq_episodes:
+            alg_kwargs['train_freq'] = (run_args.off_policy_train_freq, 'episode')
+    if run_args.alg in ON_POLICY_ALGOS:
+        alg_kwargs['n_steps'] = run_args.on_policy_n_steps
+        alg_kwargs['ent_coef'] = run_args.on_policy_ent_coef
+
     # alg-specific kwargs
     if run_args.alg != Algos.A2C:
         alg_kwargs['batch_size'] = run_args.batch_size
-    if 'on_policy_n_steps' in run_args:
-        alg_kwargs['n_steps'] = run_args.on_policy_n_steps
-    if 'on_policy_ent_coef' in run_args:
-        alg_kwargs['ent_coef'] = run_args.on_policy_ent_coef
-    if 'ppo_n_epochs' in run_args:
+    if run_args.alg == Algos.PPO:
         alg_kwargs['n_epochs'] = run_args.ppo_n_epochs
-    if 'off_policy_learning_starts' in run_args:
-        alg_kwargs['learning_starts'] = run_args.off_policy_learning_starts
-    if 'off_policy_train_freq' in run_args:
-        alg_kwargs['train_freq'] = run_args.off_policy_train_freq
-    if 'off_policy_train_freq_episodes' in run_args and run_args.off_policy_train_freq_episodes:
-        alg_kwargs['train_freq'] = (run_args.off_policy_train_freq, 'episode')
-    if 'off_policy_gradient_steps' in run_args:
-        alg_kwargs['gradient_steps'] = run_args.off_policy_gradient_steps
-    if 'dqn_exploration_timesteps' in run_args:
+    if run_args.alg == Algos.DQN:
         alg_kwargs['exploration_timesteps'] = run_args.dqn_exploration_timesteps
-    if 'dqn_target_update_interval' in run_args:
         alg_kwargs['target_update_interval'] = run_args.dqn_target_update_interval
 
     return alg_kwargs

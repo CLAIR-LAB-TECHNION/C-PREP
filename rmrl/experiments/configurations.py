@@ -7,6 +7,9 @@ from torch_geometric.nn import GATConv, GINEConv
 
 from rmrl.envs.grid.reward_machines.single_taxi import TaxiEnvRM
 from rmrl.envs.grid.single_taxi import fixed_entities_env, changing_map_env, pickup_order_env
+from rmrl.envs.mujoco.reward_machines.half_cheetah import LocationRM, LapsRM
+from rmrl.envs.mujoco.half_cheetah import location_env, lap_runner_env
+
 from rmrl.nn.models import cur_state_embedding, ignore_state_mean
 from rmrl.reward_machines.potential_functions import ValueIteration
 from rmrl.utils.lr_schedulers import *
@@ -53,6 +56,7 @@ MIN_TIMESTEPS = 50_000
 # defaults for reward shaping
 DEFAULT_RS_GAMMA = 0.9
 DEFAULT_POT_FN = ValueIteration()
+DEFAULT_POT_FN_CHEETAH = ValueIteration(neg_results=True)
 
 # CV experiment defaults
 DEFAULT_NUM_TGT_SAMPLES_FOR_CV = 1
@@ -127,10 +131,8 @@ class SupportedEnvironments(Enum):
     PO_6X6_5PAS = 'po_6x6_5pas'
     PO_DEFAULT_10PAS = 'po_default_10pas'
 
-    GN_6X6_1PAS_STOCH = 'gn_6x6_1pas_stoch'
-    GN_6X6_2PAS_STOCH = 'gn_6x6_2pas_stoch'
-    PD_6X6_1PAS_STOCH = 'pd_6x6_1pas_stoch'
-    PD_6X6_1PAS_STOCH2 = 'pd_6x6_1pas_stoch2'
+    CHEETAH_LOC = 'cheetah_loc'
+    CHEETAH_LAP = 'cheetah_lap'
 
 
 class ContextSpaces(Enum):
@@ -138,234 +140,10 @@ class ContextSpaces(Enum):
     CHANGING_MAP = 'changing_map'
     PICKUP_ORDER = 'pickup_order'
 
+    CHANGING_LOC = 'changing_loc'
+
 
 RMENV_DICT = {
-    SupportedEnvironments.GN_6X6_1PAS_STOCH: {
-        ENV_KWARGS_KEY: {
-            'num_passengers': 1,
-            'pickup_only': True,
-            'max_steps': 35,
-            'domain_map': [
-                "+-----------+",
-                "| | | : | : |",
-                "| | : : : : |",
-                "| | | : | : |",
-                "| : : : | : |",
-                "| : : | : | |",
-                "| | : : : | |",
-                "+-----------+"
-            ],
-            'reward_table': {
-                Event.STEP: 0,
-                Event.PICKUP: 0,
-                Event.DEAD: 0,
-                Event.OBJECTIVE: 1
-            },
-            'stochastic_actions': {
-                'north': {
-                    'north': 0.9,
-                    'east': 0.05,
-                    'west': 0.05
-                },
-                'south': {
-                    'south': 0.9,
-                    'east': 0.05,
-                    'west': 0.05
-                },
-                'east': {
-                    'east': 0.9,
-                    'north': 0.05,
-                    'south': 0.05
-                },
-                'west': {
-                    'west': 0.9,
-                    'north': 0.05,
-                    'south': 0.05
-                },
-            }
-        },
-        CONTEXT_SPACES_KEY: {
-            ContextSpaces.FIXED_ENTITIES: {
-                ENV_KEY: fixed_entities_env,
-                RM_KEY: TaxiEnvRM,
-            },
-            ContextSpaces.CHANGING_MAP: {
-                ENV_KEY: changing_map_env,
-                RM_KEY: TaxiEnvRM,
-            }
-        }
-    },
-    SupportedEnvironments.GN_6X6_2PAS_STOCH: {
-        ENV_KWARGS_KEY: {
-            'num_passengers': 2,
-            'pickup_only': True,
-            'max_steps': 40,
-            'domain_map': [
-                "+-----------+",
-                "| | | : | : |",
-                "| | : : : : |",
-                "| | | : | : |",
-                "| : : : | : |",
-                "| : : | : | |",
-                "| | : : : | |",
-                "+-----------+"
-            ],
-            'reward_table': {
-                Event.STEP: 0,
-                Event.PICKUP: 0,
-                Event.DEAD: 0,
-                Event.OBJECTIVE: 1
-            },
-            'stochastic_actions': {
-                'north': {
-                    'north': 0.9,
-                    'east': 0.05,
-                    'west': 0.05
-                },
-                'south': {
-                    'south': 0.9,
-                    'east': 0.05,
-                    'west': 0.05
-                },
-                'east': {
-                    'east': 0.9,
-                    'north': 0.05,
-                    'south': 0.05
-                },
-                'west': {
-                    'west': 0.9,
-                    'north': 0.05,
-                    'south': 0.05
-                },
-            },
-            CONTEXT_SPACES_KEY: {
-                ContextSpaces.FIXED_ENTITIES: {
-                    ENV_KEY: fixed_entities_env,
-                    RM_KEY: TaxiEnvRM,
-                },
-                ContextSpaces.CHANGING_MAP: {
-                    ENV_KEY: changing_map_env,
-                    RM_KEY: TaxiEnvRM,
-                }
-            }
-        }
-    },
-    SupportedEnvironments.PD_6X6_1PAS_STOCH: {
-        ENV_KWARGS_KEY: {
-            'num_passengers': 1,
-            'no_intermediate_dropoff': True,
-            'max_steps': 70,
-            'domain_map': [
-                "+-----------+",
-                "| | | : | : |",
-                "| | : : : : |",
-                "| | | : | : |",
-                "| : : : | : |",
-                "| : : | : | |",
-                "| | : : : | |",
-                "+-----------+"
-            ],
-            'reward_table': {
-                Event.STEP: 0,
-                Event.PICKUP: 0,
-                Event.FINAL_DROPOFF: 0,
-                Event.INTERMEDIATE_DROPOFF: 0,
-                Event.DEAD: 0,
-                Event.OBJECTIVE: 1
-            },
-            'stochastic_actions': {
-                'north': {
-                    'north': 0.9,
-                    'east': 0.05,
-                    'west': 0.05
-                },
-                'south': {
-                    'south': 0.9,
-                    'east': 0.05,
-                    'west': 0.05
-                },
-                'east': {
-                    'east': 0.9,
-                    'north': 0.05,
-                    'south': 0.05
-                },
-                'west': {
-                    'west': 0.9,
-                    'north': 0.05,
-                    'south': 0.05
-                },
-            },
-        },
-        CONTEXT_SPACES_KEY: {
-            ContextSpaces.FIXED_ENTITIES: {
-                ENV_KEY: fixed_entities_env,
-                RM_KEY: TaxiEnvRM,
-            },
-            ContextSpaces.CHANGING_MAP: {
-                ENV_KEY: changing_map_env,
-                RM_KEY: TaxiEnvRM,
-            }
-        }
-    },
-
-    SupportedEnvironments.PD_6X6_1PAS_STOCH2: {
-        ENV_KWARGS_KEY: {
-            'num_passengers': 1,
-            'no_intermediate_dropoff': True,
-            'max_steps': 70,
-            'domain_map': [
-                "+-----------+",
-                "| | | : | : |",
-                "| | : : : : |",
-                "| | | : | : |",
-                "| : : : | : |",
-                "| : : | : | |",
-                "| | : : : | |",
-                "+-----------+"
-            ],
-            'reward_table': {
-                Event.STEP: 0,
-                Event.PICKUP: 0,
-                Event.FINAL_DROPOFF: 0,
-                Event.INTERMEDIATE_DROPOFF: 0,
-                Event.DEAD: 0,
-                Event.OBJECTIVE: 1
-            },
-            'stochastic_actions': {
-                'north': {
-                    'north': 0.8,
-                    'east': 0.1,
-                    'west': 0.1
-                },
-                'south': {
-                    'south': 0.8,
-                    'east': 0.1,
-                    'west': 0.1
-                },
-                'east': {
-                    'east': 0.8,
-                    'north': 0.1,
-                    'south': 0.1
-                },
-                'west': {
-                    'west': 0.8,
-                    'north': 0.1,
-                    'south': 0.1
-                },
-            },
-        },
-        CONTEXT_SPACES_KEY: {
-            ContextSpaces.FIXED_ENTITIES: {
-                ENV_KEY: fixed_entities_env,
-                RM_KEY: TaxiEnvRM,
-            },
-            ContextSpaces.CHANGING_MAP: {
-                ENV_KEY: changing_map_env,
-                RM_KEY: TaxiEnvRM,
-            }
-        }
-    },
-
     # pickup only environments
     SupportedEnvironments.GN_4X4_1PAS: {
         ENV_KWARGS_KEY: {
@@ -1153,6 +931,26 @@ RMENV_DICT = {
             },
         }
     },
+
+    # cheetah
+    SupportedEnvironments.CHEETAH_LOC: {
+        ENV_KWARGS_KEY: {},
+        CONTEXT_SPACES_KEY: {
+            ContextSpaces.CHANGING_LOC: {
+                ENV_KEY: location_env,
+                RM_KEY: LocationRM,
+            },
+        }
+    },
+    SupportedEnvironments.CHEETAH_LAP: {
+        ENV_KWARGS_KEY: {},
+        CONTEXT_SPACES_KEY: {
+            ContextSpaces.CHANGING_LOC: {
+                ENV_KEY: lap_runner_env,
+                RM_KEY: LapsRM,
+            },
+        }
+    },
 }
 
 
@@ -1176,13 +974,13 @@ class Mods(Enum):
 class Algos(Enum):
     DQN = 'DQN'
     A2C = 'A2C'
-    # DDPG = 'DDPG'
+    DDPG = 'DDPG'
     PPO = 'PPO'
-    # SAC = 'SAC'
+    SAC = 'SAC'
 
 
-OFF_POLICY_ALGOS = [Algos.DQN]
-ON_POLICY_ALGOS = [Algos.PPO]
+OFF_POLICY_ALGOS = [Algos.DQN, Algos.SAC, Algos.DDPG]
+ON_POLICY_ALGOS = [Algos.PPO, Algos.A2C]
 
 ALL_ENUM_CFGS = [
     SupportedExperiments,

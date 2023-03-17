@@ -40,6 +40,9 @@ class RewardMachine(ABC):
     def L(self, s):
         pass
 
+    def reset(self):
+        pass
+
     def _create_state_machine(self) -> nx.DiGraph:
         G = nx.DiGraph()
         for u in self.delta:
@@ -108,6 +111,9 @@ class RewardMachine(ABC):
         state['env'] = None
 
         return state
+    
+    def shortest_path(self, s, t):
+        return nx.shortest_path(self.G, s, t)
 
 
 class RMFromNX(RewardMachine):

@@ -237,21 +237,30 @@ class ResultsHandler:
                    (' return' if record_returns else ' accumulated reward'))
 
         if use_src_axis:
-            self.__handle_single_axis(ax1, src_evals, tst_evals, display_src, display_tst, 'tst', record_median,
+            self.__handle_single_axis(ax1, src_evals, tst_evals, display_src, display_tst,
+                                      'Training on source context and evaluating on target context',
+                                      'Training on source context',
+                                      'Evaluating on target context while training on source',
+                                      'tst', record_median,
                                       record_iqm, with_deviation, l_bound, u_bound, src_xlim, y_label, plt_kwargs)
 
         if use_tgt_axis:
-            self.__handle_single_axis(ax2, tgt_evals, tsf_evals, display_tgt, display_tsf, 'tsf', record_median,
+            self.__handle_single_axis(ax2, tgt_evals, tsf_evals, display_tgt, display_tsf,
+                                      'Training on target context from scratch and after transfer from source context',
+                                      'Training on target context',
+                                      'Training on target context after transfer from source context',
+                                      'tsf', record_median,
                                       record_iqm, with_deviation, l_bound, u_bound, tgt_xlim, y_label, plt_kwargs)
 
-    def __handle_single_axis(self, ax, evals_1, evals_2, display_1, display_2, exp_title, record_median, record_iqm,
-                             with_deviation, l_bound, u_bound, xlim, y_label, plt_kwargs):
+    def __handle_single_axis(self, ax, evals_1, evals_2, display_1, display_2, plot_title1, plot_title2, plot_title3,
+                             exp_title, record_median, record_iqm, with_deviation, l_bound, u_bound, xlim, y_label,
+                             plt_kwargs):
         if display_1 and display_2:
-            ax.set_title(f'Policy performance training on source context and testing on target context')
+            ax.set_title(plot_title1)
         elif display_1:
-            ax.set_title(f'Policy performance training on source context')
+            ax.set_title(plot_title2)
         elif display_2:
-            ax.set_title(f'Policy performance testing on target while training on source')
+            ax.set_title(plot_title3)
         ax.set_xlabel('timesteps')
         ax.set_ylabel(y_label)
         if u_bound is not None:

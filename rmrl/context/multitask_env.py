@@ -56,6 +56,7 @@ class MultiTaskWrapper(gym.Wrapper, ABC):
         hcv_vecs = list(map(self._get_hcv_rep, self.fixed_contexts))
         self.fixed_contexts_hcv_rep = {t: v for t, v in zip(self.fixed_contexts, hcv_vecs)}
 
+    @abstractmethod
     def _get_hcv_rep(self, task):
         pass
 

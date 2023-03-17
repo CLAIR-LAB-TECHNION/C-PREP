@@ -22,12 +22,13 @@ RM_DATA_KEY = 'rm'
 
 class RMEnvWrapper(gym.Wrapper):
     def __init__(self, env: MultiTaskWrapper, rm_fn: Callable[[MultiTaskWrapper], RewardMachine],
-                 rm_observations: bool = True, use_rm_reward: bool = True, abstract_state_props=True,
-                 next_desired_state_props: bool = False, ohe_ctx: bool = False, hcv_ctx: bool = False,
-                 multidiscrete_to_box=True):
+                 rm_observations: bool = True, use_rm_reward: bool = True, use_orig_reward: bool = False,
+                 abstract_state_props=True, next_desired_state_props: bool = False, ohe_ctx: bool = False,
+                 hcv_ctx: bool = False, multidiscrete_to_box=True):
         super().__init__(env)
 
         self.use_rm_reward = use_rm_reward
+        self.use_orig_reward = use_orig_reward
         self.rm_observations = rm_observations
         self.abstract_state_props = abstract_state_props
         self.next_desired_state_props = next_desired_state_props
@@ -52,7 +53,7 @@ class RMEnvWrapper(gym.Wrapper):
         self.fixed_rms_data = {}
 
         # for random seeding
-        self._np_random = np.random.default_rng()
+        self.np_random = np.random.default_rng()
 
     def get_fixed_task_rms(self, tasks):
         out = {}
@@ -87,10 +88,10 @@ class RMEnvWrapper(gym.Wrapper):
 
     def seed(self, seed=None):
         super().seed(seed)
-        self._np_random = np.random.default_rng(seed)
+        self.np_random = np.random.default_rng(seed)
 
     def reset(self, **kwargs):
-        obs = super().reset(**kwargs)
+        obs, info = super().reset(**kwargs)
 
         if self.env.change_task_on_reset or self.__first_reset:
             self.__first_reset = False
@@ -104,16 +105,17 @@ class RMEnvWrapper(gym.Wrapper):
             self.rm_data = self.fixed_rms_data[self.env.task]
 
         # save initial abstract state and obs as previous
+        self.rm.reset()
         self.rm_cur_state = self.rm.L(obs)
         self.__prev_obs = obs
 
-        return self._get_new_obs(obs)
+        return self._get_new_obs(obs), info
 
     def step(self, action):
-        obs, r, d, info = super().step(action)
+        obs, r, d, t, info = super().step(action)
 
         info['no-rm_reward'] = r
-        if self.use_rm_reward:  # replacing reward with RM reward
+        if not self.use_orig_reward:  # replacing reward with RM reward
             r = 0
 
         rm_new_state = self.rm.L(obs)
@@ -127,6 +129,10 @@ class RMEnvWrapper(gym.Wrapper):
                                f'cur state: {self.rm_cur_state}\n'
                                f'new props: {rm_new_state}')
         if rm_new_state not in self.rm.delta[self.rm_cur_state]:  # no such transition
+            # p = self.rm.shortest_path(self.rm_cur_state, rm_new_state)
+            # rm_r = 0
+            # for u1, u2 in zip(p[:-1], p[1:]):
+            #     rm_r += self.rm.delta[u1][u2]
             raise RuntimeError(f'Bad abstract transition:\n'
                                f'prev obs:  {self.__prev_obs}\n'
                                f'action:    {action}\n'
@@ -135,7 +141,8 @@ class RMEnvWrapper(gym.Wrapper):
                                f'new props: {rm_new_state}')
 
         # get RM rewards
-        rm_r = self.rm.delta[self.rm_cur_state][rm_new_state]
+        else:
+            rm_r = self.rm.delta[self.rm_cur_state][rm_new_state]
 
         # use RM reward if specified
         if self.use_rm_reward:
@@ -152,7 +159,7 @@ class RMEnvWrapper(gym.Wrapper):
         # get observation with graph
         new_obs = self._get_new_obs(obs)
 
-        return new_obs, r, d, info
+        return new_obs, r, d, t, info
 
     @property
     def observation_space(self):
@@ -160,7 +167,8 @@ class RMEnvWrapper(gym.Wrapper):
         if isinstance(orig_obs_space, gym.spaces.MultiDiscrete) and self.multidiscrete_to_box:
             orig_obs_space = gym.spaces.Box(low=0, high=orig_obs_space.nvec, shape=(len(orig_obs_space.nvec),))
 
-        if not (self.rm_observations or self.abstract_state_props):
+        if not (self.ohe_ctx or self.hcv_ctx or self.abstract_state_props or self.next_desired_state_props or
+                self.rm_observations):
             # no special additions to the observation. return raw observations
             return orig_obs_space
         else:
@@ -200,7 +208,8 @@ class RMEnvWrapper(gym.Wrapper):
         if isinstance(orig_obs_space, gym.spaces.MultiDiscrete) and self.multidiscrete_to_box:
             obs = obs.astype(float)
 
-        if not (self.rm_observations or self.abstract_state_props):
+        if not (self.ohe_ctx or self.hcv_ctx or self.abstract_state_props or self.next_desired_state_props or
+                self.rm_observations):
             # no special additions to the observation. return raw observations
             return obs
         else:
@@ -234,7 +243,7 @@ class RMEnvWrapper(gym.Wrapper):
                     candidates = [(0,) * self.rm.num_propositions]  # return all 0
 
                 # randomly choose a candidate
-                nds = candidates[self._np_random.choice(range(len(candidates)), 1)[0]]
+                nds = candidates[self.np_random.choice(range(len(candidates)), 1)[0]]
 
                 obs_dict[NEXT_DESIRED_STATE_PROPS_KEY] = np.array(nds)
 
