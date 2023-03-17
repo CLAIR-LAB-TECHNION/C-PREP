@@ -1,4 +1,5 @@
 import pickle
+import re
 import time
 import traceback
 import warnings
@@ -21,6 +22,12 @@ DONE_FILE = 'DONE'
 FAIL_FILE = 'FAIL'
 
 
+SRC_TASK_NAME = 'src'
+TST_TASK_NAME = 'tst'
+TGT_TASK_NAME = 'tgt'
+TSF_TASK_NAME = 'tsf'
+
+
 class Experiment:
     def __init__(self, cfg: TransferConfiguration, log_interval=1, chkp_freq=None, dump_dir=None, verbose=0,
                  force_retrain=False):
@@ -39,7 +46,8 @@ class Experiment:
 
         # save cfg as experiment name
         self.exp_name = repr(cfg)
-        self.src_name = repr(self.src_cfg)
+        self.dumps_name = repr(self.src_cfg)
+        self.tsf_dir = re.findall(r'tsf_kwargs-.*/?', self.exp_name)[0]
 
         # extract special kwargs
         self.pot_fn = cfg.rm_kwargs.pop('pot_fn', DEFAULT_POT_FN)
@@ -54,9 +62,6 @@ class Experiment:
 
         # get env specific arguments
         self.env_kwargs = RMENV_DICT[self.cfg.env][ENV_KWARGS_KEY]
-
-        # easy switch to tell when this is the agent for the target contexts
-        self._is_tgt = False
 
         # tells us if there is tgt for test to use
         self._tgt_for_test = None
@@ -100,57 +105,41 @@ class Experiment:
             tgt_eval_env.first_multitask_wrapper.fixed_contexts
         )
 
-        # train agent on source contexts from scratch (or load if exists)
-        self._is_tgt = False
-        src_agent = self.get_agent_for_env(src_env, src_eval_env, 'src')
+        src_agent = self.get_agent_for_env(src_env, src_eval_env, SRC_TASK_NAME)
 
         if not self.cfg.tsf_kwargs['no_transfer']:
             # train agent on target contexts from scratch (or load if exists)
-            self._is_tgt = True
-            tgt_agent = self.get_agent_for_env(tgt_env, tgt_eval_env, 'tgt')
+            tgt_agent = self.get_agent_for_env(tgt_env, tgt_eval_env, TGT_TASK_NAME)
 
             # train source agent in target environment
-            self.transfer_agent(src_env, tgt_env, tgt_eval_env)
+            tsf_agent = self.get_agent_for_env(tgt_env, tgt_eval_env, TSF_TASK_NAME)
 
-    def transfer_agent(self, src_env, tgt_env, tgt_eval_env):
-        src_task_name = 'src'
-        tsf_task_name = 'tsf'
+    def train_tsf_agent_for_env(self, src_env, tgt_env, tgt_eval_env):
+        # create agent new for target env
+        tsf_agent = self.new_agent_for_env(tgt_env, TSF_TASK_NAME)
+        # update parameters from src agent
+        src_agent = self.load_agent_for_env(src_env, SRC_TASK_NAME,
+                                            force_load=True,  # ignore forced retraining
+                                            model_name=self.cfg.tsf_kwargs['transfer_model'])  # load desired model
+        tsf_agent.set_parameters(src_agent.get_parameters())
+        if self.cfg.tsf_kwargs['keep_buffer'] and isinstance(tsf_agent, OffPolicyAlgorithm):
+            transfer_buffer_name = (BEST_BUFFER_NAME
+                                    if self.cfg.tsf_kwargs['transfer_model'] == BEST_MODEL_NAME
+                                    else FINAL_BUFFER_NAME)
+            tsf_agent.load_replay_buffer(self.models_dir(SRC_TASK_NAME) / transfer_buffer_name)
+        if self.cfg.tsf_kwargs['keep_timesteps']:
+            tsf_agent.num_timesteps = src_agent.num_timesteps
 
-        try:
-            tsf_agent = self.load_agent_for_task(tsf_task_name, tgt_env)
-        except FileNotFoundError:
-            # create agent new for target env
-            tsf_agent = self.new_agent_for_env(tgt_env)
-
-            # update parameters from src agent
-            self._is_tgt = False  # set not target to load from the correct folder
-            src_agent = self.load_agent_for_env(src_env, src_task_name,
-                                                force_load=True,  # ignore forced retraining
-                                                model_name=self.cfg.tsf_kwargs['transfer_model'])  # load desired model
-            tsf_agent.set_parameters(src_agent.get_parameters())
-
-            # if self.cfg.tsf_kwargs['keep_buffer'] and isinstance(tsf_agent, OffPolicyAlgorithm):
-            #     transfer_buffer_name = (BEST_BUFFER_NAME
-            #                             if self.cfg.tsf_kwargs['transfer_model'] == BEST_MODEL_NAME
-            #                             else FINAL_BUFFER_NAME)
-            #     tsf_agent.load_replay_buffer(self.models_dir / src_task_name / transfer_buffer_name)
-
-            if self.cfg.tsf_kwargs['keep_timesteps']:
-                tsf_agent.num_timesteps = src_agent.num_timesteps
-
-                if self.cfg.alg == Algos.DQN:
-                    # to allow exploration fraction to match the given exploration timesteps:
-                    # - calc exploration_timesteps
-                    # - divide by new max timesteps
-                    tsf_agent.exploration_fraction = (
-                            (tsf_agent.exploration_fraction * self.cfg.max_timesteps) /
-                            (src_agent.num_timesteps + self.cfg.max_timesteps)
-                    )
-
-            # train agent
-            self._is_tgt = True
-            tsf_agent = self.train_agent(tsf_agent, tgt_eval_env, tsf_task_name)
-
+            if self.cfg.alg == Algos.DQN:
+                # to allow exploration fraction to match the given exploration timesteps:
+                # - calc exploration_timesteps
+                # - divide by new max timesteps
+                tsf_agent.exploration_fraction = (
+                        (tsf_agent.exploration_fraction * self.cfg.max_timesteps) /
+                        (src_agent.num_timesteps + self.cfg.max_timesteps)
+                )
+        # train agent
+        tsf_agent = self.train_agent(tsf_agent, tgt_eval_env, TSF_TASK_NAME)
         return tsf_agent
 
     def get_experiment_rm_vec_env_for_context_set(self, context_set):
@@ -281,7 +270,7 @@ class Experiment:
             with open(self.generated_rms_dir / sha3_hash(task), 'wb') as f:
                 pickle.dump((self._fixed_rms[task], self._fixed_rms_data[task]), f)
 
-    def new_agent_for_env(self, env):
+    def new_agent_for_env(self, env, task_name):
         num_props = env.rm.num_propositions  # all rms should have the same rm
         policy_kwargs = dict(
             features_extractor_class=RMFeatureExtractorSB,
@@ -302,7 +291,7 @@ class Experiment:
             env=env,
             policy='MultiInputPolicy',
             policy_kwargs=policy_kwargs,
-            tensorboard_log=str(self.tb_log_dir),
+            tensorboard_log=str(self.tb_log_dir(task_name)),
             verbose=self.verbose,
             seed=self.cfg.seed,
             **self.cfg.alg_kwargs
@@ -313,25 +302,31 @@ class Experiment:
             agent = self.load_agent_for_env(env, task_name, force_load=force_load, model_name=model_name)
         except FileNotFoundError:
             try:
-                agent = self.train_agent_for_env(env, eval_env, task_name)
+                if task_name == TSF_TASK_NAME:
+                    agent = self.train_tsf_agent_for_env(env, env, eval_env)
+                else:
+                    agent = self.train_agent_for_env(env, eval_env, task_name)
             except:
                 tb = traceback.format_exc()
-                with open(self.dump_dir / FAIL_FILE, 'w') as f:
+                with open(self.fail_file(task_name), 'w') as f:
                     f.write(tb)
                 raise
         except:
             tb = traceback.format_exc()
-            with open(self.dump_dir / FAIL_FILE, 'w') as f:
+            with open(self.fail_file(task_name), 'w') as f:
                 f.write(tb)
 
             raise
 
-        open(self.dump_dir / DONE_FILE, 'w').close()  # experiment done indicator
+        open(self.done_file(task_name), 'w').close()  # experiment done indicator
+        if task_name == SRC_TASK_NAME and self.cfg.exp_kwargs['use_tgt_for_test']:
+            open(self.done_file(TST_TASK_NAME), 'w').close()
+
         return agent
 
     def load_agent_for_env(self, env, task_name, force_load=False, model_name=BEST_MODEL_NAME):
         if not force_load:
-            final_model_file = self.models_dir / task_name / (FINAL_MODEL_NAME + '.zip')
+            final_model_file = self.models_dir(task_name) / (FINAL_MODEL_NAME + '.zip')
             if not final_model_file.is_file():  # find training complete file
                 raise FileNotFoundError
             elif self.force_retrain:  # don't look for existing model if forcing retrain
@@ -341,18 +336,12 @@ class Experiment:
         return self.load_agent_for_task(task_name, init_env=env, model_name=model_name)
 
     def load_agent_for_task(self, task_name, init_env=None, model_name=BEST_MODEL_NAME):
-        loaded_agent = self.alg_class.load(self.models_dir / task_name / model_name, init_env)
+        loaded_agent = self.alg_class.load(self.models_dir(task_name) / model_name, init_env)
         print(f'loaded {model_name} agent for task {task_name}')
         return loaded_agent
 
-    def get_env_task(self, env):
-        if isinstance(env, DummyVecEnv):
-            return [e.task for e in env.envs]
-        else:
-            return env.fixed_contexts
-
     def train_agent_for_env(self, env, eval_env, task_name):
-        agent = self.new_agent_for_env(env)
+        agent = self.new_agent_for_env(env, task_name)
         return self.train_agent(agent, eval_env, task_name=task_name)
 
     def train_agent(self, agent, eval_env, task_name):
@@ -360,13 +349,15 @@ class Experiment:
         true_reward_callback = RMEnvRewardCallback()  # log the original reward (not RM reward)
         pb_callback = ProgressBarCallback()
 
+        is_tgt = task_name in [TGT_TASK_NAME, TSF_TASK_NAME]
+
         if self.cfg.max_no_improvement_evals is None:
             early_stop_callback = None
         else:
             early_stop_callback = StopTrainingOnNoModelImprovement(
                 max_no_improvement_evals=self.cfg.max_no_improvement_evals,
                 min_evals=self.cfg.min_timesteps // (self.cfg.tsf_kwargs['target_eval_freq']
-                                                     if self._is_tgt
+                                                     if is_tgt
                                                      else self.cfg.eval_freq),
                 verbose=self.verbose
             )
@@ -374,39 +365,39 @@ class Experiment:
                                            callback_after_eval=early_stop_callback,
                                            n_eval_episodes=self.cfg.n_eval_episodes,
                                            eval_freq=(self.cfg.tsf_kwargs['target_eval_freq']
-                                                      if self._is_tgt
+                                                      if is_tgt
                                                       else self.cfg.eval_freq),
-                                           log_path=self.eval_log_dir / task_name,
-                                           best_model_save_path=self.models_dir / task_name,
+                                           log_path=self.eval_log_dir(task_name),
+                                           best_model_save_path=self.models_dir(task_name),
                                            verbose=self.verbose,
-                                           save_buffer=False)#task_name == 'src')
+                                           save_buffer=task_name == 'src')
 
         callbacks = [true_reward_callback, pb_callback, eval_callback]
 
         # add checkpoint callback if requested
         if self.chkp_freq is not None:
             checkpoint_callback = CheckpointCallback(save_freq=self.chkp_freq,
-                                                     save_path=self.models_dir / task_name / 'checkpoints',
+                                                     save_path=self.models_dir(task_name) / 'checkpoints',
                                                      name_prefix=CHKP_MODEL_NAME_PREFIX,
                                                      verbose=self.verbose + 1)  # they check verbose > 1 here
             callbacks.append(checkpoint_callback)
 
         # add
-        if not self._is_tgt and self.cfg.exp_kwargs['use_tgt_for_test']:
+        if not is_tgt and self.cfg.exp_kwargs['use_tgt_for_test']:
             test_callback = CustomEvalCallback(eval_env=self._tgt_for_test,
                                                n_eval_episodes=self.cfg.n_eval_episodes,
                                                eval_freq=self.cfg.eval_freq,
-                                               log_path=self.eval_log_dir / 'test',
-                                               best_model_save_path=self.models_dir / 'test',
+                                               log_path=self.eval_log_dir(TST_TASK_NAME),
+                                               best_model_save_path=self.models_dir(TST_TASK_NAME),
                                                verbose=self.verbose,
-                                               logger_prefix='test',
+                                               logger_prefix=TST_TASK_NAME,
                                                save_buffer=False)
             callbacks.append(test_callback)
 
         # train agent
         print(f'training agent for task {task_name}')
         agent = agent.learn(
-            total_timesteps=self.cfg.tsf_kwargs['target_timesteps'] if self._is_tgt else self.cfg.max_timesteps,
+            total_timesteps=self.cfg.tsf_kwargs['target_timesteps'] if is_tgt else self.cfg.max_timesteps,
             callback=callbacks,
             log_interval=self.log_interval,
             tb_log_name=task_name,
@@ -414,31 +405,45 @@ class Experiment:
         )
 
         # save final agent model
-        agent.save(self.models_dir / task_name / FINAL_MODEL_NAME)
-        # if isinstance(agent, OffPolicyAlgorithm):
-        #     agent.save_replay_buffer(self.models_dir / task_name / FINAL_BUFFER_NAME)
+        agent.save(self.models_dir(task_name) / FINAL_MODEL_NAME)
+        if isinstance(agent, OffPolicyAlgorithm) and task_name == SRC_TASK_NAME:  # save src agent buffer for transfer
+            agent.save_replay_buffer(self.models_dir(task_name) / FINAL_BUFFER_NAME)
 
         return agent
 
     @property
     def dump_dir(self):
-        return self._dump_dir / RUNS_DIR / (self.exp_name if self._is_tgt else self.src_name)
+        return self._dump_dir / RUNS_DIR / self.dumps_name
 
-    @property
-    def models_dir(self):
-        return self.dump_dir / MODELS_DIR
+    def task_dir(self, task_name):
+        if task_name == TSF_TASK_NAME:
+            return self.dump_dir / task_name / self.tsf_dir
+        else:
+            return self.dump_dir / task_name
 
-    @property
-    def logs_dir(self):
-        return self.dump_dir / LOGS_DIR
+    def models_dir(self, task_name):
+        return self.task_dir(task_name) / MODELS_DIR
 
-    @property
-    def tb_log_dir(self):
-        return self.logs_dir / TB_LOG_DIR
+    def logs_dir(self, task_name):
+        return self.task_dir(task_name) / LOGS_DIR
 
-    @property
-    def eval_log_dir(self):
-        return self.logs_dir / EVAL_LOG_DIR
+    def tb_log_dir(self, task_name):
+        return self.task_dir(task_name) / TB_LOG_DIR
+
+    def eval_log_dir(self, task_name):
+        return self.task_dir(task_name) / EVAL_LOG_DIR
+
+    def done_file(self, task_name):
+        return self.task_dir(task_name) / DONE_FILE
+
+    def fail_file(self, task_name):
+        return self.task_dir(task_name) / FAIL_FILE
+
+    def is_done(self, task_name):
+        return self.done_file(task_name).exists() and not self.fail_file(task_name).exists()
+
+    def is_fail(self, task_name):
+        return self.fail_file(task_name).exists()
 
     @property
     def saved_contexts_dir(self):

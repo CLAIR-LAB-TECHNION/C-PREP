@@ -9,10 +9,7 @@ import traceback
 from tqdm.auto import tqdm
 
 from .configurations import *
-from .experiment import Experiment
-
-DONE_FILE = 'DONE'
-FAIL_FILE = 'FAIL'
+from .experiment import Experiment, SRC_TASK_NAME, TGT_TASK_NAME, TSF_TASK_NAME, DONE_FILE, FAIL_FILE
 
 
 TIMESTAMP_FORMAT = '%Y-%m-%d-%H_%M_%S.%f'
@@ -60,25 +57,12 @@ class ExperimentsRunner:
     def _run_exp(exp):
         print(f'running experiment with CFG: {exp.exp_name}')
 
-        # get dump dirs for src and tgt
-        old_is_tgt = exp._is_tgt
-        exp._is_tgt = False
-        src_dump_dir = exp.dump_dir
-        exp._is_tgt = True
-        tgt_dump_dir = exp.dump_dir
-        exp._is_tgt = old_is_tgt
-
-        # get path to done and fail files
-        src_done_file = src_dump_dir / DONE_FILE
-        src_fail_file = src_dump_dir / FAIL_FILE
-        tgt_done_file = tgt_dump_dir / DONE_FILE
-        tgt_fail_file = tgt_dump_dir / FAIL_FILE
-
         # check if src and tgt experiments are done
-        src_done = ExperimentsRunner.check_exp_done(exp, 'src', src_done_file, src_fail_file)
-        tgt_done = ExperimentsRunner.check_exp_done(exp, 'tgt', tgt_done_file, tgt_fail_file)
+        src_done = ExperimentsRunner.check_exp_done(exp, SRC_TASK_NAME)
+        tgt_done = ExperimentsRunner.check_exp_done(exp, TGT_TASK_NAME)
+        tsf_done = ExperimentsRunner.check_exp_done(exp, TSF_TASK_NAME)
 
-        if src_done and tgt_done:
+        if src_done and tgt_done and tsf_done:
             print('experiment already completed')
             return
         try:
@@ -93,22 +77,23 @@ class ExperimentsRunner:
             raise
 
     @staticmethod
-    def check_exp_done(exp, exp_name, done_file, fail_file):
+    def check_exp_done(exp, task_name):
+
         done = False
-        if done_file.is_file() and not exp.force_retrain:
+        if exp.is_done(task_name) and not exp.force_retrain:
             done = True
-            print(f'{exp_name} experiment already done')
-        elif done_file.is_file():  # forced retrainig
-            done_file.unlink()
-            print(f'overwriting done {exp_name} experiment')
-        elif fail_file.is_file():
-            fail_file.unlink()
-            print(f'{exp_name} experiment failed in the passed. retraining all agents')
+            print(f'{exp.exp_name} experiment already done')
+        elif exp.is_done(task_name):  # forced retrainig
+            exp.done_file(task_name).unlink()
+            print(f'overwriting done {exp.exp_name} experiment')
+        elif exp.is_fail(task_name):
+            exp.fail_file(task_name).unlink()
+            print(f'{exp.exp_name} experiment failed in the passed. retraining all agents')
             exp.force_retrain = True
         elif exp.force_retrain:
-            print(f'redoing {exp_name} experiment')
+            print(f'redoing {exp.exp_name} experiment')
         else:
-            print(f'finishing incomplete {exp_name} experiment')
+            print(f'finishing incomplete {exp.exp_name} experiment')
 
         return done
 

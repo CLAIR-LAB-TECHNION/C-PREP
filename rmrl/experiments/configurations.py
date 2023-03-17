@@ -125,6 +125,7 @@ class SupportedEnvironments(Enum):
 
     PO_4X4_5PAS = 'po_4x4_5pas'
     PO_6X6_5PAS = 'po_6x6_5pas'
+    PO_DEFAULT_10PAS = 'po_default_10pas'
 
     GN_6X6_1PAS_STOCH = 'gn_6x6_1pas_stoch'
     GN_6X6_2PAS_STOCH = 'gn_6x6_2pas_stoch'
@@ -1102,7 +1103,7 @@ RMENV_DICT = {
             },
         }
     },
-    SupportedEnvironments.PO_6X6_5PAS: {  # aimed for pickcup order context space
+    SupportedEnvironments.PO_6X6_5PAS: {
         ENV_KWARGS_KEY: {
             'num_passengers': 5,
             'pickup_only': True,
@@ -1118,6 +1119,26 @@ RMENV_DICT = {
                 "| | : : : | |",
                 "+-----------+"
             ],
+            'reward_table': {
+                Event.STEP: 0,
+                Event.PICKUP: 0,
+                Event.DEAD: 0,
+                Event.OBJECTIVE: 1
+            },
+        },
+        CONTEXT_SPACES_KEY: {
+            ContextSpaces.PICKUP_ORDER: {
+                ENV_KEY: pickup_order_env,
+                RM_KEY: TaxiEnvRM,
+            },
+        }
+    },
+    SupportedEnvironments.PO_DEFAULT_10PAS: {
+        ENV_KWARGS_KEY: {
+            'num_passengers': 10,
+            'pickup_only': True,
+            'pickup_order': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+            'max_steps': 700,
             'reward_table': {
                 Event.STEP: 0,
                 Event.PICKUP: 0,
