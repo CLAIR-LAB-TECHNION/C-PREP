@@ -8,6 +8,7 @@ dependencies:
   - pytorch::pytorch
   - tensorboard
   - pyg::pyg
+  - pyg::pytorch-scatter
   - matplotlib
   - jupyterlab
   - jupyterlab_widgets=1.1.1
@@ -15,12 +16,11 @@ dependencies:
   - ipywidgets
   - pandas
   - seaborn>=0.12
-  - pip
   - pip:
 #      - stable-baselines3==1.6.0
 #      - -e ./stable-baselines3  # local with graph observation support
       - git+https://github.com/carlosluis/stable-baselines3@fix_tests  # for gym 0.26 and up
       - gym[mujoco]
       - pddlgym==0.0.4
-      - git+https://github.com/CLAIR-LAB-TECHNION/multi_taxi
+      - git+https://github.com/CLAIR-LAB-TECHNION/multi_taxi@0.3.0
 #      - --no-deps git+https://github.com/ertsiger/gym-subgoal-automata
