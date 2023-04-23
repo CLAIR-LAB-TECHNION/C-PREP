@@ -55,9 +55,22 @@ class ValueIteration(PotentialFunction):
 
 
 class DistFromGoal(PotentialFunction):
-    def __init__(self, goal_state):
-        self.goal_state = goal_state
+    def __init__(self, goal_states):
+        self.goal_states = goal_states
 
     def __call__(self, rm: RewardMachine, gamma: float) -> Dict[int, float]:
-        shortest_path_lengths = nx.shortest_path_length(rm.G, target=self.goal_state)
-        return {k: gamma ** (l - 1) for k, l in shortest_path_lengths.items()}
+        # container to keep minimum distance to goal for each goal state.
+        # initialize for all states with maximum path length + 1, so nodes that cannot reach the goal will have minimum
+        # potential
+        shortest_path_lengths = {u: rm.num_states for u in rm.all_states}
+
+        # iterate over all goal states and find the shortest path to each
+        for goal_state in self.goal_states:
+            shortest_path_lengths_to_goal = nx.shortest_path_length(rm.G, target=goal_state)
+
+            # update the shortest paths container with the minimum of current saved distance and new distance
+            shortest_path_lengths.update({k: min(l, shortest_path_lengths.get(k, float('inf')))
+                                         for k, l in shortest_path_lengths_to_goal.items()})
+
+        # return gamma ** dist_to_nearest_goal as the potential function
+        return {k: gamma ** l for k, l in shortest_path_lengths.items()}
