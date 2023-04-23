@@ -82,18 +82,18 @@ class ExperimentsRunner:
         done = False
         if exp.is_done(task_name) and not exp.force_retrain:
             done = True
-            print(f'{exp.exp_name} experiment already done')
+            print(f'{task_name} experiment already done')
         elif exp.is_done(task_name):  # forced retrainig
             exp.done_file(task_name).unlink()
-            print(f'overwriting done {exp.exp_name} experiment')
+            print(f'overwriting done {task_name} experiment')
         elif exp.is_fail(task_name):
             exp.fail_file(task_name).unlink()
-            print(f'{exp.exp_name} experiment failed in the passed. retraining all agents')
+            print(f'{task_name} experiment failed in the passed. retraining all agents')
             exp.force_retrain = True
         elif exp.force_retrain:
-            print(f'redoing {exp.exp_name} experiment')
+            print(f'redoing {task_name} experiment')
         else:
-            print(f'finishing incomplete {exp.exp_name} experiment')
+            print(f'finishing incomplete {task_name} experiment')
 
         return done
 
