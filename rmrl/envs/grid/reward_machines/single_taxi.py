@@ -56,8 +56,10 @@ class TaxiEnvRM(RewardMachine):
 
         # iterate all possible passenger statuses
         for status in product([0, 1], repeat=num_passenger_statuses):
-            if all(status):  # this is a goal status
-                continue
+            if all(status):
+                continue  # this is a goal status
+            if not self.pickup_only and any(status[i + 1] and not status[i] for i in range(0, 2, len(status))):
+                continue  # this is an invalid status of dropoff before pickup
 
             # pad status with zeros in the sector propositions
             status_prop = np.concatenate([np.zeros(self.num_sectors), status])
