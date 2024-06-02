@@ -497,6 +497,8 @@ class ResultsHandler:
                     inc_exps.setdefault(dp, []).append(tsk)
 
             all_tsf_dir = dp_path / TSF_TASK_NAME
+            if not all_tsf_dir.exists():
+                continue
             for tsf_kwargs in map(lambda x: x.name, all_tsf_dir.iterdir()):
                 if not tsf_kwargs.startswith('tsf_kwargs'):
                     continue

@@ -243,7 +243,8 @@ class RMEnvWrapper(gym.Wrapper):
                     candidates = [(0,) * self.rm.num_propositions]  # return all 0
 
                 # randomly choose a candidate
-                nds = candidates[self.np_random.choice(range(len(candidates)), 1)[0]]
+                # nds = candidates[self.np_random.choice(range(len(candidates)), 1)[0]]
+                nds = candidates[0]
 
                 obs_dict[NEXT_DESIRED_STATE_PROPS_KEY] = np.array(nds)
 

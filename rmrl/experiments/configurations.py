@@ -11,7 +11,7 @@ from rmrl.envs.mujoco.reward_machines.half_cheetah import LocationRM, LapsRM
 from rmrl.envs.mujoco.half_cheetah import location_env, lap_runner_env
 
 from rmrl.nn.models import cur_state_embedding, ignore_state_mean
-from rmrl.reward_machines.potential_functions import ValueIteration
+from rmrl.reward_machines.potential_functions import ValueIteration, DistFromGoal
 from rmrl.utils.lr_schedulers import *
 
 from multi_taxi import Event
@@ -55,7 +55,7 @@ MIN_TIMESTEPS = 50_000
 
 # defaults for reward shaping
 DEFAULT_RS_GAMMA = 0.9
-DEFAULT_POT_FN = ValueIteration()
+DEFAULT_POT_FN = DistFromGoal()
 DEFAULT_POT_FN_CHEETAH = ValueIteration(neg_results=True)
 
 # CV experiment defaults
@@ -126,6 +126,18 @@ class SupportedEnvironments(Enum):
     PD_DEFAULT_3PAS = 'pd_default_3pas'
     PD_DEFAULT_4PAS = 'pd_default_4pas'
     PD_DEFAULT_5PAS = 'pd_default_5pas'
+
+    PD_12X12_1PAS = 'pd_12x12_1pas'
+    PD_12X12_2PAS = 'pd_12x12_2pas'
+    PD_12X12_3PAS = 'pd_12x12_3pas'
+    PD_12X12_4PAS = 'pd_12x12_4pas'
+    PD_12X12_5PAS = 'pd_12x12_5pas'
+
+    PD_6X6_1PAS_STOCH = 'pd_6x6_1pas_stoch'
+    PD_6X6_2PAS_STOCH = 'pd_6x6_2pas_stoch'
+    PD_8X8_1PAS_STOCH = 'pd_8x8_1pas_stoch'
+    PD_8X8_2PAS_STOCH = 'pd_8x8_2pas_stoch'
+    PD_12X12_1PAS_STOCH = 'pd_12x12_1pas_stoch'
 
     PO_4X4_5PAS = 'po_4x4_5pas'
     PO_6X6_5PAS = 'po_6x6_5pas'
@@ -851,6 +863,318 @@ RMENV_DICT = {
             }
         }
     },
+    SupportedEnvironments.PD_12X12_1PAS: {
+        ENV_KWARGS_KEY: {
+            'num_passengers': 1,
+            'no_intermediate_dropoff': True,
+            'max_steps': 500,
+            'domain_map': [
+                "+-----------------------+",
+                "| : | : | : : : : : | : |",
+                "| | : : : : : : : | | : |",
+                "| | | : | : : : : | : : |",
+                "| : : : | : : | : | : | |",
+                "| : | : : | : : : | : | |",
+                "| : | : : | : : : : | : |",
+                "| : | | : : : | : : | : |",
+                "| : : | : | : | : : | : |",
+                "| : : : : | : : : : | : |",
+                "| : | : : : : | : : | | |",
+                "| : | : : | : | : : : | |",
+                "| : | : : | : | : : : | |",
+                "+-----------------------+"
+            ],
+            'reward_table': {
+                e: 1 if e == Event.OBJECTIVE else 0
+                for e in Event
+            }
+        },
+        CONTEXT_SPACES_KEY: {
+            ContextSpaces.FIXED_ENTITIES: {
+                ENV_KEY: fixed_entities_env,
+                RM_KEY: TaxiEnvRM,
+            },
+            ContextSpaces.CHANGING_MAP: {
+                ENV_KEY: changing_map_env,
+                RM_KEY: TaxiEnvRM,
+            }
+        }
+    },
+    SupportedEnvironments.PD_12X12_1PAS_STOCH: {
+        ENV_KWARGS_KEY: {
+            'num_passengers': 1,
+            'no_intermediate_dropoff': True,
+            'max_steps': 500,
+            'domain_map': [
+                "+-----------------------+",
+                "| : | : | : : : : : | : |",
+                "| | : : : : : : : | | : |",
+                "| | | : | : : : : | : : |",
+                "| : : : | : : | : | : | |",
+                "| : | : : | : : : | : | |",
+                "| : | : : | : : : : | : |",
+                "| : | | : : : | : : | : |",
+                "| : : | : | : | : : | : |",
+                "| : : : : | : : : : | : |",
+                "| : | : : : : | : : | | |",
+                "| : | : : | : | : : : | |",
+                "| : | : : | : | : : : | |",
+                "+-----------------------+"
+            ],
+            'reward_table': {
+                e: 1 if e == Event.OBJECTIVE else 0
+                for e in Event
+            },
+            'stochastic_actions': {
+                'north': {
+                    'north': 0.9,
+                    'east': 0.05,
+                    'west': 0.05
+                },
+                'south': {
+                    'south': 0.9,
+                    'east': 0.05,
+                    'west': 0.05
+                },
+                'east': {
+                    'east': 0.9,
+                    'north': 0.05,
+                    'south': 0.05
+                },
+                'west': {
+                    'west': 0.9,
+                    'north': 0.05,
+                    'south': 0.05
+                },
+            }
+        },
+        CONTEXT_SPACES_KEY: {
+            ContextSpaces.FIXED_ENTITIES: {
+                ENV_KEY: fixed_entities_env,
+                RM_KEY: TaxiEnvRM,
+            },
+            ContextSpaces.CHANGING_MAP: {
+                ENV_KEY: changing_map_env,
+                RM_KEY: TaxiEnvRM,
+            }
+        }
+    },
+    SupportedEnvironments.PD_8X8_1PAS_STOCH: {
+        ENV_KWARGS_KEY: {
+            'num_passengers': 1,
+            'no_intermediate_dropoff': True,
+            'max_steps': 500,
+            'domain_map': [
+                "+---------------+",
+                "| : | : | : : : |",
+                "| | : : : : : : |",
+                "| | | : | : : : |",
+                "| : : : | : : | |",
+                "| : | : : | : : |",
+                "| : | : : | : : |",
+                "| : | | : : : | |",
+                "| : : | : | : | |",
+                "+---------------+"
+            ],
+            'reward_table': {
+                e: 1 if e == Event.OBJECTIVE else 0
+                for e in Event
+            },
+            'stochastic_actions': {
+                'north': {
+                    'north': 0.9,
+                    'east': 0.05,
+                    'west': 0.05
+                },
+                'south': {
+                    'south': 0.9,
+                    'east': 0.05,
+                    'west': 0.05
+                },
+                'east': {
+                    'east': 0.9,
+                    'north': 0.05,
+                    'south': 0.05
+                },
+                'west': {
+                    'west': 0.9,
+                    'north': 0.05,
+                    'south': 0.05
+                },
+            }
+        },
+        CONTEXT_SPACES_KEY: {
+            ContextSpaces.FIXED_ENTITIES: {
+                ENV_KEY: fixed_entities_env,
+                RM_KEY: TaxiEnvRM,
+            },
+            ContextSpaces.CHANGING_MAP: {
+                ENV_KEY: changing_map_env,
+                RM_KEY: TaxiEnvRM,
+            }
+        }
+    },
+    SupportedEnvironments.PD_8X8_2PAS_STOCH: {
+        ENV_KWARGS_KEY: {
+            'num_passengers': 2,
+            'no_intermediate_dropoff': True,
+            'max_steps': 500,
+            'domain_map': [
+                "+---------------+",
+                "| : | : | : : : |",
+                "| | : : : : : : |",
+                "| | | : | : : : |",
+                "| : : : | : : | |",
+                "| : | : : | : : |",
+                "| : | : : | : : |",
+                "| : | | : : : | |",
+                "| : : | : | : | |",
+                "+---------------+"
+            ],
+            'reward_table': {
+                e: 1 if e == Event.OBJECTIVE else 0
+                for e in Event
+            },
+            'stochastic_actions': {
+                'north': {
+                    'north': 0.9,
+                    'east': 0.05,
+                    'west': 0.05
+                },
+                'south': {
+                    'south': 0.9,
+                    'east': 0.05,
+                    'west': 0.05
+                },
+                'east': {
+                    'east': 0.9,
+                    'north': 0.05,
+                    'south': 0.05
+                },
+                'west': {
+                    'west': 0.9,
+                    'north': 0.05,
+                    'south': 0.05
+                },
+            }
+        },
+        CONTEXT_SPACES_KEY: {
+            ContextSpaces.FIXED_ENTITIES: {
+                ENV_KEY: fixed_entities_env,
+                RM_KEY: TaxiEnvRM,
+            },
+            ContextSpaces.CHANGING_MAP: {
+                ENV_KEY: changing_map_env,
+                RM_KEY: TaxiEnvRM,
+            }
+        }
+    },
+    SupportedEnvironments.PD_6X6_1PAS_STOCH: {
+        ENV_KWARGS_KEY: {
+            'num_passengers': 1,
+            'no_intermediate_dropoff': True,
+            'max_steps': 1000,
+            'domain_map': [
+                "+-----------+",
+                "| | | : | : |",
+                "| | : : : : |",
+                "| | | : | : |",
+                "| : : : | : |",
+                "| : : | : | |",
+                "| | : : : | |",
+                "+-----------+"
+            ],
+            'reward_table': {
+                e: 1 if e == Event.OBJECTIVE else 0
+                for e in Event
+            },
+            'stochastic_actions': {
+                'north': {
+                    'north': 0.9,
+                    'east': 0.05,
+                    'west': 0.05
+                },
+                'south': {
+                    'south': 0.9,
+                    'east': 0.05,
+                    'west': 0.05
+                },
+                'east': {
+                    'east': 0.9,
+                    'north': 0.05,
+                    'south': 0.05
+                },
+                'west': {
+                    'west': 0.9,
+                    'north': 0.05,
+                    'south': 0.05
+                },
+            }
+        },
+        CONTEXT_SPACES_KEY: {
+            ContextSpaces.FIXED_ENTITIES: {
+                ENV_KEY: fixed_entities_env,
+                RM_KEY: TaxiEnvRM,
+            },
+            ContextSpaces.CHANGING_MAP: {
+                ENV_KEY: changing_map_env,
+                RM_KEY: TaxiEnvRM,
+            }
+        }
+    },
+    SupportedEnvironments.PD_6X6_2PAS_STOCH: {
+        ENV_KWARGS_KEY: {
+            'num_passengers': 2,
+            'no_intermediate_dropoff': True,
+            'max_steps': 1000,
+            'domain_map': [
+                "+-----------+",
+                "| | | : | : |",
+                "| | : : : : |",
+                "| | | : | : |",
+                "| : : : | : |",
+                "| : : | : | |",
+                "| | : : : | |",
+                "+-----------+"
+            ],
+            'reward_table': {
+                e: 1 if e == Event.OBJECTIVE else 0
+                for e in Event
+            },
+            'stochastic_actions': {
+                'north': {
+                    'north': 0.9,
+                    'east': 0.05,
+                    'west': 0.05
+                },
+                'south': {
+                    'south': 0.9,
+                    'east': 0.05,
+                    'west': 0.05
+                },
+                'east': {
+                    'east': 0.9,
+                    'north': 0.05,
+                    'south': 0.05
+                },
+                'west': {
+                    'west': 0.9,
+                    'north': 0.05,
+                    'south': 0.05
+                },
+            }
+        },
+        CONTEXT_SPACES_KEY: {
+            ContextSpaces.FIXED_ENTITIES: {
+                ENV_KEY: fixed_entities_env,
+                RM_KEY: TaxiEnvRM,
+            },
+            ContextSpaces.CHANGING_MAP: {
+                ENV_KEY: changing_map_env,
+                RM_KEY: TaxiEnvRM,
+            }
+        }
+    },
 
     # pickup order environments
     SupportedEnvironments.PO_4X4_5PAS: {
@@ -918,10 +1242,8 @@ RMENV_DICT = {
             'pickup_order': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
             'max_steps': 700,
             'reward_table': {
-                Event.STEP: 0,
-                Event.PICKUP: 0,
-                Event.DEAD: 0,
-                Event.OBJECTIVE: 1
+                e: 1 if e == Event.OBJECTIVE else 0
+                for e in Event
             },
         },
         CONTEXT_SPACES_KEY: {
